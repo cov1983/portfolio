@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(make verify)",
+      "Bash(make test *)",
+      "Bash(make build)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(gh pr *)",
+      "Read(/**)",
+      "Edit(/docs/**)"
+    ],
+    "deny": [
+      "Bash(git push --force *)",
+      "Bash(git push * --force *)",
+      "Bash(git push -f *)",
+      "Bash(git push * -f *)",
+      "Bash(git push * main)",
+      "Bash(git push * main *)",
+      "Bash(git push * HEAD:main)",
+      "Bash(gh pr merge *)",
+      "Bash(gh pr close *)",
+      "Bash(rm -rf *)",
+      "Bash(rm -fr *)",
+      "Bash(terraform apply *)",
+      "Bash(tofu apply *)",
+      "Bash(az * delete)",
+      "Bash(az * delete *)",
+      "Bash(kubectl delete *)",
+      "Bash(npm publish *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Read(/.env)",
+      "Read(/.env.local)",
+      "Read(/**/.env)",
+      "Read(/**/.env.local)",
+      "Read(/**/secrets/**)",
+      "Edit(/docs/spec/**)",
+      "Edit(/infra/prod/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-bash.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-session.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
