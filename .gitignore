@@ -1,0 +1,4 @@
+# Claude Code hook output and per-machine overrides (see docs/adr/0001-hook-events.md)
+.claude/audit.log
+.claude/sessions.log
+.claude/settings.local.json
