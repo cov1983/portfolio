@@ -15,6 +15,7 @@ language-agnostic until `docs/spec/` and `docs/plan/` say otherwise.
   `lint`, `test`, `gitleaks` (job ids are stable across phases).
 - Branches: `chore/<topic>`, `feat/<topic>`, `fix/<topic>`. One ticket = one branch = one PR.
 - Commits carry the agent trailer (`Co-Authored-By: …`). Every PR carries the label `ai-assisted`.
+- Pushes are run by the owner. The agent stops at `git push` and asks; it never holds push credentials.
 - Process guide: `docs/workflow-guide.md`. Constitution: `docs/constitution.md` (draft).
 
 ## Commands (single entry points — use these, not ad-hoc variants)
@@ -62,8 +63,8 @@ All targets are stubs that fail with "not configured" until Phase 0b wires the r
 - If the spec and reality conflict, STOP and write the conflict into the ticket under "Blockers".
 - Before opening the PR, run `/code-review`; open the PR with `gh pr create --label ai-assisted` using
   the PR template and tick only the Definition of Done items that are actually true.
-- After the PR merges, append one line to `docs/retro.md`: date · ticket · what cost time ·
-  what I overrode · rule I would add. Every 3–5 tickets those lines become a rule here, a lint rule or a CI gate.
+- In the same PR, append one line to `docs/retro.md` (main is protected; a separate PR per retro
+  line is not worth it): date · ticket · what cost time · what I overrode · rule I would add. Every 3–5 tickets those lines become a rule here, a lint rule or a CI gate.
 
 ## Definition of Done
 See the checklist in `.github/pull_request_template.md`.

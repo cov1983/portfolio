@@ -15,7 +15,7 @@ Ticket: #…   Spec: docs/spec/<feature>.md §…   Plan: docs/plan/<feature>.md
 - [ ] Infra changes: `plan` output attached; no `apply` performed by an agent
 - [ ] Independent AI review (CI job, added in Phase 0b) findings addressed or explicitly dismissed with reason
 - [ ] Commits conventional, one task per commit, agent trailer present; PR labelled `ai-assisted`
-- [ ] One line appended to `docs/retro.md` after merge
+- [ ] One line appended to `docs/retro.md` in this PR (main is protected; a separate PR per retro line is not worth it)
 
 ### New dependencies
 <!-- name · version · license · reason — or "none" -->

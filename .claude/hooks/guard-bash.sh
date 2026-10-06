@@ -19,7 +19,7 @@ PATTERNS=(
   '(terraform|tofu)[[:space:]]+apply@@Infra apply is a human action with an approval gate.'
   'kubectl[[:space:]]+delete@@Destructive cluster command.'
   'az[[:space:]].*[[:space:]]delete@@Destructive Azure CLI command.'
-  'rm[[:space:]]+-[a-z]*r[a-z]*f[a-z]*[[:space:]]+/([[:space:]]|$)@@Refusing rm -rf on the filesystem root.'
+  'rm[[:space:]]+-[a-z]*(r[a-z]*f|f[a-z]*r)[a-z]*[[:space:]]+/([[:space:]]|$)@@Refusing rm -rf on the filesystem root.'
   'ghp_[A-Za-z0-9]{20,}@@GitHub personal access token in command.'
   'gho_[A-Za-z0-9]{20,}@@GitHub OAuth token in command.'
   'AKIA[0-9A-Z]{16}@@AWS access key id in command.'
