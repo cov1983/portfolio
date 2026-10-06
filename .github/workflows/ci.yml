@@ -1,0 +1,64 @@
+# Phase 0a CI. Job ids (lint, test, gitleaks) are the required status checks on main and stay
+# stable across phases; Phase 0b replaces the placeholder steps with the real toolchain.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: CLAUDE.md and AGENTS.md are identical
+        run: cmp CLAUDE.md AGENTS.md
+
+      - name: Shell scripts pass shellcheck
+        run: shellcheck .claude/hooks/*.sh .claude/hooks/tests/run.sh
+
+      - name: .claude/settings.json is valid JSON
+        run: python3 -c 'import json; json.load(open(".claude/settings.json"))'
+
+      - name: guard-bash hook smoke test
+        run: .claude/hooks/tests/run.sh
+
+      - name: Makefile stubs fail loudly
+        run: |
+          for t in setup verify test build dev; do
+            if make "$t" 2>err.txt; then echo "make $t unexpectedly succeeded"; exit 1; fi
+            grep -q "not configured" err.txt || { echo "make $t: missing 'not configured' message"; cat err.txt; exit 1; }
+          done
+          echo "all stubs fail with the expected message"
+
+      - name: Placeholder notice
+        run: echo "::notice title=lint::real formatter/linter/type checker land in Phase 0b (docs/workflow-guide.md §4.0.2)"
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Placeholder notice
+        run: echo "::notice title=test::no test runner yet; 'make test' is wired in Phase 0b (docs/workflow-guide.md §4.0.2)"
+
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: "false"
