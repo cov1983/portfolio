@@ -18,7 +18,9 @@ This repo is single-context: one glossary and one ADR directory at the root.
 ├── GLOSSARY.md
 ├── docs/adr/
 │   ├── 0001-hook-events.md
-│   └── 0002-tracker-and-glossary.md
+│   ├── 0002-tracker-and-glossary.md
+│   ├── 0003-web-3d-stack.md
+│   └── 0004-pre-rendered-root.md
 └── src/
 ```
 

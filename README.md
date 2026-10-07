@@ -4,7 +4,8 @@ An immersive, interactive 3D portfolio: visitors steer an ice-hockey puck throug
 world to discover Thomas's projects and background. Physics, hockey-inspired challenges and a bit of
 storytelling turn browsing a CV into an experience that showcases the development work itself.
 
-Status: **prototype / pre-spec**. The stack is not chosen yet. This repository currently holds the
+Status: **prototype / pre-spec**. The stack is decided (`docs/adr/0003-web-3d-stack.md`); the
+vocabulary is in `GLOSSARY.md`. This repository currently holds the
 process scaffolding (Phase 0a of `docs/workflow-guide.md`), not application code.
 
 ## Where to look

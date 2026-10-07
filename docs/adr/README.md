@@ -11,3 +11,5 @@ Minimal format: Status · Context · Decision · Consequences. Supersede, don't 
 Index
 - [0001 — Hook events for the audit trail](0001-hook-events.md)
 - [0002 — Issue tracker and vocabulary file](0002-tracker-and-glossary.md)
+- [0003 — TypeScript, React Three Fiber and Rapier for the 3D site](0003-web-3d-stack.md)
+- [0004 — Pre-rendered root and Fallback Page; the World hydrates on top](0004-pre-rendered-root.md)
