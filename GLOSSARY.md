@@ -38,7 +38,7 @@ The boarded corridor that connects the Hub to a Zone.
 _Avoid_: corridor, tunnel, link, road
 
 **Zone**:
-A themed Rink reached from the Hub by a Path that presents one Exhibit.
+A themed Rink, reached from the Hub by a Path, that presents one Exhibit.
 _Avoid_: room, section, level, stage
 
 **Goal**:
@@ -79,7 +79,7 @@ One project of the Owner, presented in the World and on the Fallback Page.
 _Avoid_: project, showcase, card, portfolio item, case study
 
 **Hook**:
-The one-line teaser of an Exhibit, the first thing a Visitor reads about it.
+The one-line opener of an Exhibit, the first thing a Visitor reads about it.
 _Avoid_: tagline, subtitle, teaser
 
 **Visibility**:
