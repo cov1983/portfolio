@@ -1,4 +1,5 @@
 /.github/ @cov1983
+/.agents/ @cov1983
 /.claude/ @cov1983
 /docs/spec/ @cov1983
 /infra/ @cov1983
