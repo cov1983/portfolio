@@ -4,8 +4,8 @@
 Thomas's personal website: an immersive, interactive 3D portfolio in which visitors steer an ice-hockey
 puck through a playful virtual world to discover his projects and background. Physics, hockey-inspired
 challenges and light storytelling make exploring the portfolio an experience that itself demonstrates
-his development skills. Status: **prototype / pre-spec**. The stack is not chosen yet; stay
-language-agnostic until `docs/spec/` and `docs/plan/` say otherwise.
+his development skills. Status: **prototype / pre-spec**. The stack is decided in ADR 0003
+(TypeScript, React Three Fiber, Rapier); no application code exists until Phase 0b wires the toolchain.
 
 ## Environment
 - Hosting: GitHub, public repository `cov1983/portfolio`. CI: GitHub Actions (`.github/workflows/ci.yml`).
@@ -39,8 +39,8 @@ All targets are stubs that fail with "not configured" until Phase 0b wires the r
 - `.agents/skills/`         vendored engineering skills from `mattpocock/skills`; `.claude/skills/*` link here
 - `skills-lock.json`        pins the vendored skills (source, path, content hash)
 - `.github/`                CI, PR template, CODEOWNERS
-- `src/`, `tests/`, `infra/` do not exist yet — created in Phase 1/0b once the stack is decided
-- `GLOSSARY.md`             shared vocabulary (called CONTEXT.md in docs/workflow-guide.md); produced by `/grill-with-docs` in Phase 1 (not yet present)
+- `src/`, `tests/`, `infra/` do not exist yet — created in Phase 0b/2 (stack: ADR 0003)
+- `GLOSSARY.md`             shared vocabulary (called CONTEXT.md in docs/workflow-guide.md); produced by `/grill-with-docs` in Phase 1
 
 ## Conventions
 - Formatter and linter are law once configured; do not disable rules without an ADR.
@@ -61,7 +61,7 @@ All targets are stubs that fail with "not configured" until Phase 0b wires the r
 
 ## Working protocol
 - Start every piece of work from its ticket; follow its tasks in order. Use the vocabulary defined in
-  `GLOSSARY.md` once it exists; until then, use the terms from the spec.
+  `GLOSSARY.md`.
 - Plan before editing (plan mode). After each task run `make verify`, then commit.
 - If the spec and reality conflict, STOP and write the conflict into the ticket under "Blockers".
 - Before opening the PR, run `/code-review`; open the PR with `gh pr create --label ai-assisted` using
