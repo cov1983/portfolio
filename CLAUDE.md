@@ -35,7 +35,9 @@ All targets are stubs that fail with "not configured" until Phase 0b wires the r
 - `docs/runbooks/`          operational procedures
 - `docs/retro.md`           one line per ticket; append only
 - `docs/agents/`            config the engineering skills read: issue tracker, triage labels, domain docs
-- `.claude/`                settings, hooks (`hooks/`), hook tests (`hooks/tests/`)
+- `.claude/`                settings, hooks (`hooks/`), hook tests (`hooks/tests/`), skill symlinks (`skills/`)
+- `.agents/skills/`         vendored engineering skills from `mattpocock/skills`; `.claude/skills/*` link here
+- `skills-lock.json`        pins the vendored skills (source, path, content hash)
 - `.github/`                CI, PR template, CODEOWNERS
 - `src/`, `tests/`, `infra/` do not exist yet — created in Phase 1/0b once the stack is decided
 - `GLOSSARY.md`             shared vocabulary (called CONTEXT.md in docs/workflow-guide.md); produced by `/grill-with-docs` in Phase 1 (not yet present)
@@ -50,7 +52,7 @@ All targets are stubs that fail with "not configured" until Phase 0b wires the r
 
 ## Boundaries (hard)
 - Do NOT edit `docs/spec/**` except via an explicit `amend:` commit the ticket asks for.
-- Do NOT edit `.claude/**`, `.github/workflows/**` or CODEOWNERS unless the ticket says so
+- Do NOT edit `.claude/**`, `.agents/**`, `.github/workflows/**` or CODEOWNERS unless the ticket says so
   (protected by CODEOWNERS and PR review).
 - Do NOT add dependencies without listing them in the PR body with license and reason.
 - Do NOT push to `main`, force-push, delete branches, or merge PRs. Humans merge.
