@@ -10,3 +10,4 @@ Minimal format: Status · Context · Decision · Consequences. Supersede, don't 
 
 Index
 - [0001 — Hook events for the audit trail](0001-hook-events.md)
+- [0002 — Issue tracker and vocabulary file](0002-tracker-and-glossary.md)

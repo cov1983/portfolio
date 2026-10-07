@@ -34,10 +34,13 @@ All targets are stubs that fail with "not configured" until Phase 0b wires the r
 - `docs/adr/`               decision records, `NNNN-<slug>.md`
 - `docs/runbooks/`          operational procedures
 - `docs/retro.md`           one line per ticket; append only
-- `.claude/`                settings, hooks (`hooks/`), hook tests (`hooks/tests/`)
+- `docs/agents/`            config the engineering skills read: issue tracker, triage labels, domain docs
+- `.claude/`                settings, hooks (`hooks/`), hook tests (`hooks/tests/`), skill symlinks (`skills/`)
+- `.agents/skills/`         vendored engineering skills from `mattpocock/skills`; `.claude/skills/*` link here
+- `skills-lock.json`        pins the vendored skills (source, path, content hash)
 - `.github/`                CI, PR template, CODEOWNERS
 - `src/`, `tests/`, `infra/` do not exist yet — created in Phase 1/0b once the stack is decided
-- `CONTEXT.md`              shared vocabulary; produced by `/grill-with-docs` in Phase 1 (not yet present)
+- `GLOSSARY.md`             shared vocabulary (called CONTEXT.md in docs/workflow-guide.md); produced by `/grill-with-docs` in Phase 1 (not yet present)
 
 ## Conventions
 - Formatter and linter are law once configured; do not disable rules without an ADR.
@@ -49,7 +52,7 @@ All targets are stubs that fail with "not configured" until Phase 0b wires the r
 
 ## Boundaries (hard)
 - Do NOT edit `docs/spec/**` except via an explicit `amend:` commit the ticket asks for.
-- Do NOT edit `.claude/**`, `.github/workflows/**` or CODEOWNERS unless the ticket says so
+- Do NOT edit `.claude/**`, `.agents/**`, `.github/workflows/**` or CODEOWNERS unless the ticket says so
   (protected by CODEOWNERS and PR review).
 - Do NOT add dependencies without listing them in the PR body with license and reason.
 - Do NOT push to `main`, force-push, delete branches, or merge PRs. Humans merge.
@@ -58,7 +61,7 @@ All targets are stubs that fail with "not configured" until Phase 0b wires the r
 
 ## Working protocol
 - Start every piece of work from its ticket; follow its tasks in order. Use the vocabulary defined in
-  `CONTEXT.md` once it exists; until then, use the terms from the spec.
+  `GLOSSARY.md` once it exists; until then, use the terms from the spec.
 - Plan before editing (plan mode). After each task run `make verify`, then commit.
 - If the spec and reality conflict, STOP and write the conflict into the ticket under "Blockers".
 - Before opening the PR, run `/code-review`; open the PR with `gh pr create --label ai-assisted` using
@@ -68,3 +71,17 @@ All targets are stubs that fail with "not configured" until Phase 0b wires the r
 
 ## Definition of Done
 See the checklist in `.github/pull_request_template.md`.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for `cov1983/portfolio`, operated via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage labels are used unchanged: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` at the repo root (written by `/grill-with-docs`) and ADRs in `docs/adr/`. See `docs/agents/domain.md`.
