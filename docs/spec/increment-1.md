@@ -1,11 +1,10 @@
 # Spec: increment-1            Status: draft   Owner: Thomas (@cov1983)
 
 Written 2026-10-08 by `/to-spec` from issue #3 (grilling outcome), `GLOSSARY.md` and ADRs 0003–0005.
-No new interview was held. Terms in capitals are defined in `GLOSSARY.md`. Decisions that the
-sources did not state but that this spec needed are collected in one list under
-*Implementation decisions → Decisions derived while writing this spec*, so the review can accept
-or strike them in one pass. Everything genuinely undecided is under *Open questions*, each with a
-proposed answer; that list must be empty before the `spec: approve increment-1` commit.
+No new interview was held. Terms in capitals are defined in `GLOSSARY.md`. The decisions the sources
+did not state and the open questions the draft raised were resolved by the Owner in the review of
+PR #6 on 2026-10-08 and are folded into the body below; *Open questions* is empty. Status stays
+`draft` until the `spec: approve increment-1` commit.
 
 ## Problem & goal
 
@@ -65,11 +64,12 @@ tolerances for tests, not as requirements in themselves: the feel in words is th
 - **US-1** As a Visitor, I want the root address to show who this is and how to get in before any
   3D has loaded, so that a slow connection does not cost me the first impression.
   - AC-1.1 Given a fresh visit to the root address on the throttled 10 Mbit/s profile, When the
-    page loads, Then the Title Screen (Owner's name, one line, the way into the World, the Exhibit
-    list and the Fallback Page link) is rendered from pre-rendered HTML and is interactive within
-    2 s, without waiting for the World bundle.
+    page loads, Then the Title Screen (Owner's name, one line, the Contact line, the way into the
+    World, the Exhibit list and the Fallback Page link) is rendered from pre-rendered HTML and is
+    interactive within 2 s, without waiting for the World bundle.
   - AC-1.2 Given script is disabled, When the root address loads, Then the same Title Screen content
-    is visible and the Fallback Page link and each Exhibit list entry are working links.
+    is visible and the Fallback Page link, the two Contact links and each Exhibit list entry are
+    working links.
   - AC-1.3 Given the Title Screen is shown, When the Visitor presses Enter or Space, or activates the
     way-in control with a pointer, Then entry into the World begins.
 - **US-2** As a Visitor, I want to open any Exhibit straight from the Title Screen, so that I can
@@ -181,11 +181,10 @@ tolerances for tests, not as requirements in themselves: the feel in words is th
 
 - **US-13** As a Visitor, I want to see what a Zone is about before I reach its Goal, so that the
   World tells me where I am.
-  - AC-13.1 Given the Puck enters the Zone, When the Zone's Announcer caption is due, Then one
-    short text caption for the Zone is shown.
-  - AC-13.2 Given the Goal is in view, When the Visitor reads the Banner over it, Then it shows the
-    Exhibit's title and Hook, taken from the same content file as the Exhibit Panel and the Fallback
-    Page.
+  - AC-13.1 Given the World is playable, When the Puck first enters the Zone, Then one short text
+    caption for the Zone is shown.
+  - AC-13.2 Given the Zone is built from the Exhibit's content file, When the Banner over the Goal is
+    inspected, Then the Banner's text equals the Exhibit's title and hook from the content file.
 - **US-14** As a Visitor, I want driving the Puck into the Goal to open the Exhibit, so that the
   hockey move is the way to the content.
   - AC-14.1 Given the Puck is in the Zone, When it crosses the goal line into the net, Then the World
@@ -197,8 +196,9 @@ tolerances for tests, not as requirements in themselves: the feel in words is th
     the Panel does not open.
 - **US-15** As a Visitor, I want nothing in the World to lock content away, so that a missed shot or
   a weak device never costs me information.
-  - AC-15.1 Given any state of the World, When the Visitor presses Escape and picks the Exhibit from
-    the Title Screen list, Then the Exhibit Panel opens with the full content.
+  - AC-15.1 Given any state of the World, When the Visitor presses Escape until the Title Screen
+    shows and picks the Exhibit from the Title Screen list, Then the Exhibit Panel opens with the
+    full content.
 
 ### Exhibit Panel
 
@@ -256,6 +256,9 @@ tolerances for tests, not as requirements in themselves: the feel in words is th
     in the delivered HTML source.
   - AC-20.2 Given the Contact is shown, When the Visitor activates the GitHub link, Then it opens the
     Owner's GitHub profile in a new tab.
+  - AC-20.3 Given the Title Screen and the Fallback Page are rendered, When each is inspected, Then
+    the Contact (GitHub link and obfuscated e-mail link) appears on both, as one line on the Title
+    Screen, and the Bio appears on the Fallback Page only.
 
 ### Devices and capability
 
@@ -275,16 +278,17 @@ tolerances for tests, not as requirements in themselves: the feel in words is th
     Fallback Page link replaces the World and the Title Screen remains reachable.
 - **US-23** As a Visitor on a laptop with integrated graphics, I want the World to run smoothly, so
   that steering feels right.
-  - AC-23.1 Given a laptop with Intel Iris Xe class graphics and a current browser, When the Visitor
-    drives across the whole World for one minute, Then the frame rate stays at or above 50 fps,
-    measured and recorded by the Owner on reference hardware.
+  - AC-23.1 Given the Owner's reference laptop, named in the plan (intended class: Intel Iris Xe
+    integrated graphics), and a current browser, When the Owner drives across the whole World for
+    one minute, Then the frame rate stays at or above 50 fps and the measurement is recorded in the
+    PR.
 - **US-24** As a Visitor on any current browser, I want the site to work, so that the choice of
   browser is not a barrier.
   - AC-24.1 Given Chromium, Firefox and WebKit at the versions Playwright ships, When the automated
     suite runs, Then every automated acceptance criterion holds in all three.
-  - AC-24.2 Given Safari and the previous major version of each of the four browsers, When the Owner
-    exercises the Title Screen, the World and the Fallback Page once per increment, Then they work
-    and the result is recorded in the PR (Owner-measured; Playwright's WebKit is not Safari).
+  - AC-24.2 Given the current browsers available to the Owner, When the Owner exercises the Title
+    Screen, the World and the Fallback Page once per increment, Then they work and the result is
+    recorded in the PR; Safari is covered by Playwright WebKit until a Mac is available.
 
 ### Reduced motion
 
@@ -312,8 +316,8 @@ tolerances for tests, not as requirements in themselves: the feel in words is th
 - **US-27** As the Owner, I want media to be optimised at build, so that I can commit originals and
   never hand-tune sizes.
   - AC-27.1 Given an Exhibit image committed at original size, When the site is built, Then the
-    delivered page offers it in viewport-appropriate sizes and a modern format, and the original
-    file is not what the Panel loads by default.
+    delivered page offers it in viewport-appropriate sizes as AVIF or WebP with a fallback, and the
+    original file is not what the Panel loads by default.
 
 ### Privacy and trust
 
@@ -335,9 +339,13 @@ tolerances for tests, not as requirements in themselves: the feel in words is th
 | Title Screen interactive | ≤ 2 s | Lighthouse, throttled 10 Mbit/s profile, CI |
 | World playable | ≤ 5 s from navigation start | same profile, CI; "playable" per AC-4.1 |
 | Initial download until World playable | ≤ 4 MB compressed, Exhibit media excluded; plan aims at about 2.5 MB (spike: about 1.2 MB) | build output, CI |
-| Frame rate in the World | ≥ 50 fps sustained | Owner on Intel Iris Xe class laptop, per ticket |
+| Frame rate in the World | ≥ 50 fps sustained | Owner on the reference laptop named in the plan (Iris Xe class), per ticket |
 
-If the 4 MB ceiling and the 5 s target ever conflict, the 5 s target wins (issue #3).
+If the 4 MB ceiling and the 5 s target ever conflict, the 5 s target wins (issue #3). Frame rate
+is Owner-measured because CI has no GPU. No client-side performance metrics are collected in
+increment-1: CI's performance budget is the measurement, and a later spec decides client-side
+metrics (this resolves issue #3 Rule 1 against Rule 4, "nothing counted until a spec says
+otherwise").
 
 **Availability.** Static files on a static host; no backend. An uptime check exists once the site is
 hosted (constitution principle 5 as reworded in issue #3). No numeric availability target in
@@ -353,13 +361,16 @@ control, hints) and the Fallback Page are plain HTML: keyboard operable, focus v
 trapped in an open Panel and restored on close, images with alternative text, captions readable by
 assistive technology. The 3D canvas itself is not made accessible; every piece of content it leads
 to is reachable without it. `prefers-reduced-motion` is honoured as in US-11, US-18 and US-25.
-Conformance level: see Open questions.
+Conformance level: WCAG 2.2 AA, scoped to the HTML surfaces named above and checked with axe in
+test seam 1.
 
-**Internationalisation.** One language, no language switch (bilingual content is a later
-increment). Which language: see Open questions.
+**Internationalisation.** English only, decided in grilling round 1; no language switch (bilingual
+content is a later increment).
 
-**Browsers.** Current and previous major versions of Chrome, Firefox, Safari and Edge, desktop. The
-site must load and the Fallback Page must work on mobile browsers; the World is keyboard-only.
+**Browsers.** Current and previous major versions of Chrome, Firefox, Safari and Edge, desktop
+(issue #3 names the browsers; desktop follows from the keyboard-only World). The site must load
+and the Fallback Page must work on mobile browsers. Automated coverage is Chromium, Firefox and
+WebKit through Playwright (AC-24.1); the Owner covers the rest once per increment (AC-24.2).
 
 ## Data & privacy classification
 
@@ -390,93 +401,94 @@ when the plan moves things.
 - The Title Screen and the Exhibit Panel do not depend on the World bundle: a Panel opens from the
   list before the World has loaded (AC-2.1). The World bundle starts loading in the background as
   soon as the Title Screen is interactive, without waiting for the Visitor to press Enter, so that
-  the 2 s and 5 s targets hold together.
+  the 2 s and 5 s targets hold together. Exception: when a coarse pointer is detected after
+  hydration (US-21) no preload happens; the bundle loads only if the Visitor enters the World.
+- Exhibit list entries on the Title Screen are links to the Exhibit's Fallback Page anchor; with
+  script, activation opens the Panel instead (progressive enhancement, AC-1.2 and AC-2.3). There
+  are no deep links to an Exhibit Panel in increment-1; the Fallback Page anchors are the shareable
+  per-Exhibit addresses.
 - Device, keyboard and 3D-capability checks run after hydration and only add hints and reorder the
-  Fallback link; they never remove or disable the way into the World.
+  Fallback link; they never remove or disable the way into the World. The keyboard hint reads "the
+  World needs a keyboard for now" (issue #3); the WebGL-unavailable hint has its own wording
+  (AC-22.1). A failure after entry shows a readable message with the Fallback Page link (AC-22.2).
+- "World playable" for the budget is marked when the first frame after physics initialisation has
+  rendered and input is wired; the plan picks the instrument.
+- The World's model (Rinks, boards, Puck, Goal, Announcer places, pause, Reset, and the Follow
+  Camera's target position and frame as a function of the Puck's position and the fixed yaw) is
+  separable from rendering and can be stepped with inputs and a fixed timestep without a browser.
+  This is what makes test seam 2 possible, lets AC-5.2, AC-11.1 and AC-11.2 be tested there, and is
+  what ADR 0005 already relied on.
 - The World is one continuous space (Hub, Path, Zone) with no loading between its parts, built so
   that further Zones can be lazy-loaded in later increments. increment-1 ships everything in the
   initial World download.
 
 **World and Puck (ADR 0005, issue #3)**
 
+- Dimensions: the Hub is 40 m by 20 m, the prototype's Rink, so ADR 0005's blue-line and half-Rink
+  statements hold without re-measurement; the Zone is 30 m by 20 m; the Path is about 15 m long and
+  6 m wide. The plan may adjust the Zone and the Path, the Hub only with a feel re-check.
 - Every Rink and the Path have boards; the Puck's collision shape can never leave them.
 - Direct Drive is world-relative, equal to camera-relative under the fixed-yaw Follow Camera.
   Steering keys apply acceleration; release lets the Puck glide; a speed cap holds. Puck rotations
   are locked. The feel is the Standard preset of ADR 0005 in words; the reference numbers there
   (μ 0.1, linear damping 0.4 /s, acceleration 24 m/s², cap 12 m/s, board restitution 0.5, mass 1)
-  are the starting point and may move as long as AC-8.1 and AC-8.2 hold on the Hub's actual size
-  (derived decision 17 names the tension with ADR 0005's Decision wording).
+  are the starting point and may move as long as AC-8.1 and AC-8.2 hold on the Hub's actual size.
+  ADR 0005's Decision keeps the values "unchanged" and its Consequence lets them move against the
+  Hub's actual size; with the 40 m Hub above both agree and the values stay as they are. Diagonal
+  input is normalised (AC-7.3).
 - The Follow Camera keeps a fixed world yaw and trails the Puck's position with easing; easing is
-  removed under `prefers-reduced-motion`.
+  removed under `prefers-reduced-motion`. On Reset the camera snaps to the Puck instead of easing
+  across the World (AC-12.1).
 - The Goal is a sensor volume inside the net behind the goal line; entering it pauses the World and
-  opens the Exhibit Panel. Posts and net outside are solid.
+  opens the Exhibit Panel. Posts and net outside are solid. The Goal re-arms only after the Puck
+  has left the Goal volume, so closing a Panel does not reopen it (AC-14.2).
 - Reset places the Puck at rest at the centre of the Hub. It is both the R key and a control in the
   World's HTML overlay.
+- The World's HTML overlay in increment-1 holds exactly: the current caption, the Reset control and
+  a one-line key legend (arrows or WASD, R, Esc). Nothing else.
+- Focus handling: entering the World gives it keyboard focus; activating an overlay control with a
+  pointer returns focus to the World; opening a Panel moves focus into it; closing restores focus
+  to the opener (list entry or World). The Exhibit Panel is readable from 320 px viewport width
+  (AC-16.2).
 - Pausing the World stops the physics step and input; the Puck's state is preserved exactly and
   resumes unchanged. The World is paused whenever an HTML overlay owns the keyboard: an open
-  Exhibit Panel, or the Title Screen shown with Escape.
+  Exhibit Panel, or the Title Screen shown with Escape (AC-6.1; issue #3 says only "without
+  resetting the Puck", pausing follows from this rule).
 - Keys: arrows and W/A/S/D steer (read by physical key position); R Reset; Escape closes an open
   Panel, otherwise shows the Title Screen without Reset; Enter or Space enters or resumes the World
   from the Title Screen. No mouse is needed in the World; the mouse works in every HTML overlay.
 - Storytelling is Announcer captions only: text, one short sentence per place, two places in
-  increment-1 (Hub welcome, Zone). Captions are HTML overlay text.
+  increment-1 (Hub welcome, Zone). Captions are HTML overlay text; each appears once per place per
+  page load and disappears after about 5 s or when a Panel opens.
 
 **Content (issue #3, ADR 0004)**
 
 - One Markdown file with YAML front matter per Exhibit; the Bio is a Markdown file. Front matter
-  fields: title, hook, summary, role, tech, year, links, images (1–3), optional short video, "what
-  I'd do differently", visibility (`personal` | `employer-generic`). The schema is validated at
-  build; a missing field or a broken reference fails the build.
+  fields: a stable identifier (used for the Fallback anchor and the Zone), title, hook, summary,
+  role, tech, year, links, images (1–3, each with alternative text), optional short video (with a
+  poster image), "what I'd do differently", visibility (`personal` | `employer-generic`). The
+  identifier, alternative text and poster are additions to issue #3's list, forced by AC-19.2 and
+  AC-17.2. The schema accepts `employer-generic` now although no such Exhibit ships in increment-1,
+  so the rule in issue #3 is enforced from the first build. The schema is validated at build; a
+  missing field or a broken internal reference (image, video, internal link) fails the build.
+  External URLs are checked by a scheduled, non-blocking job, so the build does not depend on the
+  network.
+- A small site content file holds the Title Screen's one line (one sentence written by the Owner,
+  not the Hook of any Exhibit), the Contact and the two Announcer captions. The social preview
+  image for the root address is one image provided by the Owner; it falls back to the first image
+  of Exhibit-1.
 - The Exhibit files are the single source for the Title Screen list, the Exhibit Panels, the
   Banners and the Fallback Page.
 - Exhibit images and video are self-hosted in the repository, optimised at build, and load only
   with their Exhibit Panel (poster image, no autoplay). They are outside the initial download
   budget.
-- Background content is the Bio only; the CV is a later increment.
-- Contact is an obfuscated e-mail link and the GitHub profile. There is no LinkedIn link.
-
-**Decisions derived while writing this spec** (not in the sources; strike or accept at review)
-
-1. Exhibit list entries on the Title Screen are links to the Exhibit's Fallback Page anchor; with
-   script, activation opens the Panel instead (progressive enhancement; makes AC-1.2 and AC-2.3
-   hold).
-2. The Goal re-arms only after the Puck has left the Goal volume, so closing a Panel does not reopen
-   it (AC-14.2).
-3. Reset snaps the Follow Camera to the Puck instead of easing across the World (AC-12.1).
-4. Steering keys are read by physical key position so that QWERTZ and AZERTY layouts work
-   (AC-7.2); diagonal input is normalised (AC-7.3).
-5. Captions appear once per place per page load and disappear after about 5 s or when a Panel
-   opens.
-6. Focus handling: entering the World gives it keyboard focus; activating an overlay control with a
-   pointer returns focus to the World; opening a Panel moves focus into it; closing restores focus
-   to the opener (list entry or World).
-7. Fonts, if any beyond system fonts, are self-hosted (follows from AC-28.1).
-8. The World's model (Rinks, boards, Puck, Goal, Announcer places, pause, Reset, and the Follow
-   Camera's target position and frame as a function of the Puck's position and the fixed yaw) is
-   separable from rendering and can be stepped with inputs and a fixed timestep without a browser.
-   This is what makes the second test seam below possible, lets AC-5.2, AC-11.1 and AC-11.2 be
-   tested there, and is what ADR 0005 already relied on.
-9. "World playable" for the budget is marked when the first frame after physics initialisation has
-   rendered and input is wired; the plan picks the instrument.
-10. Frame rate (AC-23.1) is measured by the Owner on reference hardware, not by CI, because CI has no
-    GPU. Issue #3 lists the non-functional targets as "acceptance criteria and CI performance
-    budget"; this moves one of them to a recorded Owner measurement.
-11. Showing the Title Screen with Escape pauses the World (AC-6.1). Issue #3 says only "without
-    resetting the Puck"; pausing follows from the rule that an HTML overlay owning the keyboard
-    pauses the World.
-12. The World bundle starts loading in the background once the Title Screen is interactive. Issue #3
-    and ADR 0004 say only that the Title Screen "does not wait for the World bundle".
-13. The WebGL-unavailable hint (AC-22.1) has its own wording; issue #3 gives one hint text, "the
-    World needs a keyboard for now", for the keyboard case. A failure after entry (AC-22.2) shows a
-    readable message with the Fallback Page link; no source covers that case.
-14. The Exhibit Panel is readable from 320 px viewport width (AC-16.2).
-15. The content schema accepts Visibility `employer-generic` now although no such Exhibit ships in
-    increment-1, so the rule in issue #3 is enforced from the first build.
-16. The four named browsers are desktop browsers; mobile browsers must load the site and the
-    Fallback Page (Browsers NFR). Issue #3 names the browsers without saying desktop.
-17. ADR 0005's Decision says the Standard preset's values are "left unchanged"; its Consequence lets
-    the numbers move as long as the feel holds against the Hub's actual size. This spec follows the
-    Consequence. With the Hub proposed in Open question 1 the values stay unchanged.
+- Background content is the Bio only; the CV is a later increment. The Bio appears on the Fallback
+  Page only; a Bio place in the World is a later increment.
+- Contact is the GitHub profile link and an obfuscated e-mail link. It appears on the Title Screen
+  as one line and on the Fallback Page. The e-mail link is a character-reference-encoded `mailto:`,
+  which works without script and defeats naive scraping; stronger schemes only if scraping becomes
+  a problem. There is no LinkedIn link.
+- Fonts, if any beyond system fonts, are self-hosted (AC-28.1).
 
 ## Testing decisions
 
@@ -496,24 +508,26 @@ Puck feel in Rapier under Node.
    reduced motion and coarse-pointer emulation, meta tags, the request log (no third-party
    requests, no Exhibit media before a Panel), entry into the World and the Escape round trip. The
    same seam, run against fixture content, proves the build failures of US-26 (exit status and
-   message). Lighthouse and the download budget run against the same build in CI. Browsers in CI
-   render WebGL in software, so this seam proves presence and wiring of the World, not its feel or
-   frame rate.
-2. **The World stepped without a renderer.** The World's model from derived decision 8 runs under
+   message). Accessibility of the HTML surfaces is checked here with axe against WCAG 2.2 AA.
+   Lighthouse and the download budget run against the same build in CI. Browsers in CI render WebGL
+   in software, so this seam proves presence and wiring of the World, not its feel or frame rate.
+2. **The World stepped without a renderer.** The World's model (Implementation decisions,
+   Architecture) runs under
    Node with Rapier: tests feed key states, advance fixed timesteps and assert on the Puck
    (US-7 to US-10, US-12, US-14 at the model level: top speed by the blue line, glide length,
    staying inside the boards, Path crossing without a stall, Goal entry opening and re-arming,
    pause preserving state, Reset). This is deterministic and fast and does not need a GPU, which
    the agent's machine does not have (retro, 2026-10-07).
 
-**Owner-measured.** Frame rate on reference hardware (AC-23.1), the visual quality of the World and
-the feel sign-off are measured by the Owner and recorded in the ticket's PR, as the prototype's
-verdict was.
+**Owner-measured.** Frame rate on the reference laptop named in the plan (AC-23.1), the browser
+pass (AC-24.2), the visual quality of the World and the feel sign-off are measured by the Owner and
+recorded in the ticket's PR, as the prototype's verdict was.
 
 **Coverage rule.** Every acceptance criterion above maps to at least one test in seam 1 or seam 2,
 or is marked Owner-measured (AC-23.1, AC-24.2). The Owner-measured cases depart from constitution
-principle 2 as worded ("every acceptance criterion has at least one automated test"); Open
-question 13 proposes the amendment. The plan's test strategy lists the mapping.
+principle 2 as worded ("every acceptance criterion has at least one automated test"); the sixth
+amendment under Constraints & dependencies covers them. The plan's test strategy lists the
+mapping.
 
 ## Constraints & dependencies
 
@@ -532,7 +546,11 @@ question 13 proposes the amendment. The plan's test strategy lists the mapping.
   ticket; the CI performance profile and the instrument for "World playable".
 - Constitution: the five amendments proposed in issue #3 are applied at ratification after this
   spec. This spec relies on two of them now: nothing gates content, and no third-party scripts, no
-  storage, nothing counted. It proposes a sixth (Open question 13).
+  storage, nothing counted. It adds a sixth, for principle 2: "every acceptance criterion has at
+  least one automated test, or a recorded Owner measurement where no automated seam exists"
+  (AC-23.1, AC-24.2).
+- Scope guard: if time runs short, these may be deferred by an `amend:` commit, in this order:
+  AC-27.1 (ship one optimised size), AC-22.2, AC-17.3's viewport sizing.
 
 ## Non-goals
 
@@ -556,44 +574,8 @@ question 13 proposes the amendment. The plan's test strategy lists the mapping.
 
 ## Open questions
 
-Each carries a proposed answer. Resolving one means moving it into the spec body; the list must be
-empty before approval.
-
-1. **Rink dimensions.** Not stated anywhere; ADR 0005 asks for a re-check of its blue-line and
-   half-Rink statements if the Hub is not about 40 m long. Proposed: Hub 40 m by 20 m (the
-   prototype's Rink, so ADR 0005 holds as is), Zone 30 m by 20 m, Path about 15 m long and 6 m
-   wide; the plan may adjust the Zone and Path, the Hub only with a feel re-check.
-2. **Language.** Bilingual content is out; the single language is not named. Proposed: English.
-3. **The Title Screen's one line.** The glossary names it; nothing says what it is or where it
-   lives. Proposed: one sentence written by the Owner in a small site content file alongside the
-   Contact and the captions; not the Hook of any Exhibit.
-4. **Where the Bio and the Contact appear in increment-1.** Only the Fallback Page is certain.
-   Proposed: Fallback Page only, with the Title Screen linking there; a Bio place in the World is a
-   later increment.
-5. **E-mail obfuscation on a script-free page.** Obfuscation by script conflicts with the Fallback
-   Page working without script. Proposed: a character-reference-encoded `mailto:` link, which works
-   without script and defeats naive scraping; stronger schemes only if scraping becomes a problem.
-6. **External links at build.** "A build fails on a broken link" makes the build depend on the
-   network if it covers external URLs. Proposed: internal references block the build; external
-   URLs are checked by a scheduled, non-blocking job.
-7. **Accessibility conformance level** for the HTML surfaces. Proposed: WCAG 2.2 AA.
-8. **Deep links to an Exhibit Panel.** Not discussed. Proposed: none in increment-1; the Fallback
-   Page anchors are the shareable per-Exhibit addresses.
-9. **Social preview image.** Required by AC-3.1, not in the content list. Proposed: one image
-   provided by the Owner; falls back to the first image of Exhibit-1.
-10. **Exhibit field additions.** A stable identifier per Exhibit (for its Fallback anchor and its
-    Zone), alternative text per image and a poster per video are not in issue #3's field list.
-    They edit an Owner content decision, forced by AC-19.2 and AC-17.2. Proposed: accept.
-11. **Key legend in the World's overlay.** No source mentions one. Proposed: the overlay holds the
-    current caption, the Reset control and a one-line key legend (arrows or WASD, R, Esc); strike
-    the legend if the Hub's welcome caption carries the keys instead.
-12. **Client-side performance metrics.** Issue #3 Rule 1 wants "client-side performance metrics";
-    Rule 4 says "nothing stored and nothing counted until a spec says otherwise". Proposed: none in
-    increment-1; CI's performance budget is the measurement; a later spec decides client-side
-    metrics.
-13. **Constitution principle 2 and Owner-measured criteria.** AC-23.1 and AC-24.2 have no automated
-    seam. Proposed amendment at ratification: "every acceptance criterion has at least one automated
-    test, or a recorded Owner measurement where no automated seam exists".
+none (the draft's thirteen questions were resolved by the Owner in the review of PR #6 on
+2026-10-08; the answers are in the body above).
 
 ## Traceability
 
@@ -602,6 +584,8 @@ empty before approval.
 - ADR 0003 (stack), ADR 0004 (pre-rendered root and Fallback Page), ADR 0005 (Puck feel, fixed-yaw
   Follow Camera); prototype commit `d72851e` (PR #5).
 - Constitution v0.1-DRAFT, principles 1, 2, 5, 6, 8 and the amendments proposed in issue #3.
+- PR #6: `/code-review` findings and the Owner's resolution of the open questions and derived
+  decisions, 2026-10-08.
 - Later: the plan for increment-1 and the tickets from `/to-tickets` reference acceptance criteria
   by their AC numbers.
 
@@ -612,9 +596,9 @@ empty before approval.
 - increment-1 has exactly one Exhibit, so the Title Screen list has one entry and the World has one
   Path and one Zone. Nothing here assumes one; the content schema, the list and the Fallback Page
   are written for many, so later increments add files, not features.
-- The independent review of this spec (workflow guide §4.1 step 4) should look first at the derived
-  decisions and the open questions, then at vocabulary drift from `GLOSSARY.md`, then at whether
-  each acceptance criterion is testable at one of the two seams.
+- The independent review of this spec (workflow guide §4.1 step 4) should look first at the
+  Implementation decisions and the Scope guard, then at vocabulary drift from `GLOSSARY.md`, then at
+  whether each acceptance criterion is testable at one of the two seams.
 - Glossary gaps noticed while writing, for `/domain-modeling`: the Title Screen's "one line", the
   "way-in control", the "key legend", and the content field names `summary` and `links`, which the
   glossary avoids for Bio and Contact but issue #3 uses as Exhibit fields.

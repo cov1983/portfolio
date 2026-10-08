@@ -51,7 +51,8 @@ All targets are stubs that fail with "not configured" until Phase 0b wires the r
 - Docs touched by a change are updated in the same commit.
 
 ## Boundaries (hard)
-- Do NOT edit `docs/spec/**` except via an explicit `amend:` commit the ticket asks for.
+- Do NOT edit an approved spec in `docs/spec/**` except via an explicit `amend:` commit; `/to-spec` may
+  create a new draft.
 - Do NOT edit `.claude/**`, `.agents/**`, `.github/workflows/**` or CODEOWNERS unless the ticket says so
   (protected by CODEOWNERS and PR review).
 - Do NOT add dependencies without listing them in the PR body with license and reason.
