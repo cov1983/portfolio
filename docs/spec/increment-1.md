@@ -81,7 +81,7 @@ tolerances for tests, not as requirements in themselves: the feel in words is th
     activates the Panel's close control, Then the Panel closes, the Title Screen is shown again and
     keyboard focus returns to the list entry that opened the Panel.
   - AC-2.3 Given script is disabled, When the Visitor activates an Exhibit list entry, Then the
-    browser navigates to that Exhibit's section on the Fallback Page.
+    browser navigates to that Exhibit's anchor on the Fallback Page.
 - **US-3** As a Visitor who shares the address, I want link previews to show something meaningful,
   so that the people I send it to open it.
   - AC-3.1 Given the root address is fetched without executing script, When the response is parsed,
@@ -105,8 +105,8 @@ tolerances for tests, not as requirements in themselves: the feel in words is th
   - AC-5.1 Given the World becomes playable, When the first frame is shown, Then the Puck rests at
     the centre of the Hub, the Follow Camera frames it, and the Hub's Announcer caption (the welcome)
     is shown as text.
-  - AC-5.2 Given the Hub is shown, When the Visitor looks for the way on, Then the single Path opening
-    in the Hub's boards is visible from the starting view or after a few metres of travel.
+  - AC-5.2 Given the Puck rests at the centre of the Hub, When the first frame is rendered, Then the
+    single Path opening in the Hub's boards is inside that frame.
 - **US-6** As a Visitor, I want to get back to the Title Screen and into the World again without
   losing my place, so that I can re-read the list or leave politely.
   - AC-6.1 Given the Visitor is in the World, When they press Escape, Then the Title Screen is shown,
@@ -150,8 +150,8 @@ tolerances for tests, not as requirements in themselves: the feel in words is th
 - **US-10** As a Visitor, I want to travel from the Hub to the Zone without any break, so that the
   World feels like one place.
   - AC-10.1 Given the Puck crosses from the Hub into the Path and from the Path into the Zone, When
-    the crossing happens, Then no loading indication appears, the Puck keeps its velocity and the
-    frame rate does not stall.
+    the crossing happens, Then no loading indication appears and the Puck keeps its velocity
+    (frame rate is AC-23.1).
 
 ### Follow Camera
 
@@ -204,9 +204,9 @@ tolerances for tests, not as requirements in themselves: the feel in words is th
 
 - **US-16** As a Visitor, I want the Exhibit Panel to be a readable page, not a game overlay, so
   that I can take the content in at my own pace.
-  - AC-16.1 Given an Exhibit Panel is open, When it is inspected, Then it shows the Exhibit's title,
-    Hook, summary, role, tech, year, links, one to three images, the optional video, and "what I'd
-    do differently", as HTML text and media.
+  - AC-16.1 Given an Exhibit Panel is open, When it is inspected, Then it shows every field of the
+    Exhibit schema except visibility (the field list is under Content decisions), as HTML text and
+    media.
   - AC-16.2 Given an Exhibit Panel is open, When the Visitor scrolls, Then long content scrolls
     inside the Panel and the Panel is readable at viewport widths from 320 px upwards.
   - AC-16.3 Given an Exhibit Panel is open, When the Visitor presses Tab repeatedly, Then focus
@@ -280,9 +280,11 @@ tolerances for tests, not as requirements in themselves: the feel in words is th
     measured and recorded by the Owner on reference hardware.
 - **US-24** As a Visitor on any current browser, I want the site to work, so that the choice of
   browser is not a barrier.
-  - AC-24.1 Given the current and previous major versions of Chrome, Firefox, Safari and Edge, When
-    the Title Screen, the World and the Fallback Page are exercised, Then all acceptance criteria
-    above hold.
+  - AC-24.1 Given Chromium, Firefox and WebKit at the versions Playwright ships, When the automated
+    suite runs, Then every automated acceptance criterion holds in all three.
+  - AC-24.2 Given Safari and the previous major version of each of the four browsers, When the Owner
+    exercises the Title Screen, the World and the Fallback Page once per increment, Then they work
+    and the result is recorded in the PR (Owner-measured; Playwright's WebKit is not Safari).
 
 ### Reduced motion
 
@@ -402,7 +404,8 @@ when the plan moves things.
   Steering keys apply acceleration; release lets the Puck glide; a speed cap holds. Puck rotations
   are locked. The feel is the Standard preset of ADR 0005 in words; the reference numbers there
   (μ 0.1, linear damping 0.4 /s, acceleration 24 m/s², cap 12 m/s, board restitution 0.5, mass 1)
-  are the starting point and may move as long as AC-8.1 and AC-8.2 hold on the Hub's actual size.
+  are the starting point and may move as long as AC-8.1 and AC-8.2 hold on the Hub's actual size
+  (derived decision 17 names the tension with ADR 0005's Decision wording).
 - The Follow Camera keeps a fixed world yaw and trails the Puck's position with easing; easing is
   removed under `prefers-reduced-motion`.
 - The Goal is a sensor volume inside the net behind the goal line; entering it pauses the World and
@@ -437,27 +440,43 @@ when the plan moves things.
 1. Exhibit list entries on the Title Screen are links to the Exhibit's Fallback Page anchor; with
    script, activation opens the Panel instead (progressive enhancement; makes AC-1.2 and AC-2.3
    hold).
-2. Each Exhibit has a stable identifier used for its Fallback anchor and its Zone; each image
-   carries alternative text; a video carries a poster image. These are additions to the field list
-   in issue #3, forced by AC-19.2 and AC-17.2.
-3. The Goal re-arms only after the Puck has left the Goal volume, so closing a Panel does not reopen
+2. The Goal re-arms only after the Puck has left the Goal volume, so closing a Panel does not reopen
    it (AC-14.2).
-4. Reset snaps the Follow Camera to the Puck instead of easing across the World (AC-12.1).
-5. Steering keys are read by physical key position so that QWERTZ and AZERTY layouts work
+3. Reset snaps the Follow Camera to the Puck instead of easing across the World (AC-12.1).
+4. Steering keys are read by physical key position so that QWERTZ and AZERTY layouts work
    (AC-7.2); diagonal input is normalised (AC-7.3).
-6. Captions appear once per place per page load and disappear after a few seconds or when a Panel
-   opens; the exact dwell time is a plan detail.
-7. The World's HTML overlay in increment-1 holds exactly: the current caption, the Reset control and
-   a one-line key legend. Nothing else.
-8. Focus handling: entering the World gives it keyboard focus; activating an overlay control with a
+5. Captions appear once per place per page load and disappear after about 5 s or when a Panel
+   opens.
+6. Focus handling: entering the World gives it keyboard focus; activating an overlay control with a
    pointer returns focus to the World; opening a Panel moves focus into it; closing restores focus
    to the opener (list entry or World).
-9. Fonts, if any beyond system fonts, are self-hosted (follows from AC-28.1).
-10. The World's model (Rinks, boards, Puck, Goal, Announcer places, pause, Reset) is separable from
-    rendering and can be stepped with inputs and a fixed timestep without a browser. This is what
-    makes the second test seam below possible and what ADR 0005 already relied on.
-11. "World playable" for the budget is marked when the first frame after physics initialisation has
-    rendered and input is wired; the plan picks the instrument.
+7. Fonts, if any beyond system fonts, are self-hosted (follows from AC-28.1).
+8. The World's model (Rinks, boards, Puck, Goal, Announcer places, pause, Reset, and the Follow
+   Camera's target position and frame as a function of the Puck's position and the fixed yaw) is
+   separable from rendering and can be stepped with inputs and a fixed timestep without a browser.
+   This is what makes the second test seam below possible, lets AC-5.2, AC-11.1 and AC-11.2 be
+   tested there, and is what ADR 0005 already relied on.
+9. "World playable" for the budget is marked when the first frame after physics initialisation has
+   rendered and input is wired; the plan picks the instrument.
+10. Frame rate (AC-23.1) is measured by the Owner on reference hardware, not by CI, because CI has no
+    GPU. Issue #3 lists the non-functional targets as "acceptance criteria and CI performance
+    budget"; this moves one of them to a recorded Owner measurement.
+11. Showing the Title Screen with Escape pauses the World (AC-6.1). Issue #3 says only "without
+    resetting the Puck"; pausing follows from the rule that an HTML overlay owning the keyboard
+    pauses the World.
+12. The World bundle starts loading in the background once the Title Screen is interactive. Issue #3
+    and ADR 0004 say only that the Title Screen "does not wait for the World bundle".
+13. The WebGL-unavailable hint (AC-22.1) has its own wording; issue #3 gives one hint text, "the
+    World needs a keyboard for now", for the keyboard case. A failure after entry (AC-22.2) shows a
+    readable message with the Fallback Page link; no source covers that case.
+14. The Exhibit Panel is readable from 320 px viewport width (AC-16.2).
+15. The content schema accepts Visibility `employer-generic` now although no such Exhibit ships in
+    increment-1, so the rule in issue #3 is enforced from the first build.
+16. The four named browsers are desktop browsers; mobile browsers must load the site and the
+    Fallback Page (Browsers NFR). Issue #3 names the browsers without saying desktop.
+17. ADR 0005's Decision says the Standard preset's values are "left unchanged"; its Consequence lets
+    the numbers move as long as the feel holds against the Hub's actual size. This spec follows the
+    Consequence. With the Hub proposed in Open question 1 the values stay unchanged.
 
 ## Testing decisions
 
@@ -480,7 +499,7 @@ Puck feel in Rapier under Node.
    message). Lighthouse and the download budget run against the same build in CI. Browsers in CI
    render WebGL in software, so this seam proves presence and wiring of the World, not its feel or
    frame rate.
-2. **The World stepped without a renderer.** The World's model from derived decision 10 runs under
+2. **The World stepped without a renderer.** The World's model from derived decision 8 runs under
    Node with Rapier: tests feed key states, advance fixed timesteps and assert on the Puck
    (US-7 to US-10, US-12, US-14 at the model level: top speed by the blue line, glide length,
    staying inside the boards, Path crossing without a stall, Goal entry opening and re-arming,
@@ -492,7 +511,9 @@ the feel sign-off are measured by the Owner and recorded in the ticket's PR, as 
 verdict was.
 
 **Coverage rule.** Every acceptance criterion above maps to at least one test in seam 1 or seam 2,
-or is marked Owner-measured (constitution principle 2). The plan's test strategy lists the mapping.
+or is marked Owner-measured (AC-23.1, AC-24.2). The Owner-measured cases depart from constitution
+principle 2 as worded ("every acceptance criterion has at least one automated test"); Open
+question 13 proposes the amendment. The plan's test strategy lists the mapping.
 
 ## Constraints & dependencies
 
@@ -511,7 +532,7 @@ or is marked Owner-measured (constitution principle 2). The plan's test strategy
   ticket; the CI performance profile and the instrument for "World playable".
 - Constitution: the five amendments proposed in issue #3 are applied at ratification after this
   spec. This spec relies on two of them now: nothing gates content, and no third-party scripts, no
-  storage, nothing counted.
+  storage, nothing counted. It proposes a sixth (Open question 13).
 
 ## Non-goals
 
@@ -560,8 +581,19 @@ empty before approval.
    Page anchors are the shareable per-Exhibit addresses.
 9. **Social preview image.** Required by AC-3.1, not in the content list. Proposed: one image
    provided by the Owner; falls back to the first image of Exhibit-1.
-10. **Caption behaviour.** Dwell time and repetition are derived decision 6. Proposed: accept as
-    written, about 5 s, once per place per page load.
+10. **Exhibit field additions.** A stable identifier per Exhibit (for its Fallback anchor and its
+    Zone), alternative text per image and a poster per video are not in issue #3's field list.
+    They edit an Owner content decision, forced by AC-19.2 and AC-17.2. Proposed: accept.
+11. **Key legend in the World's overlay.** No source mentions one. Proposed: the overlay holds the
+    current caption, the Reset control and a one-line key legend (arrows or WASD, R, Esc); strike
+    the legend if the Hub's welcome caption carries the keys instead.
+12. **Client-side performance metrics.** Issue #3 Rule 1 wants "client-side performance metrics";
+    Rule 4 says "nothing stored and nothing counted until a spec says otherwise". Proposed: none in
+    increment-1; CI's performance budget is the measurement; a later spec decides client-side
+    metrics.
+13. **Constitution principle 2 and Owner-measured criteria.** AC-23.1 and AC-24.2 have no automated
+    seam. Proposed amendment at ratification: "every acceptance criterion has at least one automated
+    test, or a recorded Owner measurement where no automated seam exists".
 
 ## Traceability
 
@@ -570,8 +602,8 @@ empty before approval.
 - ADR 0003 (stack), ADR 0004 (pre-rendered root and Fallback Page), ADR 0005 (Puck feel, fixed-yaw
   Follow Camera); prototype commit `d72851e` (PR #5).
 - Constitution v0.1-DRAFT, principles 1, 2, 5, 6, 8 and the amendments proposed in issue #3.
-- Later: plan `docs/plan/increment-1.md` and the tickets from `/to-tickets` reference acceptance
-  criteria by their AC numbers.
+- Later: the plan for increment-1 and the tickets from `/to-tickets` reference acceptance criteria
+  by their AC numbers.
 
 ## Further notes
 
@@ -583,3 +615,6 @@ empty before approval.
 - The independent review of this spec (workflow guide §4.1 step 4) should look first at the derived
   decisions and the open questions, then at vocabulary drift from `GLOSSARY.md`, then at whether
   each acceptance criterion is testable at one of the two seams.
+- Glossary gaps noticed while writing, for `/domain-modeling`: the Title Screen's "one line", the
+  "way-in control", the "key legend", and the content field names `summary` and `links`, which the
+  glossary avoids for Bio and Contact but issue #3 uses as Exhibit fields.
