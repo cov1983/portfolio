@@ -8,4 +8,4 @@ Status line at the top: `draft | approved | amended`.
 - Changes to an approved spec are explicit `amend:` commits — agents must not edit this directory otherwise.
 - Required sections: user stories with Given/When/Then acceptance criteria, non-functional requirements, data classification, non-goals, empty open-questions list.
 
-No spec exists yet; the stack and scope are decided in Phase 1.
+Specs: `increment-1.md` (draft, written 2026-10-08 from issue #3; awaiting review and the `spec: approve` commit).
