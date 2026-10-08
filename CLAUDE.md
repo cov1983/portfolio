@@ -16,7 +16,7 @@ his development skills. Status: **prototype / pre-spec**. The stack is decided i
 - Branches: `chore/<topic>`, `feat/<topic>`, `fix/<topic>`. One ticket = one branch = one PR.
 - Commits carry the agent trailer (`Co-Authored-By: …`). Every PR carries the label `ai-assisted`.
 - Pushes are run by the owner. The agent stops at `git push` and asks; it never holds push credentials.
-- Process guide: `docs/workflow-guide.md`. Constitution: `docs/constitution.md` (draft).
+- Process guide: `docs/workflow-guide.md`. Constitution: `docs/constitution.md` (v1.0, ratified 2026-10-08).
 
 ## Commands (single entry points — use these, not ad-hoc variants)
 All targets are stubs that fail with "not configured" until Phase 0b wires the real toolchain.
@@ -28,7 +28,7 @@ All targets are stubs that fail with "not configured" until Phase 0b wires the r
 
 ## Repository map
 - `docs/workflow-guide.md`  the process this repo follows; templates in §7
-- `docs/constitution.md`    principles (DRAFT until ratified after Phase 1)
+- `docs/constitution.md`    principles, v1.0 ratified 2026-10-08; amendments need a version bump + ADR
 - `docs/spec/`              frozen specs — never edit without an `amend:` commit
 - `docs/plan/`              implementation plans per feature
 - `docs/adr/`               decision records, `NNNN-<slug>.md`

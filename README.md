@@ -11,7 +11,7 @@ process scaffolding (Phase 0a of `docs/workflow-guide.md`), not application code
 ## Where to look
 - `CLAUDE.md` / `AGENTS.md` — instructions for AI coding agents (identical files)
 - `docs/workflow-guide.md` — the development process this repo follows
-- `docs/constitution.md` — principles (draft until ratified)
+- `docs/constitution.md` — principles (v1.0, ratified 2026-10-08)
 - `docs/spec/`, `docs/plan/`, `docs/adr/`, `docs/runbooks/`, `docs/retro.md`
 
 ## Branch & PR conventions
