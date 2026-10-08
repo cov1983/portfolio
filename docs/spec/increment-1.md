@@ -1,4 +1,4 @@
-# Spec: increment-1            Status: draft   Owner: Thomas (@cov1983)
+# Spec: increment-1            Status: approved   Owner: Thomas (@cov1983)
 
 Written 2026-10-08 by `/to-spec` from issue #3 (grilling outcome), `GLOSSARY.md` and ADRs 0003–0005.
 No new interview was held. Terms in capitals are defined in `GLOSSARY.md`. The decisions the sources
