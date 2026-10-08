@@ -32,3 +32,10 @@ process scaffolding (Phase 0a of `docs/workflow-guide.md`), not application code
   phases so the ruleset never needs editing when the jobs grow real content.
 - The independent reviewer is an AI reviewer running in CI; it is wired in Phase 0b. Until then the
   Definition of Done item for it is ticked as "n/a".
+
+## License
+Three parts, detailed in `LICENSE`:
+- **Code** (source, tests, tooling, CI, process docs): MIT, Copyright (c) 2026 Thomas Cova.
+- **Vendored third-party components** under `.agents/` keep their own licenses; today that is the
+  skills from `mattpocock/skills` (MIT), pinned in `skills-lock.json`.
+- **Content** (Exhibit content, Bio, images, video, 3D models and other media): all rights reserved.
