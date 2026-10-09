@@ -36,12 +36,13 @@ application code starts with the Phase 3 tickets.
 
   | check | what it runs | required on `main` |
   |---|---|---|
-  | `lint` | `make format-check lint typecheck`, agent-file identity and line count, shellcheck, settings JSON, hook smoke test | yes |
+  | `lint` | `make format-check lint typecheck`, agent-file identity and line count, shellcheck (hooks, pre-commit), actionlint, settings JSON, hook smoke test | yes |
   | `test` | `make test` (Vitest with the coverage ratchet) | yes |
   | `build` | `make build`, prints compressed asset sizes | after Phase 0b PR 4 (wizard updates the ruleset) |
+  | `e2e` | `make test-e2e` (Playwright in Chromium, Firefox and WebKit with axe against the production build) | after Phase 0b PR 4 |
   | `gitleaks` | secret scan over full history | yes |
 
-  Phase 0b PR 2 and PR 3 add `e2e`, `perf`, `sast`, `deps`, `spec-freeze` and `ai-review`. Job ids
+  Phase 0b PR 3 adds `perf`, `sast`, `deps`, `spec-freeze` and `ai-review`. Job ids
   stay stable across phases: the `main` ruleset and Vercel's Deployment Checks match them by name.
 - The independent reviewer is an AI reviewer running in CI (`ai-review`, Phase 0b PR 3). Until then
   the Definition of Done item for it is ticked as "n/a".
