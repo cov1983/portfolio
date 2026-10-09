@@ -45,7 +45,7 @@ his development skills. Status: **toolchain wired, Phase 0b in progress**. The s
 - `src/`                    application code; today `main.tsx`, `App.tsx` (skeleton) and `perf/` (budget instrument)
 - `tests/`                  `e2e/` (Playwright, spec seam 1) and `model/` (headless Rapier, seam 2); added in Phase 0b PR 2
 - root configs              `vite.config.ts`, `vitest.config.ts`, `eslint.config.js`, `tsconfig*.json`, `.prettierrc`
-- `infra/`                  does not exist: no infrastructure beyond Vercel (ADR 0006, Phase 0b PR 4)
+- `infra/`                  does not exist: no infrastructure beyond Vercel; the hosting ADR lands in Phase 0b PR 4
 - `GLOSSARY.md`             shared vocabulary (called CONTEXT.md in docs/workflow-guide.md); produced by `/grill-with-docs` in Phase 1
 
 ## Conventions
