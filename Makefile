@@ -2,7 +2,7 @@
 # targets, so a green `make verify` locally means a green `lint` and `test` job.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup format format-check lint typecheck test verify build dev preview
+.PHONY: help setup format format-check lint typecheck test coverage-ratchet verify build dev preview
 
 PNPM ?= pnpm
 
@@ -14,7 +14,8 @@ help:
 	@echo "  make format-check  fail on unformatted files"
 	@echo "  make lint          ESLint, warnings are errors"
 	@echo "  make typecheck     tsc --noEmit for src and for the config files"
-	@echo "  make test          Vitest with coverage (ratchet thresholds in vitest.config.ts)"
+	@echo "  make test          Vitest with coverage against the thresholds in vitest.config.ts"
+	@echo "  make coverage-ratchet  make test with COVERAGE_RATCHET=1: raises the thresholds to the measured coverage"
 	@echo "  make build         production build to dist/"
 	@echo "  make dev           Vite dev server"
 	@echo "  make preview       serve dist/ as production would"
@@ -37,6 +38,9 @@ typecheck:
 
 test:
 	$(PNPM) exec vitest run --coverage
+
+coverage-ratchet:
+	COVERAGE_RATCHET=1 $(MAKE) test
 
 verify: format-check lint typecheck test
 

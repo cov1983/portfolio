@@ -53,8 +53,8 @@ his development skills. Status: **toolchain wired, Phase 0b in progress**. The s
   config, not Markdown (prose is reviewed as text; `docs/spec/**` is frozen).
 - TypeScript strict plus `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`; no `any`, no
   non-null assertion, no `eslint-disable` without a comment naming the issue.
-- Coverage ratchet: `vitest.config.ts` thresholds rise automatically with each better local run and
-  are committed; lowering one needs an ADR. Scope is `src/**` minus `main.tsx` and components:
+- Coverage ratchet: raise the coverage floor with `make coverage-ratchet` and commit the result; it
+  never moves on its own. Lowering one needs an ADR. Scope is `src/**` minus `main.tsx` and components:
   rendering is proven by the Playwright seam, the ratchet measures model code and instruments.
 - Dependencies: exact versions in `package.json`, lockfile committed; a new dependency is the newest
   version the whole toolchain's peer ranges accept, listed in the PR body with license and reason.

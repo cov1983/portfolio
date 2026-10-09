@@ -13,15 +13,16 @@ export default defineConfig({
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/main.tsx', 'src/App.tsx', 'src/vite-env.d.ts', '**/*.test.*'],
       reporter: ['text', 'lcov'],
-      // Ratchet: autoUpdate rewrites these numbers whenever a local run beats them; the bumped file
-      // is committed with the change. Lowering a number needs an ADR (CLAUDE.md).
+      // Ratchet: the floor never moves on its own. `make coverage-ratchet` sets COVERAGE_RATCHET=1,
+      // which lets autoUpdate rewrite these numbers to the measured coverage; commit the result.
+      // Lowering a number needs an ADR (CLAUDE.md).
       // ratchet starting floor, 2026-10-09; autoUpdate raises it
       thresholds: {
         lines: 80,
         functions: 80,
         branches: 80,
         statements: 80,
-        autoUpdate: true,
+        autoUpdate: process.env.COVERAGE_RATCHET === '1',
       },
     },
   },
