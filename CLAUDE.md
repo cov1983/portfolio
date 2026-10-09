@@ -23,7 +23,7 @@ his development skills. Status: **toolchain wired, Phase 0b in progress**. The s
 ## Commands (single entry points — use these, not ad-hoc variants)
 - Setup:   `make setup`         # pnpm install --frozen-lockfile and the Playwright browsers
 - Verify:  `make verify`        # Prettier check + ESLint + tsc --noEmit + Vitest with coverage; MUST pass before any commit
-- Test:    `make test`          # Vitest unit tests; coverage thresholds ratchet in vitest.config.ts
+- Test:    `make test`          # Vitest projects `unit` (src) and `model` (headless Rapier); ratchet in vitest.config.ts
 - E2E:     `make test-e2e`      # make build, then Playwright (Chromium, Firefox, WebKit, axe) against dist/
 - Build:   `make build`         # production build to dist/
 - Run:     `make dev`           # Vite dev server; `make preview` serves dist/

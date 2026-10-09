@@ -1,13 +1,29 @@
 import { defineConfig } from 'vitest/config'
 
-// Unit tests run under Node. The spec (docs/spec/increment-1.md, Testing decisions) defines two
-// seams: the built site in a browser (Playwright, tests/e2e) and the World model stepped without a
-// renderer (tests/model). React rendering is proven by the browser seam, so the coverage ratchet
-// below measures only model code and instruments, never components.
+// Two Node projects, no browser: `unit` for the instruments and model code in src/, `model` for the
+// spec's second seam (docs/spec/increment-1.md, Testing decisions): the World stepped with Rapier
+// and no renderer. The first seam, the built site in a browser, is Playwright (playwright.config.ts,
+// tests/e2e). React rendering is proven there, so the coverage ratchet below measures only model
+// code and instruments, never components.
 export default defineConfig({
   test: {
-    include: ['src/**/*.test.ts'],
-    environment: 'node',
+    projects: [
+      {
+        test: {
+          name: 'unit',
+          include: ['src/**/*.test.ts'],
+          environment: 'node',
+        },
+      },
+      {
+        test: {
+          name: 'model',
+          include: ['tests/model/**/*.test.ts'],
+          environment: 'node',
+          testTimeout: 20_000, // Rapier's wasm initialises once per worker
+        },
+      },
+    ],
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
