@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+# Pre-commit hook, wired by `make setup` (git config core.hooksPath .githooks). No husky: a plain
+# script that CI shellchecks. lint-staged rewrites staged files with Prettier and runs ESLint on
+# staged TypeScript (config in package.json); gitleaks blocks a commit that stages a secret.
+set -eu
+
+pnpm exec lint-staged
+
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git --pre-commit --staged --redact
+else
+  echo "pre-commit: gitleaks is not installed, skipping the local secret scan (the CI gitleaks job is the gate)" >&2
+fi

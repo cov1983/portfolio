@@ -10,7 +10,7 @@ XVFB_RUN := $(shell command -v xvfb-run >/dev/null 2>&1 && echo 'xvfb-run -a')
 
 help:
 	@echo "Targets:"
-	@echo "  make setup         install dependencies from the lockfile and the Playwright browsers"
+	@echo "  make setup         install dependencies and the Playwright browsers; point git at .githooks"
 	@echo "  make verify        format check + lint + typecheck + unit tests; must pass before any commit"
 	@echo "  make format        rewrite files with Prettier"
 	@echo "  make format-check  fail on unformatted files"
@@ -26,6 +26,7 @@ help:
 setup:
 	$(PNPM) install --frozen-lockfile
 	$(PNPM) exec playwright install --with-deps
+	git config core.hooksPath .githooks
 
 format:
 	$(PNPM) exec prettier --write .

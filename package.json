@@ -16,6 +16,10 @@
     "react-dom": "19.3.0",
     "three": "0.186.1"
   },
+  "lint-staged": {
+    "*": "prettier --write --ignore-unknown",
+    "*.{ts,tsx}": "eslint --max-warnings 0 --no-warn-ignored"
+  },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
     "@playwright/test": "1.64.0",
