@@ -19,7 +19,9 @@ application code starts with the Phase 3 tickets.
   (production build driven in Chromium, Firefox and WebKit with axe; Firefox runs headed because
   headless Firefox has no WebGL: under Xvfb where `xvfb-run` exists, otherwise in a window on your
   display, and it fails to launch with neither), `make dev` (dev server),
-  `make build` + `make preview` (production build). `make help` lists everything.
+  `make build` + `make preview` (production build), `make perf` (the Lighthouse budget; needs a
+  Chrome: `CHROME_PATH` where none is installed system-wide, `CHROME_NO_SANDBOX=1` inside a
+  container). `make help` lists everything.
 
 ## Where to look
 - `CLAUDE.md` / `AGENTS.md` — instructions for AI coding agents (identical files)
@@ -41,12 +43,20 @@ application code starts with the Phase 3 tickets.
   | `test` | `make test` (Vitest with the coverage ratchet) | yes |
   | `build` | `make build`, prints compressed asset sizes | after Phase 0b PR 4 (wizard updates the ruleset) |
   | `e2e` | `make test-e2e` (Playwright in Chromium, Firefox and WebKit with axe against the production build) | after Phase 0b PR 4 |
+  | `perf` | `make perf`: Lighthouse budget from `perf/budget.json` against the production build (Title Screen interactive, World playable, download until playable; one retry, all three numbers always printed) | after Phase 0b PR 4 |
+  | `sast` | CodeQL, javascript-typescript, results under Security → Code scanning | after Phase 0b PR 4 |
+  | `deps` | dependency review of the lockfile change (blocks at severity high); `pnpm audit` as a warning, and weekly in `audit.yml` | after Phase 0b PR 4 |
   | `gitleaks` | secret scan over full history | yes |
+  | `spec-freeze` | `scripts/spec-freeze.sh`: an approved spec changes only through `amend:` commits | after Phase 0b PR 4 |
+  | `ai-review` | independent Claude review (`anthropics/claude-code-action`, read-only tools, one tracking comment); skipped with a notice until `ANTHROPIC_API_KEY` is stored, and for Renovate branches | no: its findings are a Definition of Done item |
 
-  Phase 0b PR 3 adds `perf`, `sast`, `deps`, `spec-freeze` and `ai-review`. Job ids
-  stay stable across phases: the `main` ruleset and Vercel's Deployment Checks match them by name.
-- The independent reviewer is an AI reviewer running in CI (`ai-review`, Phase 0b PR 3). Until then
-  the Definition of Done item for it is ticked as "n/a".
+  Job ids stay stable across phases: the `main` ruleset and Vercel's Deployment Checks match them
+  by name.
+- The independent reviewer is the `ai-review` job. It posts once the setup wizard (Phase 0b PR 4)
+  stores `ANTHROPIC_API_KEY`; until then the Definition of Done item for it is ticked as "n/a".
+- Dependencies are kept current by Renovate (`renovate.json`, ADR 0007): grouped patch updates
+  auto-merge once every required check is green, minors are ordinary PRs, majors wait for a tick on
+  the Dependency Dashboard issue.
 
 ## License
 Three parts, detailed in `LICENSE`:

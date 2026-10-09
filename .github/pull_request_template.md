@@ -9,11 +9,11 @@ Ticket: #…   Spec: docs/spec/<feature>.md §…   Plan: docs/plan/<feature>.md
 - [ ] Every acceptance criterion in scope has a test; `make verify` and full test suite green
 - [ ] Coverage ≥ threshold (ratchet); no new skipped tests
 - [ ] No new lint/type suppressions without comment + issue
-- [ ] Security: secret scan (`gitleaks`) and, once wired, SAST/dependency scans green; new deps listed below with license + reason
+- [ ] Security: `gitleaks`, `sast` and `deps` green; new deps listed below with license + reason
 - [ ] Docs updated (README/API/ADR/runbook as applicable); CHANGELOG entry once one exists
 - [ ] Observability: new paths emit logs/metrics/traces per plan
 - [ ] Infra changes: `plan` output attached; no `apply` performed by an agent
-- [ ] Independent AI review (CI job, added in Phase 0b) findings addressed or explicitly dismissed with reason
+- [ ] Independent AI review (`ai-review`) findings addressed or explicitly dismissed with reason
 - [ ] Commits conventional, one task per commit, agent trailer present; PR labelled `ai-assisted`
 - [ ] One line appended to `docs/retro.md` in this PR (main is protected; a separate PR per retro line is not worth it)
 

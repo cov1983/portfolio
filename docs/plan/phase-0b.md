@@ -8,8 +8,8 @@ Testing decisions). Stack: ADR 0003.
 
 This file is the plan of record. It was approved before PR 1 and committed in PR 2 with the Owner
 decisions of 2026-10-09 folded in and the outcome of PR 1 and PR 2 recorded, so later sessions read
-it from here. Deviations made while implementing are listed per PR under "As delivered"; PR 3 and
-PR 4 are still the plan as approved.
+it from here. Deviations made while implementing are listed per PR under "As delivered"; PR 4 is
+still the plan as approved.
 
 ## Context
 
@@ -71,8 +71,8 @@ license allow/deny lists in the dependency scan (license is a PR-body DoD item).
 | # | branch | ticket | content | status |
 |---|---|---|---|---|
 | 1 | `chore/phase-0b` | #10 | devcontainer, pnpm/Vite/TS/R3F skeleton, ESLint + Prettier, Vitest + coverage ratchet, real Makefile, CI `lint`/`test`/`build` real, CLAUDE.md/AGENTS.md | merged, PR #14 |
-| 2 | `chore/phase-0b-e2e` | #11 | Playwright 3 browsers + axe, headless Rapier model test, `world-playable` instrument, `make test-e2e`, CI `e2e`, pre-commit hook, actionlint, this file | this PR |
-| 3 | `chore/phase-0b-gates` | #12 | CI `perf` (Lighthouse budget), `sast` (CodeQL), `deps`, `spec-freeze`, `ai-review`; Renovate; ADR 0007; README checks table; PR template wording | planned |
+| 2 | `chore/phase-0b-e2e` | #11 | Playwright 3 browsers + axe, headless Rapier model test, `world-playable` instrument, `make test-e2e`, CI `e2e`, pre-commit hook, actionlint, this file | merged, PR #15 |
+| 3 | `chore/phase-0b-gates` | #12 | CI `perf` (Lighthouse budget), `sast` (CodeQL), `deps`, `spec-freeze`, `ai-review`; Renovate; ADR 0007; README checks table; PR template wording | this PR |
 | 4 | `chore/phase-0b-hosting` | #13 | `vercel.json`, ADR 0006, `.claude` settings widening + format hook + `commands/{phase,fix-review}.md`, docs READMEs, wizard script + runbook, final CLAUDE.md/AGENTS.md | planned |
 
 Every PR: conventional commits (one task per commit, agent trailer), `make verify` before each
@@ -151,7 +151,7 @@ devcontainer image.
 - Dependencies: @playwright/test (Apache-2.0), @axe-core/playwright (MPL-2.0),
   @dimforge/rapier3d-compat (Apache-2.0), lint-staged (MIT).
 
-### As delivered (this PR)
+### As delivered (PR #15)
 - **No husky, no `scripts` block** (decisions 9, 10): `.githooks/pre-commit`, `make setup` sets
   `core.hooksPath`. lint-staged runs ESLint with `--no-warn-ignored` so an ignored path does not
   trip `--max-warnings 0`.
@@ -265,6 +265,34 @@ devcontainer image digest and the actionlint image digest current.
 Constitution 7 says agents never merge; a bot merging a grouped patch PR that passed every gate is
 the guide §5 exception ("bot PRs auto-merge only for patch + green"); humans still own minors and
 majors. One decision per ADR, so it is separate from 0006.
+
+### As delivered (this PR)
+- **Scripts are TypeScript**, not `.mjs`: `scripts/perf-budget.ts`, `scripts/perf/budget.ts` and its
+  test run under plain Node 24 (type stripping, `.ts` import extensions, `allowImportingTsExtensions`
+  in `tsconfig.node.json`), so ESLint and `tsc` cover them. The pure evaluator takes the Lighthouse
+  result as `unknown` and narrows it; a malformed `perf/budget.json` is a typed `BudgetFileError`.
+- **Chrome**: chrome-launcher finds the runner's Chrome in CI. Elsewhere `CHROME_PATH` names one
+  (Playwright's Chromium after `make browsers`; `@playwright/test` exports no launcher, so the planned
+  automatic fallback does not exist) and `CHROME_NO_SANDBOX=1` adds `--no-sandbox` inside a
+  container, where Chrome's sandbox cannot start. Measured on the skeleton in the devcontainer:
+  Title Screen interactive ≈ 0.6 s, World playable ≈ 0.55 s, 308 KB until playable; the forced
+  breach printed both runs and exited 1.
+- **`ai-review` sets `track_progress: true` next to `use_sticky_comment: true`** and the review is
+  written into the tracking comment: with a `prompt` the action runs in agent mode and creates no
+  tracking comment (verified in the action source, v1.0.248), so `use_sticky_comment` alone is a
+  no-op and `gh pr comment` would add one comment per push. Allowed tools:
+  `mcp__github_comment__update_claude_comment` plus the three `gh` read commands; `gh pr comment`
+  dropped. Unverified end to end until the key exists.
+- **`spec-freeze`** also treats `Status: amended` as frozen and skips merge commits (a merge from
+  `main` is not an edit). Verified in a scratch clone: the real `amend:` commit from PR 2, a plain
+  commit on the approved spec (fails, names file and commit), the same edit as `amend:`, a merge of a
+  moved `main`, an `amend:` followed by a plain commit (fails), a new draft (passes).
+- **The weekly `audit.yml` run exits non-zero on findings**: still non-blocking (nothing requires
+  it), the red run is the notification. The PR-side audit step only warns.
+- **Dependency graph** was off on the repository (dependency-review needs it); the Owner enabled it
+  while this PR was built. CodeQL default setup was already off, so `sast` uploads.
+- Pinned: lighthouse 13.5.0, chrome-launcher 1.2.2 (both Apache-2.0); codeql-action v4.38.3,
+  dependency-review-action v5.0.0, claude-code-action v1.0.248 by commit SHA.
 
 ---
 
