@@ -1,6 +1,7 @@
 # Plan: Phase 0b — harden the repository
 
-Status: approved by the Owner on 2026-10-09 (plan review in Claude Code, plan mode). Ticket: #9,
+Status: accepted by the Owner on 2026-10-09 in the plan-mode review (a process plan for guide
+§4.0.2, not a feature plan, so there is no `plan: approve` commit under guide §4.2). Ticket: #9,
 sub-issues #10 (PR 1), #11 (PR 2), #12 (PR 3), #13 (PR 4). Guide: `docs/workflow-guide.md` §4.0.2,
 adapted for a static site on Vercel. Spec: `docs/spec/increment-1.md` (Non-functional requirements,
 Testing decisions). Stack: ADR 0003.
@@ -140,7 +141,7 @@ devcontainer image.
   20 s timeout). Coverage settings stay at the root.
 - `src/App.tsx`: calls `markWorldPlayable(performance)` from the first `useFrame`, so PR 3's budget
   has a mark to read.
-- `Makefile`: `test-e2e` = `build` + `playwright test`; `setup` gains `playwright install --with-deps`.
+- `Makefile`: `test-e2e` = `build` + `playwright test`; `setup` gains the browser install.
 - `ci.yml`: `e2e` (needs `build`) → setup, browsers, `make test-e2e`, `playwright-report/` artifact
   on failure.
 - Pre-commit: lint-staged (Prettier on everything it knows, ESLint on staged TypeScript) then
@@ -167,6 +168,10 @@ devcontainer image.
 - `tsconfig.node.json` covers `playwright.config.ts` and `tests/**` and adds the DOM lib, because
   the e2e spec imports `src/perf/world-playable.ts`, whose type slices the DOM `Performance`.
 - **actionlint** in the `lint` job (decision 11): official image 1.7.12, pinned by digest.
+- `make browsers` (Playwright browsers with OS packages) is shared by `make setup` and the CI `e2e`
+  job, so CI runs no ad-hoc pnpm command; `make setup` sets the hooks path before that sudo step.
+- The `e2e` test "heading and canvas" became two tests (one assertion concept each); the model
+  project uses `hookTimeout` for the wasm init in `beforeAll`. Both from `/code-review`.
 - The README checks table gained the `e2e` row here, not in PR 3.
 
 ---

@@ -21,7 +21,7 @@ his development skills. Status: **toolchain wired, Phase 0b in progress**. The s
   (`.devcontainer/`) has all of them; CI runs the same make targets, so local verify == CI.
 
 ## Commands (single entry points — use these, not ad-hoc variants)
-- Setup:   `make setup`         # pnpm install --frozen-lockfile, Playwright browsers, git hooks path
+- Setup:   `make setup`         # pnpm install --frozen-lockfile, git hooks path, then `make browsers` (Playwright)
 - Verify:  `make verify`        # Prettier check + ESLint + tsc --noEmit + Vitest with coverage; MUST pass before any commit
 - Test:    `make test`          # Vitest projects `unit` (src) and `model` (headless Rapier); ratchet in vitest.config.ts
 - E2E:     `make test-e2e`      # make build, then Playwright (Chromium, Firefox, WebKit, axe) against dist/
@@ -60,7 +60,7 @@ his development skills. Status: **toolchain wired, Phase 0b in progress**. The s
   rendering is proven by the Playwright seam, the ratchet measures model code and instruments.
 - Dependencies: exact versions in `package.json`, lockfile committed; a new dependency is the newest
   version the whole toolchain's peer ranges accept, listed in the PR body with license and reason.
-- CI job ids (`lint`, `test`, `build`, `gitleaks`, later `e2e`, `perf`, `sast`, `deps`, `spec-freeze`)
+- CI job ids (`lint`, `test`, `build`, `e2e`, `gitleaks`, later `perf`, `sast`, `deps`, `spec-freeze`)
   are stable: the `main` ruleset and Vercel's Deployment Checks match them by name.
 - Errors: never swallow; typed errors at boundaries.
 - Logging: structured, no personal data.

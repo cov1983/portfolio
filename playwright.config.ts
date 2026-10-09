@@ -1,8 +1,9 @@
 import { defineConfig, devices } from '@playwright/test'
 
 // Spec seam 1 (docs/spec/increment-1.md, Testing decisions): the site built as for production,
-// driven in headless Chromium, Firefox and WebKit, with axe against WCAG 2.2 AA. CI renders WebGL in
-// software, so this seam proves presence and wiring of the World, never its rendered output.
+// driven in Chromium, Firefox and WebKit with axe against WCAG 2.2 AA. Chromium and WebKit run
+// headless; Firefox runs headed under Xvfb (see its project). CI renders WebGL in software, so this
+// seam proves presence and wiring of the World, never its rendered output.
 const port = 4173
 const baseURL = `http://localhost:${String(port)}`
 

@@ -20,7 +20,7 @@ export default defineConfig({
           name: 'model',
           include: ['tests/model/**/*.test.ts'],
           environment: 'node',
-          testTimeout: 20_000, // Rapier's wasm initialises once per worker
+          hookTimeout: 20_000, // Rapier's wasm initialises in beforeAll, once per file
         },
       },
     ],

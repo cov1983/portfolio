@@ -96,7 +96,7 @@ jobs:
       - uses: ./.github/actions/setup
 
       - name: Playwright browsers (version from the lockfile, never cached)
-        run: pnpm exec playwright install --with-deps
+        run: make browsers
 
       - name: Built site in Chromium, Firefox and WebKit with axe (spec seam 1)
         run: make test-e2e

@@ -8,8 +8,11 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/')
 })
 
-test('the built root page shows the skeleton heading and a canvas', async ({ page }) => {
+test('the built root page shows the skeleton heading', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Portfolio: toolchain skeleton')
+})
+
+test('the built root page mounts a canvas', async ({ page }) => {
   await expect(page.locator('canvas')).toBeVisible()
 })
 
