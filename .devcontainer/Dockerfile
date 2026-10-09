@@ -1,6 +1,6 @@
 # Development container: the same toolchain `make verify` uses in CI (docs/workflow-guide.md §4.0.2).
-# Node 24 LTS + pnpm (corepack), make, jq, gitleaks. Playwright browsers come from `make setup` so the
-# browser build always matches the @playwright/test version in package.json.
+# Node 24 LTS + pnpm (corepack), make, jq, gitleaks. Playwright browsers are not baked in: `make setup`
+# installs them once Playwright arrives (Phase 0b PR 2), so the browser build always matches @playwright/test.
 FROM mcr.microsoft.com/devcontainers/typescript-node:5-24-bookworm@sha256:570427e760c3b6cc1ff6c50e0971103cc27abcfb5134066a39db639389150946
 
 ARG GITLEAKS_VERSION=8.30.1
