@@ -1,0 +1,14 @@
+# Generated, vendored or cached: never formatted.
+pnpm-lock.yaml
+dist/
+coverage/
+node_modules/
+.pnpm-store/
+.agents/
+.claude/skills/
+
+# Prose is written by hand and reviewed as text; docs/spec/** is frozen (amend: commits only).
+*.md
+
+# Hook test fixtures mirror the one-line JSON payload Claude Code sends; kept compact on purpose.
+.claude/hooks/tests/*.json
