@@ -4,9 +4,19 @@ An immersive, interactive 3D portfolio: visitors steer an ice-hockey puck throug
 world to discover Thomas's projects and background. Physics, hockey-inspired challenges and a bit of
 storytelling turn browsing a CV into an experience that showcases the development work itself.
 
-Status: **prototype / pre-spec**. The stack is decided (`docs/adr/0003-web-3d-stack.md`); the
-vocabulary is in `GLOSSARY.md`. This repository currently holds the
-process scaffolding (Phase 0a of `docs/workflow-guide.md`), not application code.
+Status: **toolchain wired, Phase 0b in progress**. The spec for the first increment is approved
+(`docs/spec/increment-1.md`), the stack is decided (`docs/adr/0003-web-3d-stack.md`) and the
+vocabulary is in `GLOSSARY.md`. `src/` holds only the Phase 0b skeleton that proves the toolchain;
+application code starts with the Phase 3 tickets.
+
+## Run it locally
+- **Devcontainer** (recommended): open the repo in VS Code and "Reopen in Container", or
+  `devcontainer up --workspace-folder .`. The image (`.devcontainer/`) has Node 24, pnpm, make, jq
+  and gitleaks; `make setup` runs on create.
+- **Host**: Node 24 (`.nvmrc`), `corepack enable` (pnpm comes from `packageManager`), then
+  `make setup`.
+- Then: `make verify` (format check, lint, types, unit tests), `make dev` (dev server),
+  `make build` + `make preview` (production build). `make help` lists everything.
 
 ## Where to look
 - `CLAUDE.md` / `AGENTS.md` — instructions for AI coding agents (identical files)
@@ -19,19 +29,20 @@ process scaffolding (Phase 0a of `docs/workflow-guide.md`), not application code
 - Branch names: `chore/<topic>`, `feat/<topic>`, `fix/<topic>`. One ticket = one branch = one PR.
 - Every PR uses the template in `.github/pull_request_template.md` and carries the label `ai-assisted`
   (agent-authored or agent-assisted change; this applies to every PR in this repo).
-- Required status checks, produced by `.github/workflows/ci.yml`:
+- Status checks, produced by `.github/workflows/ci.yml` (every job runs the same `make` targets a
+  developer runs locally):
 
-  | check | today | later |
+  | check | what it runs | required on `main` |
   |---|---|---|
-  | `lint` | agent-file consistency, shellcheck, settings JSON, hook smoke test, Makefile stubs | formatter, linter, type checker |
-  | `test` | placeholder | unit / integration / e2e |
-  | `gitleaks` | secret scan over full history | unchanged |
+  | `lint` | `make format-check lint typecheck`, agent-file identity and line count, shellcheck, settings JSON, hook smoke test | yes |
+  | `test` | `make test` (Vitest with the coverage ratchet) | yes |
+  | `build` | `make build`, prints compressed asset sizes | after Phase 0b PR 4 (wizard updates the ruleset) |
+  | `gitleaks` | secret scan over full history | yes |
 
-  **After the first CI run**, add all three to the `main` ruleset: Settings → Rules → Rulesets → main →
-  "Require status checks to pass" → add `lint`, `test`, `gitleaks`. The job ids stay stable across
-  phases so the ruleset never needs editing when the jobs grow real content.
-- The independent reviewer is an AI reviewer running in CI; it is wired in Phase 0b. Until then the
-  Definition of Done item for it is ticked as "n/a".
+  Phase 0b PR 2 and PR 3 add `e2e`, `perf`, `sast`, `deps`, `spec-freeze` and `ai-review`. Job ids
+  stay stable across phases: the `main` ruleset and Vercel's Deployment Checks match them by name.
+- The independent reviewer is an AI reviewer running in CI (`ai-review`, Phase 0b PR 3). Until then
+  the Definition of Done item for it is ticked as "n/a".
 
 ## License
 Three parts, detailed in `LICENSE`:

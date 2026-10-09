@@ -4,8 +4,8 @@
 Thomas's personal website: an immersive, interactive 3D portfolio in which visitors steer an ice-hockey
 puck through a playful virtual world to discover his projects and background. Physics, hockey-inspired
 challenges and light storytelling make exploring the portfolio an experience that itself demonstrates
-his development skills. Status: **prototype / pre-spec**. The stack is decided in ADR 0003
-(TypeScript, React Three Fiber, Rapier); no application code exists until Phase 0b wires the toolchain.
+his development skills. Status: **toolchain wired, Phase 0b in progress**. The stack is ADR 0003
+(TypeScript, React Three Fiber, Rapier); `src/` holds only the Phase 0b skeleton until Phase 3 tickets.
 
 ## Environment
 - Hosting: GitHub, public repository `cov1983/portfolio`. CI: GitHub Actions (`.github/workflows/ci.yml`).
@@ -17,14 +17,16 @@ his development skills. Status: **prototype / pre-spec**. The stack is decided i
 - Commits carry the agent trailer (`Co-Authored-By: …`). Every PR carries the label `ai-assisted`.
 - Pushes are run by the owner. The agent stops at `git push` and asks; it never holds push credentials.
 - Process guide: `docs/workflow-guide.md`. Constitution: `docs/constitution.md` (v1.0, ratified 2026-10-08).
+- Toolchain: Node 24 (`.nvmrc`), pnpm via `packageManager`, make, jq, gitleaks. The devcontainer
+  (`.devcontainer/`) has all of them; CI runs the same make targets, so local verify == CI.
 
 ## Commands (single entry points — use these, not ad-hoc variants)
-All targets are stubs that fail with "not configured" until Phase 0b wires the real toolchain.
-- Setup:   `make setup`
-- Verify:  `make verify`        # lint + typecheck + unit tests; MUST pass before any commit
-- Test:    `make test`
-- Build:   `make build`
-- Run:     `make dev`
+- Setup:   `make setup`         # pnpm install --frozen-lockfile
+- Verify:  `make verify`        # Prettier check + ESLint + tsc --noEmit + Vitest with coverage; MUST pass before any commit
+- Test:    `make test`          # Vitest unit tests; coverage thresholds ratchet in vitest.config.ts
+- Build:   `make build`         # production build to dist/
+- Run:     `make dev`           # Vite dev server; `make preview` serves dist/
+- Single steps: `make format`, `make format-check`, `make lint`, `make typecheck`
 
 ## Repository map
 - `docs/workflow-guide.md`  the process this repo follows; templates in §7
@@ -38,12 +40,26 @@ All targets are stubs that fail with "not configured" until Phase 0b wires the r
 - `.claude/`                settings, hooks (`hooks/`), hook tests (`hooks/tests/`), skill symlinks (`skills/`)
 - `.agents/skills/`         vendored engineering skills from `mattpocock/skills`; `.claude/skills/*` link here
 - `skills-lock.json`        pins the vendored skills (source, path, content hash)
-- `.github/`                CI, PR template, CODEOWNERS
-- `src/`, `tests/`, `infra/` do not exist yet — created in Phase 0b/2 (stack: ADR 0003)
+- `.github/`                CI (`workflows/ci.yml`), composite setup action (`actions/setup/`), PR template, CODEOWNERS
+- `.devcontainer/`          Dockerfile + devcontainer.json: the reference toolchain
+- `src/`                    application code; today `main.tsx`, `App.tsx` (skeleton) and `perf/` (budget instrument)
+- `tests/`                  `e2e/` (Playwright, spec seam 1) and `model/` (headless Rapier, seam 2); added in Phase 0b PR 2
+- root configs              `vite.config.ts`, `vitest.config.ts`, `eslint.config.js`, `tsconfig*.json`, `.prettierrc`
+- `infra/`                  does not exist: no infrastructure beyond Vercel (ADR 0006, Phase 0b PR 4)
 - `GLOSSARY.md`             shared vocabulary (called CONTEXT.md in docs/workflow-guide.md); produced by `/grill-with-docs` in Phase 1
 
 ## Conventions
-- Formatter and linter are law once configured; do not disable rules without an ADR.
+- Formatter and linter are law; do not disable rules without an ADR. Prettier formats code and
+  config, not Markdown (prose is reviewed as text; `docs/spec/**` is frozen).
+- TypeScript strict plus `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`; no `any`, no
+  non-null assertion, no `eslint-disable` without a comment naming the issue.
+- Coverage ratchet: `vitest.config.ts` thresholds rise automatically with each better local run and
+  are committed; lowering one needs an ADR. Scope is `src/**` minus `main.tsx` and components:
+  rendering is proven by the Playwright seam, the ratchet measures model code and instruments.
+- Dependencies: exact versions in `package.json`, lockfile committed; a new dependency is the newest
+  version the whole toolchain's peer ranges accept, listed in the PR body with license and reason.
+- CI job ids (`lint`, `test`, `build`, `gitleaks`, later `e2e`, `perf`, `sast`, `deps`, `spec-freeze`)
+  are stable: the `main` ruleset and Vercel's Deployment Checks match them by name.
 - Errors: never swallow; typed errors at boundaries.
 - Logging: structured, no personal data.
 - Tests: behaviour-level; one assertion concept per test; no sleeps.
