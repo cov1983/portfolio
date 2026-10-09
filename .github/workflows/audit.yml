@@ -1,0 +1,23 @@
+# Weekly dependency audit (Phase 0b plan, Owner decision 3). Non-blocking: no pull request and no
+# ruleset waits for it; a red run is the notification. The blocking gate on pull requests is the
+# `deps` job in ci.yml (dependency review), where the same audit only warns.
+name: audit
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Monday 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+
+      - name: pnpm audit, high and above
+        run: pnpm audit --audit-level=high

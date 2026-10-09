@@ -14,3 +14,4 @@ Index
 - [0003 — TypeScript, React Three Fiber and Rapier for the 3D site](0003-web-3d-stack.md)
 - [0004 — Pre-rendered root and Fallback Page; the World hydrates on top](0004-pre-rendered-root.md)
 - [0005 — Puck feel: the Standard ice preset, with a fixed-yaw Follow Camera](0005-puck-feel.md)
+- [0007 — Renovate merges grouped patch updates that passed every gate](0007-renovate-automerge.md)

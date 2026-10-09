@@ -9,8 +9,8 @@ his development skills. Status: **toolchain wired, Phase 0b in progress**. The s
 
 ## Environment
 - Hosting: GitHub, public repository `cov1983/portfolio`. CI: GitHub Actions (`.github/workflows/ci.yml`).
-- Team: solo. No required human approvals; the independent reviewer is an AI reviewer running in CI
-  (job added in Phase 0b). The owner merges.
+- Team: solo. No required human approvals; the independent reviewer is the `ai-review` CI job
+  (posts once the setup wizard stores `ANTHROPIC_API_KEY`; skipped with a notice before). The owner merges.
 - `main` is protected by a ruleset: PR required, no force-push, no deletion. Required status checks:
   `lint`, `test`, `gitleaks` (job ids are stable across phases).
 - Branches: `chore/<topic>`, `feat/<topic>`, `fix/<topic>`. One ticket = one branch = one PR.
@@ -26,6 +26,8 @@ his development skills. Status: **toolchain wired, Phase 0b in progress**. The s
 - Test:    `make test`          # Vitest projects `unit` (src) and `model` (headless Rapier); ratchet in vitest.config.ts
 - E2E:     `make test-e2e`      # make build, then Playwright (Chromium, Firefox, WebKit, axe) against dist/
 - Build:   `make build`         # production build to dist/
+- Perf:    `make perf`          # make build, then the Lighthouse budget (perf/budget.json) against dist/; needs a Chrome:
+                                # CHROME_PATH where none is installed system-wide, CHROME_NO_SANDBOX=1 inside a container
 - Run:     `make dev`           # Vite dev server; `make preview` serves dist/
 - Single steps: `make format`, `make format-check`, `make lint`, `make typecheck`
 
@@ -41,7 +43,10 @@ his development skills. Status: **toolchain wired, Phase 0b in progress**. The s
 - `.claude/`                settings, hooks (`hooks/`), hook tests (`hooks/tests/`), skill symlinks (`skills/`)
 - `.agents/skills/`         vendored engineering skills from `mattpocock/skills`; `.claude/skills/*` link here
 - `skills-lock.json`        pins the vendored skills (source, path, content hash)
-- `.github/`                CI (`workflows/ci.yml`), composite setup action (`actions/setup/`), PR template, CODEOWNERS
+- `.github/`                CI (`workflows/ci.yml`), weekly audit (`workflows/audit.yml`), composite setup action (`actions/setup/`), PR template, CODEOWNERS
+- `scripts/`                `perf-budget.ts` (+ `perf/budget.ts`, the pure evaluator and its test) and `spec-freeze.sh`; TypeScript runs under plain Node 24
+- `perf/budget.json`        the performance budget: throttling profile and the three limits; nowhere else
+- `renovate.json`           Renovate: grouped patch automerge, majors behind the Dependency Dashboard (ADR 0007)
 - `.devcontainer/`          Dockerfile + devcontainer.json: the reference toolchain
 - `src/`                    application code; today `main.tsx`, `App.tsx` (skeleton) and `perf/` (budget instrument)
 - `tests/`                  `e2e/` (Playwright, spec seam 1) and `model/` (headless Rapier under Node, seam 2)
@@ -56,12 +61,13 @@ his development skills. Status: **toolchain wired, Phase 0b in progress**. The s
 - TypeScript strict plus `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`; no `any`, no
   non-null assertion, no `eslint-disable` without a comment naming the issue.
 - Coverage ratchet: raise the coverage floor with `make coverage-ratchet` and commit the result; it
-  never moves on its own. Lowering one needs an ADR. Scope is `src/**` minus `main.tsx` and components:
-  rendering is proven by the Playwright seam, the ratchet measures model code and instruments.
+  never moves on its own. Lowering one needs an ADR. Scope is `src/**` minus `main.tsx` and components,
+  plus the perf evaluator `scripts/perf/budget.ts`: rendering is proven by the Playwright seam, the
+  ratchet measures model code and instruments.
 - Dependencies: exact versions in `package.json`, lockfile committed; a new dependency is the newest
   version the whole toolchain's peer ranges accept, listed in the PR body with license and reason.
-- CI job ids (`lint`, `test`, `build`, `e2e`, `gitleaks`, later `perf`, `sast`, `deps`, `spec-freeze`)
-  are stable: the `main` ruleset and Vercel's Deployment Checks match them by name.
+- CI job ids (`lint`, `test`, `build`, `e2e`, `perf`, `sast`, `deps`, `gitleaks`, `spec-freeze`, `ai-review`)
+  are stable: the `main` ruleset and Vercel's Deployment Checks match the required ones by name.
 - Errors: never swallow; typed errors at boundaries.
 - Logging: structured, no personal data.
 - Tests: behaviour-level; one assertion concept per test; no sleeps. Two seams only: the built site in
@@ -73,8 +79,8 @@ his development skills. Status: **toolchain wired, Phase 0b in progress**. The s
 - Docs touched by a change are updated in the same commit.
 
 ## Boundaries (hard)
-- Do NOT edit an approved spec in `docs/spec/**` except via an explicit `amend:` commit; `/to-spec` may
-  create a new draft.
+- Do NOT edit an approved spec in `docs/spec/**` except via an explicit `amend:` commit (the `spec-freeze`
+  job fails the PR otherwise); `/to-spec` may create a new draft.
 - Do NOT edit `.claude/**`, `.agents/**`, `.github/workflows/**` or CODEOWNERS unless the ticket says so
   (protected by CODEOWNERS and PR review).
 - Do NOT add dependencies without listing them in the PR body with license and reason.

@@ -2,7 +2,7 @@
 # targets, so a green `make verify` locally means a green `lint` and `test` job.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup browsers format format-check lint typecheck test coverage-ratchet test-e2e verify build dev preview
+.PHONY: help setup browsers format format-check lint typecheck test coverage-ratchet test-e2e perf verify build dev preview
 
 PNPM ?= pnpm
 # Headed Firefox (playwright.config.ts) needs a display: a virtual one where xvfb-run exists.
@@ -20,6 +20,7 @@ help:
 	@echo "  make test          Vitest projects unit and model, with coverage against the thresholds in vitest.config.ts"
 	@echo "  make coverage-ratchet  make test with COVERAGE_RATCHET=1: raises the thresholds to the measured coverage"
 	@echo "  make test-e2e      build, then Playwright in Chromium, Firefox and WebKit against dist/"
+	@echo "  make perf          build, then the Lighthouse performance budget (perf/budget.json) against dist/"
 	@echo "  make build         production build to dist/"
 	@echo "  make dev           Vite dev server"
 	@echo "  make preview       serve dist/ as production would"
@@ -53,6 +54,11 @@ coverage-ratchet:
 
 test-e2e: build
 	$(XVFB_RUN) $(PNPM) exec playwright test
+
+# Needs a Chrome or Chromium: set CHROME_PATH where none is installed system-wide, and CHROME_NO_SANDBOX=1
+# inside a container (scripts/perf-budget.ts).
+perf: build
+	node scripts/perf-budget.ts
 
 verify: format-check lint typecheck test
 

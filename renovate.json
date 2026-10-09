@@ -1,0 +1,21 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    "helpers:pinGitHubActionDigests",
+    ":dependencyDashboard"
+  ],
+  "pinDigests": true,
+  "lockFileMaintenance": { "enabled": true, "automerge": true },
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["patch", "pin", "pinDigest", "digest"],
+      "groupName": "patch updates",
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    { "matchUpdateTypes": ["minor"], "automerge": false },
+    { "matchUpdateTypes": ["major"], "dependencyDashboardApproval": true }
+  ]
+}
