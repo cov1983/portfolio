@@ -12,3 +12,5 @@ node_modules/
 
 # Hook test fixtures mirror the one-line JSON payload Claude Code sends; kept compact on purpose.
 .claude/hooks/tests/*.json
+# Formatted together with its widening in Phase 0b PR 4 (.claude/** is outside this ticket's PR 1).
+.claude/settings.json
