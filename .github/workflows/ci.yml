@@ -1,5 +1,6 @@
-# Phase 0a CI. Job ids (lint, test, gitleaks) are the required status checks on main and stay
-# stable across phases; Phase 0b replaces the placeholder steps with the real toolchain.
+# Phase 0b CI. Job ids (lint, test, build, gitleaks) are the required status checks on main and stay
+# stable across phases; Vercel Deployment Checks match them by name as well (ADR 0006). Every job runs
+# the same make targets a developer runs locally, so a green `make verify` predicts a green pipeline.
 name: ci
 
 on:
@@ -20,36 +21,64 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
 
-      - name: CLAUDE.md and AGENTS.md are identical
-        run: cmp CLAUDE.md AGENTS.md
+      - name: Format check, ESLint, type check
+        run: make format-check lint typecheck
+
+      - name: CLAUDE.md and AGENTS.md are identical and at most 150 lines
+        run: |
+          cmp CLAUDE.md AGENTS.md
+          lines=$(wc -l < CLAUDE.md)
+          if [ "$lines" -gt 150 ]; then echo "CLAUDE.md has $lines lines; the limit is 150"; exit 1; fi
 
       - name: Shell scripts pass shellcheck
         run: shellcheck .claude/hooks/*.sh .claude/hooks/tests/run.sh
 
       - name: .claude/settings.json is valid JSON
-        run: python3 -c 'import json; json.load(open(".claude/settings.json"))'
+        run: jq empty .claude/settings.json
 
       - name: guard-bash hook smoke test
         run: .claude/hooks/tests/run.sh
 
-      - name: Makefile stubs fail loudly
-        run: |
-          for t in setup verify test build dev; do
-            if make "$t" 2>err.txt; then echo "make $t unexpectedly succeeded"; exit 1; fi
-            grep -q "not configured" err.txt || { echo "make $t: missing 'not configured' message"; cat err.txt; exit 1; }
-          done
-          echo "all stubs fail with the expected message"
-
-      - name: Placeholder notice
-        run: echo "::notice title=lint::real formatter/linter/type checker land in Phase 0b (docs/workflow-guide.md §4.0.2)"
-
   test:
     name: test
+    needs: lint
     runs-on: ubuntu-latest
     steps:
-      - name: Placeholder notice
-        run: echo "::notice title=test::no test runner yet; 'make test' is wired in Phase 0b (docs/workflow-guide.md §4.0.2)"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+
+      - name: Unit tests with coverage (ratchet thresholds in vitest.config.ts)
+        run: make test
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 14
+
+  build:
+    name: build
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+
+      - name: Production build
+        run: make build
+
+      - name: Compressed asset sizes (budget gate lands with the perf job)
+        run: |
+          total=0
+          for f in dist/assets/*; do
+            size=$(gzip -9c "$f" | wc -c)
+            total=$((total + size))
+            printf '%10d  %s\n' "$size" "$f"
+          done | sort -rn
+          echo "total gzip bytes: $total"
 
   gitleaks:
     name: gitleaks
@@ -61,4 +90,4 @@ jobs:
       - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_ENABLE_COMMENTS: "false"
+          GITLEAKS_ENABLE_COMMENTS: 'false'
