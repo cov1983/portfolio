@@ -41,7 +41,9 @@
       "Read(/**/secrets/**)",
       "Edit(/infra/prod/**)"
     ],
-    "ask": ["Edit(/docs/spec/**)"]
+    "ask": [
+      "Edit(/docs/spec/**)"
+    ]
   },
   "hooks": {
     "PreToolUse": [

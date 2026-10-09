@@ -5,19 +5,9 @@
   "description": "Thomas's 3D portfolio: steer an ice-hockey puck through a World to discover the Exhibits",
   "license": "MIT",
   "type": "module",
-  "packageManager": "pnpm@10.34.6",
+  "packageManager": "pnpm@10.34.6+sha512.7e1ae66a83a9143c118cc1944f37cc4f2b8acddeda4b001cfa78908f6e46e45e15292739ca6c9d026426cc757e9318cc98c5551d6a16c165097b0028ba87b4e6",
   "engines": {
     "node": ">=24"
-  },
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "lint": "eslint . --max-warnings 0",
-    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
-    "test": "vitest run --coverage"
   },
   "dependencies": {
     "@react-three/fiber": "9.8.1",
