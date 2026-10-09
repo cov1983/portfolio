@@ -34,7 +34,7 @@ jobs:
           if [ "$lines" -gt 150 ]; then echo "CLAUDE.md has $lines lines; the limit is 150"; exit 1; fi
 
       - name: Shell scripts pass shellcheck
-        run: shellcheck .claude/hooks/*.sh .claude/hooks/tests/run.sh .githooks/pre-commit
+        run: shellcheck .claude/hooks/*.sh .claude/hooks/tests/run.sh .githooks/pre-commit scripts/*.sh
 
       - name: Workflow files pass actionlint (shellcheck on every run block)
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
@@ -107,6 +107,21 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
+
+  spec-freeze:
+    name: spec-freeze
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Approved specs change only through amend commits
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: scripts/spec-freeze.sh "$BASE" "$HEAD"
 
   gitleaks:
     name: gitleaks
