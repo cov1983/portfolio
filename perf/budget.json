@@ -1,0 +1,16 @@
+{
+  "$comment": "CI performance budget (docs/spec/increment-1.md, Non-functional requirements). The only place these numbers live; scripts/perf-budget.ts reads them. Throttling is Lighthouse's devtools profile: a 10 Mbit/s link, 40 ms latency, no CPU slowdown.",
+  "throttling": {
+    "rttMs": 40,
+    "throughputKbps": 10240,
+    "requestLatencyMs": 40,
+    "downloadThroughputKbps": 10240,
+    "uploadThroughputKbps": 5120,
+    "cpuSlowdownMultiplier": 1
+  },
+  "limits": {
+    "titleScreenInteractiveMs": 2000,
+    "worldPlayableMs": 5000,
+    "downloadUntilPlayableBytes": 4194304
+  }
+}
