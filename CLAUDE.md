@@ -21,9 +21,10 @@ his development skills. Status: **toolchain wired, Phase 0b in progress**. The s
   (`.devcontainer/`) has all of them; CI runs the same make targets, so local verify == CI.
 
 ## Commands (single entry points — use these, not ad-hoc variants)
-- Setup:   `make setup`         # pnpm install --frozen-lockfile
+- Setup:   `make setup`         # pnpm install --frozen-lockfile, git hooks path, then `make browsers` (Playwright)
 - Verify:  `make verify`        # Prettier check + ESLint + tsc --noEmit + Vitest with coverage; MUST pass before any commit
-- Test:    `make test`          # Vitest unit tests; coverage thresholds ratchet in vitest.config.ts
+- Test:    `make test`          # Vitest projects `unit` (src) and `model` (headless Rapier); ratchet in vitest.config.ts
+- E2E:     `make test-e2e`      # make build, then Playwright (Chromium, Firefox, WebKit, axe) against dist/
 - Build:   `make build`         # production build to dist/
 - Run:     `make dev`           # Vite dev server; `make preview` serves dist/
 - Single steps: `make format`, `make format-check`, `make lint`, `make typecheck`
@@ -43,8 +44,9 @@ his development skills. Status: **toolchain wired, Phase 0b in progress**. The s
 - `.github/`                CI (`workflows/ci.yml`), composite setup action (`actions/setup/`), PR template, CODEOWNERS
 - `.devcontainer/`          Dockerfile + devcontainer.json: the reference toolchain
 - `src/`                    application code; today `main.tsx`, `App.tsx` (skeleton) and `perf/` (budget instrument)
-- `tests/`                  `e2e/` (Playwright, spec seam 1) and `model/` (headless Rapier, seam 2); added in Phase 0b PR 2
-- root configs              `vite.config.ts`, `vitest.config.ts`, `eslint.config.js`, `tsconfig*.json`, `.prettierrc`
+- `tests/`                  `e2e/` (Playwright, spec seam 1) and `model/` (headless Rapier under Node, seam 2)
+- `.githooks/`              `pre-commit`: lint-staged (Prettier, ESLint) then gitleaks; wired by `make setup`
+- root configs              `vite.config.ts`, `vitest.config.ts`, `playwright.config.ts`, `eslint.config.js`, `tsconfig*.json`, `.prettierrc`
 - `infra/`                  does not exist: no infrastructure beyond Vercel; the hosting ADR lands in Phase 0b PR 4
 - `GLOSSARY.md`             shared vocabulary (called CONTEXT.md in docs/workflow-guide.md); produced by `/grill-with-docs` in Phase 1
 
@@ -58,11 +60,15 @@ his development skills. Status: **toolchain wired, Phase 0b in progress**. The s
   rendering is proven by the Playwright seam, the ratchet measures model code and instruments.
 - Dependencies: exact versions in `package.json`, lockfile committed; a new dependency is the newest
   version the whole toolchain's peer ranges accept, listed in the PR body with license and reason.
-- CI job ids (`lint`, `test`, `build`, `gitleaks`, later `e2e`, `perf`, `sast`, `deps`, `spec-freeze`)
+- CI job ids (`lint`, `test`, `build`, `e2e`, `gitleaks`, later `perf`, `sast`, `deps`, `spec-freeze`)
   are stable: the `main` ruleset and Vercel's Deployment Checks match them by name.
 - Errors: never swallow; typed errors at boundaries.
 - Logging: structured, no personal data.
-- Tests: behaviour-level; one assertion concept per test; no sleeps.
+- Tests: behaviour-level; one assertion concept per test; no sleeps. Two seams only: the built site in
+  a browser (`tests/e2e`, presence and wiring, never WebGL output) and the World model stepped under
+  Node (`tests/model`, fixed timesteps). No jsdom, no component tests.
+- Pre-commit (`.githooks/pre-commit`) formats and lints staged files and runs gitleaks when it is
+  installed; the CI `gitleaks` job is the gate. Skip it only with `git commit --no-verify` and a reason.
 - Commits: conventional commits, scope = module; one task per commit.
 - Docs touched by a change are updated in the same commit.
 

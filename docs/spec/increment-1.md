@@ -503,7 +503,8 @@ art inside this repository; the prior art for the second seam is ADR 0005's repr
 Puck feel in Rapier under Node.
 
 1. **The build and its output in a browser.** The site is built as for production; Playwright
-   drives the built output in headless Chromium, Firefox and WebKit. This seam covers the Title
+   drives the built output in automated Chromium, Firefox and WebKit, headless where WebGL works
+   without a GPU, otherwise under a virtual display (Firefox). This seam covers the Title
    Screen, the Exhibit Panel from the list, the Fallback Page, script-disabled behaviour, focus,
    reduced motion and coarse-pointer emulation, meta tags, the request log (no third-party
    requests, no Exhibit media before a Panel), entry into the World and the Escape round trip. The

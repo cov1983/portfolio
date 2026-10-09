@@ -2,26 +2,35 @@
 # targets, so a green `make verify` locally means a green `lint` and `test` job.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup format format-check lint typecheck test coverage-ratchet verify build dev preview
+.PHONY: help setup browsers format format-check lint typecheck test coverage-ratchet test-e2e verify build dev preview
 
 PNPM ?= pnpm
+# Headed Firefox (playwright.config.ts) needs a display: a virtual one where xvfb-run exists.
+XVFB_RUN := $(shell command -v xvfb-run >/dev/null 2>&1 && echo 'xvfb-run -a')
 
 help:
 	@echo "Targets:"
-	@echo "  make setup         install dependencies from the lockfile"
-	@echo "  make verify        format check + lint + typecheck + unit tests; must pass before any commit"
+	@echo "  make setup         install dependencies, point git at .githooks, then make browsers"
+	@echo "  make browsers      Playwright browsers with their OS packages (sudo on a host); CI runs this too"
+	@echo "  make verify        format check + lint + typecheck + unit and model tests; must pass before any commit"
 	@echo "  make format        rewrite files with Prettier"
 	@echo "  make format-check  fail on unformatted files"
 	@echo "  make lint          ESLint, warnings are errors"
 	@echo "  make typecheck     tsc --noEmit for src and for the config files"
-	@echo "  make test          Vitest with coverage against the thresholds in vitest.config.ts"
+	@echo "  make test          Vitest projects unit and model, with coverage against the thresholds in vitest.config.ts"
 	@echo "  make coverage-ratchet  make test with COVERAGE_RATCHET=1: raises the thresholds to the measured coverage"
+	@echo "  make test-e2e      build, then Playwright in Chromium, Firefox and WebKit against dist/"
 	@echo "  make build         production build to dist/"
 	@echo "  make dev           Vite dev server"
 	@echo "  make preview       serve dist/ as production would"
 
 setup:
 	$(PNPM) install --frozen-lockfile
+	git config core.hooksPath .githooks
+	$(MAKE) browsers
+
+browsers:
+	$(PNPM) exec playwright install --with-deps
 
 format:
 	$(PNPM) exec prettier --write .
@@ -41,6 +50,9 @@ test:
 
 coverage-ratchet:
 	COVERAGE_RATCHET=1 $(MAKE) test
+
+test-e2e: build
+	$(XVFB_RUN) $(PNPM) exec playwright test
 
 verify: format-check lint typecheck test
 
