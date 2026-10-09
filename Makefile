@@ -1,30 +1,54 @@
-# Single entry points for humans, agents and CI. All targets are stubs until the stack is
-# chosen in Phase 1 and wired in Phase 0b (docs/workflow-guide.md §4.0.2).
+# Single entry points for humans, agents and CI (docs/workflow-guide.md §4.0.2). CI calls these
+# targets, so a green `make verify` locally means a green `lint` and `test` job.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup verify test build dev
+.PHONY: help setup format format-check lint typecheck test coverage-ratchet verify build dev preview
 
-NOT_CONFIGURED = echo "✗ make $@: not configured — stack not chosen yet (see docs/workflow-guide.md §4.0.2 Phase 0b)" >&2; exit 1
+PNPM ?= pnpm
 
 help:
-	@echo "Targets (all stubs until Phase 0b):"
-	@echo "  make setup    install toolchain and dependencies"
-	@echo "  make verify   lint + typecheck + unit tests; must pass before any commit"
-	@echo "  make test     full test suite"
-	@echo "  make build    production build"
-	@echo "  make dev      local dev server"
+	@echo "Targets:"
+	@echo "  make setup         install dependencies from the lockfile"
+	@echo "  make verify        format check + lint + typecheck + unit tests; must pass before any commit"
+	@echo "  make format        rewrite files with Prettier"
+	@echo "  make format-check  fail on unformatted files"
+	@echo "  make lint          ESLint, warnings are errors"
+	@echo "  make typecheck     tsc --noEmit for src and for the config files"
+	@echo "  make test          Vitest with coverage against the thresholds in vitest.config.ts"
+	@echo "  make coverage-ratchet  make test with COVERAGE_RATCHET=1: raises the thresholds to the measured coverage"
+	@echo "  make build         production build to dist/"
+	@echo "  make dev           Vite dev server"
+	@echo "  make preview       serve dist/ as production would"
 
 setup:
-	@$(NOT_CONFIGURED)
+	$(PNPM) install --frozen-lockfile
 
-verify:
-	@$(NOT_CONFIGURED)
+format:
+	$(PNPM) exec prettier --write .
+
+format-check:
+	$(PNPM) exec prettier --check .
+
+lint:
+	$(PNPM) exec eslint . --max-warnings 0
+
+typecheck:
+	$(PNPM) exec tsc --noEmit -p tsconfig.json
+	$(PNPM) exec tsc --noEmit -p tsconfig.node.json
 
 test:
-	@$(NOT_CONFIGURED)
+	$(PNPM) exec vitest run --coverage
+
+coverage-ratchet:
+	COVERAGE_RATCHET=1 $(MAKE) test
+
+verify: format-check lint typecheck test
 
 build:
-	@$(NOT_CONFIGURED)
+	$(PNPM) exec vite build
 
 dev:
-	@$(NOT_CONFIGURED)
+	$(PNPM) exec vite
+
+preview:
+	$(PNPM) exec vite preview

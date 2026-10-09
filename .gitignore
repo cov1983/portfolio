@@ -2,3 +2,12 @@
 .claude/audit.log
 .claude/sessions.log
 .claude/settings.local.json
+
+# toolchain output (Phase 0b)
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+.lighthouse/
+.pnpm-store/
