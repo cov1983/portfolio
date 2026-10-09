@@ -61,12 +61,13 @@ his development skills. Status: **toolchain wired, Phase 0b in progress**. The s
 - TypeScript strict plus `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`; no `any`, no
   non-null assertion, no `eslint-disable` without a comment naming the issue.
 - Coverage ratchet: raise the coverage floor with `make coverage-ratchet` and commit the result; it
-  never moves on its own. Lowering one needs an ADR. Scope is `src/**` minus `main.tsx` and components:
-  rendering is proven by the Playwright seam, the ratchet measures model code and instruments.
+  never moves on its own. Lowering one needs an ADR. Scope is `src/**` minus `main.tsx` and components,
+  plus the perf evaluator `scripts/perf/budget.ts`: rendering is proven by the Playwright seam, the
+  ratchet measures model code and instruments.
 - Dependencies: exact versions in `package.json`, lockfile committed; a new dependency is the newest
   version the whole toolchain's peer ranges accept, listed in the PR body with license and reason.
 - CI job ids (`lint`, `test`, `build`, `e2e`, `perf`, `sast`, `deps`, `gitleaks`, `spec-freeze`, `ai-review`)
-  are stable: the `main` ruleset and Vercel's Deployment Checks match them by name.
+  are stable: the `main` ruleset and Vercel's Deployment Checks match the required ones by name.
 - Errors: never swallow; typed errors at boundaries.
 - Logging: structured, no personal data.
 - Tests: behaviour-level; one assertion concept per test; no sleeps. Two seams only: the built site in

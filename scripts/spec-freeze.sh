@@ -1,18 +1,26 @@
 #!/usr/bin/env bash
 # spec-freeze gate (CLAUDE.md Boundaries, docs/spec/README.md): a frozen spec changes only through
 # commits whose subject starts with `amend:`. Usage: scripts/spec-freeze.sh BASE HEAD, where BASE is
-# the merge base of the pull request and HEAD its last commit. For every docs/spec/*.md that differs
-# between the two, the BASE version decides whether the file is frozen (its first line carries
-# `Status: approved` or `Status: amended`); a frozen file may only be touched by `amend:` commits.
-# Merge commits are skipped: merging main into a branch is not an edit. Pure git, no network.
+# the pull request's target (CI passes the tip of main) and HEAD its last commit; the script works
+# from their merge base. For every docs/spec/*.md that differs between the merge base and HEAD, the
+# merge-base version decides whether the file is frozen (its first line carries `Status: approved`
+# or `Status: amended`); a frozen file may only be touched by `amend:` commits. Merge commits are
+# skipped: merging main into a branch is not an edit. Pure git, no network. Both refs must resolve,
+# otherwise the gate exits 2 instead of reporting an empty diff as green.
 set -euo pipefail
 
 if [ "$#" -ne 2 ]; then
   echo "usage: $0 BASE HEAD" >&2
   exit 2
 fi
-base=$1
+for ref in "$1" "$2"; do
+  if ! git rev-parse --verify --quiet "$ref^{commit}" >/dev/null; then
+    echo "spec-freeze: '$ref' is not a commit in this clone (shallow checkout?)" >&2
+    exit 2
+  fi
+done
 head=$2
+base=$(git merge-base "$1" "$head")
 
 violations=0
 checked=0
@@ -38,7 +46,7 @@ while IFS= read -r file; do
         ;;
     esac
   done < <(git rev-list --no-merges "$base..$head" -- "$file")
-done < <(git diff --name-only --no-renames "$base...$head" -- 'docs/spec/*.md')
+done < <(git diff --name-only --no-renames "$base" "$head" -- 'docs/spec/*.md')
 
 if [ "$violations" -gt 0 ]; then
   echo "spec-freeze: $violations commit(s) edit a frozen spec without an amend: subject" >&2

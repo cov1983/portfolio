@@ -274,9 +274,10 @@ majors. One decision per ADR, so it is separate from 0006.
 - **Chrome**: chrome-launcher finds the runner's Chrome in CI. Elsewhere `CHROME_PATH` names one
   (Playwright's Chromium after `make browsers`; `@playwright/test` exports no launcher, so the planned
   automatic fallback does not exist) and `CHROME_NO_SANDBOX=1` adds `--no-sandbox` inside a
-  container, where Chrome's sandbox cannot start. Measured on the skeleton in the devcontainer:
-  Title Screen interactive ≈ 0.6 s, World playable ≈ 0.55 s, 308 KB until playable; the forced
-  breach printed both runs and exited 1.
+  container, where Chrome's sandbox cannot start; `--window-size=1350,940` gives the headless window
+  a desktop size since screen emulation is off. Measured on the skeleton in the devcontainer: Title
+  Screen interactive ≈ 0.6 s, World playable ≈ 0.55 s, 308 KB until playable; the forced breach
+  printed both runs and exited 1; a taken port prints the three lines with the error and exits 1.
 - **`ai-review` sets `track_progress: true` next to `use_sticky_comment: true`** and the review is
   written into the tracking comment: with a `prompt` the action runs in agent mode and creates no
   tracking comment (verified in the action source, v1.0.248), so `use_sticky_comment` alone is a
@@ -293,6 +294,13 @@ majors. One decision per ADR, so it is separate from 0006.
   while this PR was built. CodeQL default setup was already off, so `sast` uploads.
 - Pinned: lighthouse 13.5.0, chrome-launcher 1.2.2 (both Apache-2.0); codeql-action v4.38.3,
   dependency-review-action v5.0.0, claude-code-action v1.0.248 by commit SHA.
+- From `/code-review`: `spec-freeze.sh` verifies both refs and works from their merge base, so an
+  unresolvable ref exits 2 instead of a green empty diff (CI passes main's tip as BASE); the
+  reviewer may read CI results (`gh pr checks`, a guide §7.7 input); the evaluator
+  `scripts/perf/budget.ts` joined the coverage ratchet scope (CLAUDE.md updated); one `isRecord`,
+  one `LINE_SPECS` table behind `evaluateBudget` and `failedReport`; a failed run logs the stack to
+  stderr. Dismissed: docs in one trailing commit (the plan's commit split; the checks table
+  describes the final shape), three `perf` directories (named by the plan of record).
 
 ---
 

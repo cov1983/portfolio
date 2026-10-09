@@ -4,7 +4,7 @@ import { defineConfig } from 'vitest/config'
 // spec's second seam (docs/spec/increment-1.md, Testing decisions): the World stepped with Rapier
 // and no renderer. The first seam, the built site in a browser, is Playwright (playwright.config.ts,
 // tests/e2e). React rendering is proven there, so the coverage ratchet below measures only model
-// code and instruments, never components.
+// code and instruments (plus the perf budget evaluator under scripts/), never components.
 export default defineConfig({
   test: {
     projects: [
@@ -26,7 +26,7 @@ export default defineConfig({
     ],
     coverage: {
       provider: 'v8',
-      include: ['src/**/*.{ts,tsx}'],
+      include: ['src/**/*.{ts,tsx}', 'scripts/perf/budget.ts'],
       exclude: ['src/main.tsx', 'src/App.tsx', 'src/vite-env.d.ts', '**/*.test.*'],
       reporter: ['text', 'lcov'],
       // Ratchet: the floor never moves on its own. `make coverage-ratchet` sets COVERAGE_RATCHET=1,

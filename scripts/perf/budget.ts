@@ -14,16 +14,17 @@ export type Throttling = {
   cpuSlowdownMultiplier: number
 }
 
-export type Budget = {
-  throttling: Throttling
-  limits: {
-    titleScreenInteractiveMs: number
-    worldPlayableMs: number
-    downloadUntilPlayableBytes: number
-  }
+export type Limits = {
+  titleScreenInteractiveMs: number
+  worldPlayableMs: number
+  downloadUntilPlayableBytes: number
 }
 
+export type Budget = { throttling: Throttling; limits: Limits }
+
 export type BudgetLineId = 'title-screen-interactive' | 'world-playable' | 'download-until-playable'
+
+export type Unit = 'ms' | 'B'
 
 export type BudgetLine = {
   id: BudgetLineId
@@ -31,7 +32,7 @@ export type BudgetLine = {
   /** null when the run produced no value for this line; the note says why. */
   measured: number | null
   limit: number
-  unit: 'ms' | 'B'
+  unit: Unit
   pass: boolean
   note?: string
 }
@@ -42,6 +43,24 @@ export type BudgetReport = { pass: boolean; lines: BudgetLine[] }
 export class BudgetFileError extends Error {
   override readonly name = 'BudgetFileError'
 }
+
+/** The three lines of the budget, in report order; the limit names the key in perf/budget.json. */
+const LINE_SPECS: readonly { id: BudgetLineId; label: string; unit: Unit; limit: keyof Limits }[] =
+  [
+    {
+      id: 'title-screen-interactive',
+      label: 'Title Screen interactive',
+      unit: 'ms',
+      limit: 'titleScreenInteractiveMs',
+    },
+    { id: 'world-playable', label: 'World playable', unit: 'ms', limit: 'worldPlayableMs' },
+    {
+      id: 'download-until-playable',
+      label: 'Download until playable',
+      unit: 'B',
+      limit: 'downloadUntilPlayableBytes',
+    },
+  ]
 
 const THROTTLING_KEYS = [
   'rttMs',
@@ -60,7 +79,8 @@ const LIMIT_KEYS = [
 /** Resources that the download line excludes: Exhibit media is outside the budget (spec). */
 const EXCLUDED_RESOURCE_TYPES = new Set(['Image', 'Media'])
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+/** A plain object (not an array): the shape every Lighthouse node is narrowed through. */
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
@@ -94,16 +114,19 @@ export function parseBudget(raw: unknown): Budget {
   }
 }
 
-function line(
-  id: BudgetLineId,
-  label: string,
-  measured: number | null,
-  limit: number,
-  unit: 'ms' | 'B',
-  note?: string,
-): BudgetLine {
-  const base = { id, label, measured, limit, unit, pass: measured !== null && measured <= limit }
-  return note === undefined ? base : { ...base, note }
+type Measurement = { value: number | null; note?: string }
+
+function line(spec: (typeof LINE_SPECS)[number], limits: Limits, m: Measurement): BudgetLine {
+  const limit = limits[spec.limit]
+  const base = {
+    id: spec.id,
+    label: spec.label,
+    measured: m.value,
+    limit,
+    unit: spec.unit,
+    pass: m.value !== null && m.value <= limit,
+  }
+  return m.note === undefined ? base : { ...base, note: m.note }
 }
 
 function auditOf(lhr: unknown, id: string): Record<string, unknown> | undefined {
@@ -118,10 +141,18 @@ function itemsOf(audit: Record<string, unknown> | undefined): unknown[] | undefi
   return Array.isArray(items) ? items : undefined
 }
 
+/** Time to interactive from the `interactive` audit (still computed in Lighthouse 13, only hidden). */
+function titleScreenInteractive(lhr: unknown): Measurement {
+  const value = auditOf(lhr, 'interactive')?.['numericValue']
+  return typeof value === 'number'
+    ? { value }
+    : { value: null, note: 'audit "interactive" has no numericValue' }
+}
+
 /** Start time of the world-playable mark in ms from navigation start, or null with the reason. */
-function worldPlayableAt(lhr: unknown): { at: number | null; note?: string } {
+function worldPlayable(lhr: unknown): Measurement {
   const items = itemsOf(auditOf(lhr, 'user-timings'))
-  if (items === undefined) return { at: null, note: 'audit "user-timings" is missing' }
+  if (items === undefined) return { value: null, note: 'audit "user-timings" is missing' }
   for (const item of items) {
     if (
       isRecord(item) &&
@@ -129,10 +160,10 @@ function worldPlayableAt(lhr: unknown): { at: number | null; note?: string } {
       item['timingType'] === 'Mark' &&
       typeof item['startTime'] === 'number'
     ) {
-      return { at: item['startTime'] }
+      return { value: item['startTime'] }
     }
   }
-  return { at: null, note: `mark "${WORLD_PLAYABLE_MARK}" not recorded` }
+  return { value: null, note: `mark "${WORLD_PLAYABLE_MARK}" not recorded` }
 }
 
 /**
@@ -141,90 +172,43 @@ function worldPlayableAt(lhr: unknown): { at: number | null; note?: string } {
  * navigation start; the main document is that earliest request, so the offset is far below the
  * resolution that matters for a MiB-scale line.
  */
-function downloadUntil(lhr: unknown, markAt: number): { bytes: number | null; note?: string } {
+function downloadUntilPlayable(lhr: unknown, mark: Measurement): Measurement {
+  if (mark.value === null) return { value: null, note: 'needs the world-playable mark' }
   const items = itemsOf(auditOf(lhr, 'network-requests'))
-  if (items === undefined) return { bytes: null, note: 'audit "network-requests" is missing' }
+  if (items === undefined) return { value: null, note: 'audit "network-requests" is missing' }
   let bytes = 0
   for (const item of items) {
     if (!isRecord(item)) continue
     const { transferSize, networkEndTime, resourceType } = item
     if (typeof transferSize !== 'number' || typeof networkEndTime !== 'number') continue
-    if (networkEndTime > markAt) continue
+    if (networkEndTime > mark.value) continue
     if (typeof resourceType === 'string' && EXCLUDED_RESOURCE_TYPES.has(resourceType)) continue
     bytes += transferSize
   }
-  return { bytes }
+  return { value: bytes }
 }
 
 /** Evaluates the three budget lines against a Lighthouse result (`lhr`, taken as untrusted). */
 export function evaluateBudget(lhr: unknown, budget: Budget): BudgetReport {
-  const { limits } = budget
-
-  const interactive = auditOf(lhr, 'interactive')?.['numericValue']
-  const titleScreen = line(
-    'title-screen-interactive',
-    'Title Screen interactive',
-    typeof interactive === 'number' ? interactive : null,
-    limits.titleScreenInteractiveMs,
-    'ms',
-    typeof interactive === 'number' ? undefined : 'audit "interactive" has no numericValue',
-  )
-
-  const mark = worldPlayableAt(lhr)
-  const playable = line(
-    'world-playable',
-    'World playable',
-    mark.at,
-    limits.worldPlayableMs,
-    'ms',
-    mark.note,
-  )
-
-  const download =
-    mark.at === null
-      ? { bytes: null, note: 'needs the world-playable mark' }
-      : downloadUntil(lhr, mark.at)
-  const until = line(
-    'download-until-playable',
-    'Download until playable',
-    download.bytes,
-    limits.downloadUntilPlayableBytes,
-    'B',
-    download.note,
-  )
-
-  const lines = [titleScreen, playable, until]
+  const mark = worldPlayable(lhr)
+  const measurements: Record<BudgetLineId, Measurement> = {
+    'title-screen-interactive': titleScreenInteractive(lhr),
+    'world-playable': mark,
+    'download-until-playable': downloadUntilPlayable(lhr, mark),
+  }
+  const lines = LINE_SPECS.map((spec) => line(spec, budget.limits, measurements[spec.id]))
   return { pass: lines.every((l) => l.pass), lines }
 }
 
 /** The report for a run that produced no result at all: every line fails with the same note. */
 export function failedReport(budget: Budget, note: string): BudgetReport {
-  const { limits } = budget
   return {
     pass: false,
-    lines: [
-      line(
-        'title-screen-interactive',
-        'Title Screen interactive',
-        null,
-        limits.titleScreenInteractiveMs,
-        'ms',
-        note,
-      ),
-      line('world-playable', 'World playable', null, limits.worldPlayableMs, 'ms', note),
-      line(
-        'download-until-playable',
-        'Download until playable',
-        null,
-        limits.downloadUntilPlayableBytes,
-        'B',
-        note,
-      ),
-    ],
+    lines: LINE_SPECS.map((spec) => line(spec, budget.limits, { value: null, note })),
   }
 }
 
-function amount(value: number, unit: 'ms' | 'B'): string {
+function amount(value: number, unit: Unit): string {
   return unit === 'ms' ? `${String(Math.round(value))} ms` : `${value.toLocaleString('en-US')} B`
 }
 

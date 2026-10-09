@@ -8,6 +8,7 @@ import {
   formatReport,
   parseBudget,
   type Budget,
+  type BudgetLineId,
 } from './budget.ts'
 
 const budget: Budget = {
@@ -41,7 +42,7 @@ function lhr(opts: { interactive?: number; markAt?: number; requests?: Request[]
   }
 }
 
-function lineById(report: ReturnType<typeof evaluateBudget>, id: string) {
+function lineById(report: ReturnType<typeof evaluateBudget>, id: BudgetLineId) {
   const found = report.lines.find((l) => l.id === id)
   if (found === undefined) throw new Error(`no line ${id}`)
   return found

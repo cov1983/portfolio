@@ -15,12 +15,13 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 
 import { launch } from 'chrome-launcher'
 import lighthouse from 'lighthouse'
-import { preview } from 'vite'
+import { preview, type PreviewServer } from 'vite'
 
 import {
   evaluateBudget,
   failedReport,
   formatReport,
+  isRecord,
   parseBudget,
   type Budget,
   type BudgetReport,
@@ -39,10 +40,6 @@ const CHROME_FLAGS = [
   '--window-size=1350,940',
   ...(process.env['CHROME_NO_SANDBOX'] === '1' ? ['--no-sandbox'] : []),
 ]
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
@@ -85,25 +82,39 @@ async function attempt(run: number, budget: Budget): Promise<BudgetReport> {
     await writeFile(`${OUT_DIR}/lhr-${String(run)}.json`, JSON.stringify(lhr))
     report = evaluateBudget(lhr, budget)
   } catch (error) {
+    console.error(error) // the stack, for the log; the lines below carry the message
     report = failedReport(budget, `error: ${messageOf(error)}`)
   }
-  console.log(
+  printReport(
     `perf budget, run ${String(run)} of ${String(RUNS)}: ${report.pass ? 'pass' : 'FAIL'}`,
+    report,
   )
-  for (const line of formatReport(report)) console.log(line)
   return report
+}
+
+function printReport(heading: string, report: BudgetReport): void {
+  console.log(heading)
+  for (const line of formatReport(report)) console.log(line)
 }
 
 async function main(): Promise<number> {
   const budget = parseBudget(JSON.parse(await readFile(BUDGET_FILE, 'utf8')))
   await rm(OUT_DIR, { recursive: true, force: true }) // no stale result from an earlier run
   await mkdir(OUT_DIR, { recursive: true })
-  const server = await preview({ preview: { port: PORT, strictPort: true }, logLevel: 'error' })
+  let server: PreviewServer
+  try {
+    server = await preview({ preview: { port: PORT, strictPort: true }, logLevel: 'error' })
+  } catch (error) {
+    // No run possible (the port is taken, dist/ unreadable): still all three lines, then exit 1.
+    console.error(error)
+    printReport('perf budget: no run', failedReport(budget, `error: ${messageOf(error)}`))
+    return 1
+  }
   try {
     let report = await attempt(1, budget)
-    for (let run = 2; run <= RUNS && !report.pass; run += 1) {
+    if (!report.pass) {
       console.log('retrying once')
-      report = await attempt(run, budget)
+      report = await attempt(2, budget)
     }
     return report.pass ? 0 : 1
   } finally {
