@@ -1,6 +1,7 @@
-# Phase 0b CI. Job ids (lint, test, build, gitleaks) are the required status checks on main and stay
-# stable across phases; Vercel Deployment Checks match them by name as well (ADR 0006). Every job runs
-# the same make targets a developer runs locally, so a green `make verify` predicts a green pipeline.
+# Phase 0b CI. Job ids stay stable across phases: lint, test and gitleaks are the required status
+# checks on main today; build joins them when the ruleset is updated (Phase 0b PR 4), and Vercel's
+# Deployment Checks match the same names. Every job runs the make targets a developer runs locally,
+# so a green `make verify` predicts a green pipeline.
 name: ci
 
 on:
@@ -72,12 +73,15 @@ jobs:
 
       - name: Compressed asset sizes (budget gate lands with the perf job)
         run: |
+          shopt -s nullglob
           total=0
+          sizes=$(mktemp)
           for f in dist/assets/*; do
             size=$(gzip -9c "$f" | wc -c)
             total=$((total + size))
-            printf '%10d  %s\n' "$size" "$f"
-          done | sort -rn
+            printf '%10d  %s\n' "$size" "$f" >> "$sizes"
+          done
+          sort -rn "$sizes"
           echo "total gzip bytes: $total"
 
   gitleaks:
@@ -91,3 +95,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: 'false'
+          GITLEAKS_VERSION: '8.30.1' # same binary as .devcontainer/Dockerfile
