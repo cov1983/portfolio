@@ -14,8 +14,10 @@ application code starts with the Phase 3 tickets.
   `devcontainer up --workspace-folder .`. The image (`.devcontainer/`) has Node 24, pnpm, make, jq
   and gitleaks; `make setup` runs on create.
 - **Host**: Node 24 (`.nvmrc`), `corepack enable` (pnpm comes from `packageManager`), then
-  `make setup`.
-- Then: `make verify` (format check, lint, types, unit tests), `make dev` (dev server),
+  `make setup` (installs the Playwright browsers too; their OS packages need sudo on a host).
+- Then: `make verify` (format check, lint, types, unit and headless-physics tests), `make test-e2e`
+  (production build driven in Chromium, Firefox and WebKit with axe; Firefox runs headed, under
+  Xvfb where `xvfb-run` exists, because headless Firefox has no WebGL), `make dev` (dev server),
   `make build` + `make preview` (production build). `make help` lists everything.
 
 ## Where to look
