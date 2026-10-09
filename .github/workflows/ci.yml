@@ -159,6 +159,30 @@ jobs:
         with:
           category: /language:javascript-typescript
 
+  deps:
+    name: deps
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Dependency review of the lockfile change (blocking; needs the repo's Dependency graph)
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure
+
+      - uses: ./.github/actions/setup
+
+      - name: pnpm audit, high and above (non-blocking here; weekly in audit.yml)
+        run: |
+          if ! pnpm audit --audit-level=high; then
+            echo "::warning::pnpm audit reports vulnerabilities of severity high or above; see this step's log"
+          fi
+
   gitleaks:
     name: gitleaks
     runs-on: ubuntu-latest
