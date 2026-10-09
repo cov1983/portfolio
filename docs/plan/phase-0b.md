@@ -292,6 +292,8 @@ majors. One decision per ADR, so it is separate from 0006.
   it), the red run is the notification. The PR-side audit step only warns.
 - **Dependency graph** was off on the repository (dependency-review needs it); the Owner enabled it
   while this PR was built. CodeQL default setup was already off, so `sast` uploads.
+- **The download limit is 4 MB decimal, 4,000,000 bytes** (Owner, 2026-10-10): the spec's "≤ 4 MB
+  compressed" is read as decimal megabytes, not the 4 MiB (4,194,304 B) the PR 3 text above says.
 - Pinned: lighthouse 13.5.0, chrome-launcher 1.2.2 (both Apache-2.0); codeql-action v4.38.3,
   dependency-review-action v5.0.0, claude-code-action v1.0.248 by commit SHA.
 - From `/code-review`: `spec-freeze.sh` verifies both refs and works from their merge base, so an

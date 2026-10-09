@@ -11,6 +11,6 @@
   "limits": {
     "titleScreenInteractiveMs": 2000,
     "worldPlayableMs": 5000,
-    "downloadUntilPlayableBytes": 4194304
+    "downloadUntilPlayableBytes": 4000000
   }
 }

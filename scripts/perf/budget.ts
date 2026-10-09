@@ -170,7 +170,7 @@ function worldPlayable(lhr: unknown): Measurement {
  * Bytes transferred by every request that finished before the mark, Exhibit media excluded.
  * Lighthouse reports request times relative to the earliest request and the mark relative to
  * navigation start; the main document is that earliest request, so the offset is far below the
- * resolution that matters for a MiB-scale line.
+ * resolution that matters for a megabyte-scale line.
  */
 function downloadUntilPlayable(lhr: unknown, mark: Measurement): Measurement {
   if (mark.value === null) return { value: null, note: 'needs the world-playable mark' }
