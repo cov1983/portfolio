@@ -254,6 +254,12 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Diagnosis (fix/ai-review-output): the first live run ended with `result is_error:true` after
+          # 415 ms, zero tokens and no tool call, and the action's default output drops the error text.
+          # Full output prints every SDK message: the init message (model, tool and MCP server names),
+          # the assistant and result messages, and tool results, which here can only be the public PR,
+          # diff, checks and issue text. ANTHROPIC_API_KEY and GITHUB_TOKEN are masked secrets.
+          show_full_output: true
           track_progress: true
           use_sticky_comment: true
           prompt: |
