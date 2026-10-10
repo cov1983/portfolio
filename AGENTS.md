@@ -79,16 +79,16 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); `src/` holds only
 - Third-party code: an action's inputs are checked against its source for the mode it runs in, not its
   README; a vendored skill is reviewed against Boundaries at install or update (`docs/agents/skill-overrides.md`).
 - Generated files: whatever an installer, `make setup`, a build or a container start leaves behind is
-  committed or gitignored in the same PR; `lint`, `build` and `e2e` fail on a dirty worktree (ADR 0008).
-- Shell gates (`scripts/*.sh`, hooks) ship with a passing and a failing case (`make test-shell`) before their
-  CI job exists; a fixture for a secret scanner looks like a real random secret, sequential text is ignored.
+  committed or gitignored in the same PR; every CI job that runs project code fails on a dirty worktree (ADR 0008).
+- Shell gates (a script whose decision blocks: the guard hook, `scripts/spec-freeze.sh`, any later `scripts/*.sh`
+  gate) ship with a passing and a failing case (`make test-shell`) before their CI job exists.
 - CI job ids (`lint`, `test`, `build`, `e2e`, `perf`, `sast`, `deps`, `gitleaks`, `spec-freeze`, `ai-review`)
   are stable: the `main` ruleset and Vercel's Deployment Checks match the required ones by name.
-- Errors: never swallow; typed errors at boundaries.
-- Logging: structured, no personal data.
+- Errors: never swallow; typed errors at boundaries. Logging: structured, no personal data.
 - Tests: behaviour-level; one assertion concept per test; no sleeps. Two seams only: the built site in
   a browser (`tests/e2e`, presence and wiring, never WebGL output) and the World model stepped under
-  Node (`tests/model`, fixed timesteps). No jsdom, no component tests.
+  Node (`tests/model`, fixed timesteps). No jsdom, no component tests. A fixture for a secret scanner
+  looks like a real random secret: sequential text is silently ignored.
 - Pre-commit (`.githooks/pre-commit`) formats and lints staged files and runs gitleaks when it is
   installed; the CI `gitleaks` job is the gate. Skip it only with `git commit --no-verify` and a reason.
 - Commits: conventional commits, scope = module; one task per commit.

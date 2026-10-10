@@ -1,5 +1,5 @@
-Plan the ticket `$ARGUMENTS` (a GitHub issue number in `cov1983/portfolio`). Plan mode only: do not
-edit files, do not commit.
+Plan the ticket `$ARGUMENTS` (a GitHub issue number in `cov1983/portfolio`). Plan mode until the
+Owner approves: no file edits and no commits before step 6 says so.
 
 1. Read `docs/constitution.md`, `CLAUDE.md`, `GLOSSARY.md` and `docs/agents/skill-overrides.md`. Use
    the glossary's vocabulary in everything you write.

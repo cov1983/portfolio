@@ -7,6 +7,10 @@ test strategy, observability plan, security considerations, risks, rollout plan.
 
 Approval is a commit `plan: approve <feature>`. Tickets are derived from the plan with `/to-tickets`.
 
+Process plans (guide §4.0.3: Phase 0b, the retro folds) live here too, accepted by the Owner in plan
+mode without a `plan: approve` commit. A single ticket's execution plan is a comment on the ticket,
+not a file here (`CLAUDE.md`, Working protocol).
+
 Index
 - [Phase 0b — harden the repository](phase-0b.md) — process plan (guide §4.0.2), Owner-accepted 2026-10-09;
   four sequential PRs with the Owner decisions folded in and each PR's outcome recorded. Not a feature

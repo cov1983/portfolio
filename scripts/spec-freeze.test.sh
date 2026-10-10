@@ -5,43 +5,46 @@
 # under pipefail) and checks the gate's three answers: a plain commit on a frozen spec fails, an
 # `amend:` commit passes, a new draft file passes. Every shell gate ships with a passing and a
 # failing case before its CI job exists (retro 2026-10-10, PR 3). Needs only git.
-set -uo pipefail
+# The setup aborts on the first error (-e); the cases then run with -e off, since a failing gate is
+# an expected outcome there.
+set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 gate="$here/spec-freeze.sh"
 scratch="$(mktemp -d)"
 trap 'rm -rf "$scratch"' EXIT
 
-git_() { git -C "$scratch" -c user.name=test -c user.email=test@example.invalid -c commit.gpgsign=false "$@"; }
-commit() { git_ add -A >/dev/null && git_ commit -q -m "$1"; }
+scratch_git() { git -C "$scratch" -c user.name=test -c user.email=test@example.invalid -c commit.gpgsign=false "$@"; }
+commit() { scratch_git add -A >/dev/null && scratch_git commit -q -m "$1"; }
 
-git_ init -q -b main
+scratch_git init -q -b main
 mkdir -p "$scratch/docs/spec"
 { echo 'Status: approved'; echo; seq -f 'line %g of the frozen spec' 1 2000; } >"$scratch/docs/spec/a.md"
 commit 'spec: approve a'
-base="$(git_ rev-parse HEAD)"
+base="$(scratch_git rev-parse HEAD)"
 
+set +e
 fail=0
 run_gate() { (cd "$scratch" && "$gate" "$base" "$(git rev-parse HEAD)" >/dev/null 2>&1); echo $?; }
-expect() { # $1 = case name, $2 = expected exit code
+check() { # $1 = case name, $2 = expected exit code
   rc="$(run_gate)"
   if [[ "$rc" == "$2" ]]; then echo "PASS  spec-freeze: $1 (exit $rc)"; else echo "FAIL  spec-freeze: $1: expected exit $2, got $rc"; fail=1; fi
-  git_ checkout -q "$base"
+  scratch_git checkout -q "$base"
 }
 
-git_ checkout -q -b plain-edit
+scratch_git checkout -q -b plain-edit
 echo 'an unreviewed sentence' >>"$scratch/docs/spec/a.md"
 commit 'docs: tweak the spec'
-expect 'a plain commit on a frozen spec fails' 1
+check 'a plain commit on a frozen spec fails' 1
 
-git_ checkout -q -b amend-edit
+scratch_git checkout -q -b amend-edit
 echo 'a reviewed sentence' >>"$scratch/docs/spec/a.md"
 commit 'amend: a reviewed sentence'
-expect 'an amend: commit on a frozen spec passes' 0
+check 'an amend: commit on a frozen spec passes' 0
 
-git_ checkout -q -b new-draft
+scratch_git checkout -q -b new-draft
 printf 'Status: draft\n\nnew spec\n' >"$scratch/docs/spec/b.md"
 commit 'spec: draft b'
-expect 'a new draft spec passes' 0
+check 'a new draft spec passes' 0
 
 exit "$fail"

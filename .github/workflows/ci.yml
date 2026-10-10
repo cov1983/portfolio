@@ -9,7 +9,8 @@
 #   ai-review                           (needs lint, test, build; pull requests only)
 #
 # Every job that runs project code runs the make target a developer runs locally, so a green
-# `make verify` predicts a green pipeline.
+# `make verify` predicts a green pipeline, and ends with the clean-worktree action: a file the job
+# generated is committed or gitignored in the same PR (ADR 0008).
 name: ci
 
 on:
@@ -53,10 +54,7 @@ jobs:
       - name: Hook smoke tests and the spec-freeze gate test
         run: make test-shell
 
-      - name: No untracked or modified files left behind (ADR 0008)
-        run: |
-          status=$(git status --porcelain)
-          if [ -n "$status" ]; then printf '%s\n' "$status"; echo "::error::the job left files that are neither committed nor gitignored"; exit 1; fi
+      - uses: ./.github/actions/clean-worktree
 
   test:
     name: test
@@ -68,6 +66,8 @@ jobs:
 
       - name: Unit tests with coverage (ratchet thresholds in vitest.config.ts)
         run: make test
+
+      - uses: ./.github/actions/clean-worktree
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
@@ -100,10 +100,7 @@ jobs:
           sort -rn "$sizes"
           echo "total gzip bytes: $total"
 
-      - name: No untracked or modified files left behind (ADR 0008)
-        run: |
-          status=$(git status --porcelain)
-          if [ -n "$status" ]; then printf '%s\n' "$status"; echo "::error::the job left files that are neither committed nor gitignored"; exit 1; fi
+      - uses: ./.github/actions/clean-worktree
 
   e2e:
     name: e2e
@@ -119,10 +116,7 @@ jobs:
       - name: Built site in Chromium, Firefox and WebKit with axe (spec seam 1)
         run: make test-e2e
 
-      - name: No untracked or modified files left behind (ADR 0008)
-        run: |
-          status=$(git status --porcelain)
-          if [ -n "$status" ]; then printf '%s\n' "$status"; echo "::error::the job left files that are neither committed nor gitignored"; exit 1; fi
+      - uses: ./.github/actions/clean-worktree
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
@@ -141,6 +135,8 @@ jobs:
 
       - name: Lighthouse budget against the production build (perf/budget.json; retries once, prints all three lines)
         run: make perf
+
+      - uses: ./.github/actions/clean-worktree
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()

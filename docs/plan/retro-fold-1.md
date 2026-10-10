@@ -46,4 +46,20 @@ over `ci.yml` through the pinned image. On the PR: every CI job green, `spec-fre
 
 ## As delivered
 
-Filled in at the end of the PR.
+- Commit order as planned, then one `chore(review)` commit for the `/code-review` findings (Standards
+  and Spec axes, both run against `main`).
+- Hook, beyond the plan: an unquoted heredoc tag keeps the body lines the shell would expand; an
+  interpreter given by path (`/bin/bash`) is recognised; a heredoc without a terminator, or a literal
+  `<<` inside a string, falls back to matching the whole text; the dotenv pattern's delimiter class
+  was widened, since `.env)` had never been denied and the amendment-1 fixture was proving that hole,
+  not the tiering. 19 fixtures instead of 8 + 4; the secret-in-heredoc fixture carries a private-key
+  marker, not a `ghp_` token, so the gitleaks job never fires on a fixture.
+- The clean-worktree step became the composite action `.github/actions/clean-worktree`, used by every
+  job that runs project code (`lint`, `test`, `build`, `e2e`, `perf`), not only three of them.
+- CLAUDE.md: the three skill subsections became bullets and the Errors and Logging lines merged to
+  hold the 130-line target; the shell-gates rule names the gates it covers (the guard hook and
+  `scripts/spec-freeze.sh`), since the logging and formatting hooks are not gates.
+- Dismissed review findings, with the reason: intermediate commits cite ADR 0008 before it lands (the
+  approved order ends with the record of the whole fold); the PASS/FAIL echo shape is duplicated
+  across the two test scripts (two instances); a single-quoted `'$(…)'` value is kept as command
+  head although the shell does not expand it (the Owner's amendment, taken literally).

@@ -11,7 +11,13 @@
 #   -m/--body/--title value are text, not commands, and are blanked before matching. A quoted value
 #   that contains `$(`, a backtick or `${` is kept: the shell expands it, so it is a command.
 #   ANY_PATTERNS (secret material) run against the whole text: a token in a PR body is still a leak.
-# Never fails closed on missing tooling: if the payload cannot be parsed, it logs and allows.
+#   An unquoted heredoc tag (<<EOF) lets the shell expand the body, so body lines holding `$(`, a
+#   backtick or `${` are kept; a heredoc without a terminator (or a literal `<<` inside a string)
+#   falls back to matching the whole text. Known limit: a body written to a file and run on a later
+#   line is not seen as code; the interpreter is detected on the heredoc line only.
+# Needs GNU sed (-z, \x27) and a POSIX awk (mawk in CI). On another sed the pipeline exits non-zero
+# and the hook fails open, like an unparsable payload. Never fails closed on missing tooling: if the
+# payload cannot be parsed, it logs and allows.
 set -euo pipefail
 
 # --- deny patterns (case-insensitive ERE) with a static reason each ---------------------------
@@ -75,23 +81,28 @@ normalised="$(printf '%s' "$command_text" | sed -E 's/\.env\.(example|template|s
 # Portable awk (mawk in CI): match() with RSTART/RLENGTH only. `<<<` is a here-string, not a heredoc.
 # shellcheck disable=SC2016  # the $ and backticks in the sed program are for sed, not for the shell
 heads="$(printf '%s\n' "$normalised" | awk '
-  BEGIN { skip = 0; tag = "" }
+  BEGIN { skip = 0; tag = ""; unquoted = 0; out = ""; all = "" }
   {
+    all = all $0 "\n"
     if (skip) {
       line = $0; sub(/^[ \t]+/, "", line)
-      if (line == tag) skip = 0
+      if (line == tag) { skip = 0; next }
+      if (unquoted && $0 ~ /\$\(|`|\$\{/) out = out $0 "\n"
       next
     }
-    print
+    out = out $0 "\n"
     probe = $0; gsub(/<<</, "HERESTRING", probe)
     if (match(probe, /<<-?[ \t]*['"'"'"]?[A-Za-z_][A-Za-z0-9_]*['"'"'"]?/)) {
-      t = substr(probe, RSTART, RLENGTH); sub(/^<<-?[ \t]*/, "", t); gsub(/['"'"'"]/, "", t)
+      t = substr(probe, RSTART, RLENGTH); sub(/^<<-?[ \t]*/, "", t)
+      unquoted = (t !~ /^['"'"'"]/)
+      gsub(/['"'"'"]/, "", t)
       rest = substr(probe, 1, RSTART - 1) " " substr(probe, RSTART + RLENGTH)
-      if (rest !~ /(^|[ \t;&|(])(bash|sh|zsh|dash|ksh|fish|node|deno|bun|python[0-9.]*|perl|ruby|php|eval|source|exec|xargs|ssh|\.)([ \t]|$)/) {
+      if (rest !~ /(^|[ \t;&|(])([^ \t;&|(]*\/)?(bash|sh|zsh|dash|ksh|fish|node|deno|bun|python[0-9.]*|perl|ruby|php|eval|source|exec|xargs|ssh|\.)([ \t]|$)/) {
         skip = 1; tag = t
       }
     }
   }
+  END { printf "%s", (skip ? all : out) }
 ' | sed -Ez 's/(^|[[:space:]])(-m|-b|-t|--message|--body|--title|--notes|--comment)([[:space:]]+|=)(\x27([^\x27`$]|\$[^({\x27`])*\x27|"(\\.|[^"\\`$]|\$[^({"`\\])*")/\1\2\3<text>/g')"
 
 deny() {

@@ -27,10 +27,10 @@ executable or written down in this PR · **obsolete** = one-off, the decision is
 
 | # | row | lesson ("rule I would add") | verdict | becomes |
 |---|---|---|---|---|
-| 1 | phase-0a | guard-bash matches only the command head, not heredoc, `-m` or `--body` text | fold | `guard-bash.sh` two tiers: command heads for the deny patterns, whole text for secret material; a quoted value with `$(`, a backtick or `${` stays a command head; 5 fixtures |
+| 1 | phase-0a | guard-bash matches only the command head, not heredoc, `-m` or `--body` text | fold | `guard-bash.sh` two tiers: command heads for the deny patterns, whole text for secret material; a quoted value with `$(`, a backtick or `${` stays a command head; 11 fixtures for the tiers |
 | 2 | phase-0a | devcontainer so local verify == CI | enforced | `.devcontainer/`, CLAUDE.md Environment |
 | 3 | phase-0a | sandbox, since Bash rules are not a boundary | enforced | the devcontainer is the sandbox; CLAUDE.md Boundaries: a denied call is never worked around |
-| 4 | chore/skills | `git status` after any installer | fold | clean-worktree step in the `lint`, `build` and `e2e` jobs; CLAUDE.md generated-files rule; `skill-overrides.md` |
+| 4 | chore/skills | `git status` after any installer | fold | clean-worktree action in every job that runs project code; CLAUDE.md generated-files rule; `skill-overrides.md` |
 | 5 | chore/skills | settle the vocabulary file name before skills reference it | obsolete | `GLOSSARY.md` fixed by ADR 0002 and CLAUDE.md |
 | 6 | chore/skills (review) | the wizard skill must not touch dotenv files | fold | `skill-overrides.md` (`ENV_FILE=/dev/null`, as `setup-wizard.sh` does); the hook denies dotenv paths |
 | 7 | chore/skills (review) | vendored skills are reviewed against Boundaries at install time | fold | `skill-overrides.md`; CLAUDE.md third-party-code convention |
@@ -56,7 +56,7 @@ executable or written down in this PR · **obsolete** = one-off, the decision is
 | 27 | PR 3 | a shell gate gets a scratch run with a passing and a failing case first | fold | `scripts/spec-freeze.test.sh`; `make test-shell` in `verify` and the `lint` job; CLAUDE.md Conventions |
 | 28 | PR 3 | third-party action inputs are checked against the action's source | fold | `/phase` step 5; CLAUDE.md third-party-code convention |
 | 29 | PR 3 | planning verifies the repository settings a new job needs with `gh api` | fold | `/phase` step 5 |
-| 30 | PR 4 | a generated file is committed or gitignored in the same PR | fold | clean-worktree step (with row 4); CLAUDE.md generated-files rule |
+| 30 | PR 4 | a generated file is committed or gitignored in the same PR | fold | clean-worktree action (with row 4); CLAUDE.md generated-files rule |
 | 31 | PR 4 | a hook smoke test checks the ignore rules before choosing its fixture | fold | `run.sh` asks `prettier --file-info` that `x.md` is ignored and `x.json` is not |
 | 32 | PR 4 | a vendored script gets shellcheck before its stages are written | fold | `make shellcheck` in `verify`; shellcheck in the devcontainer image; `skill-overrides.md` (`/wizard`) |
 
@@ -65,12 +65,15 @@ Three of the folds change the workflow and are the decision proper:
 1. **Command heads, not text.** The guard hook denies on what the shell would execute: a heredoc body
    that is not fed to an interpreter and a quoted message, body or title value are blanked before
    the deny patterns run. A quoted value the shell would expand (`$(`, a backtick, `${`) is kept as
-   a command head. Secret material (tokens, key ids, private-key markers) is still matched over the
+   a command head, and so are the lines of an unquoted heredoc body (`<<EOF`) that hold one of
+   those. A heredoc without a terminator, or a literal `<<` inside a string, falls back to matching
+   the whole text. Secret material (tokens, key ids, private-key markers) is still matched over the
    whole text, because a secret in a PR body is a leak whatever the command. The hook stays
    fail-open on an unparsable payload (ADR 0001).
-2. **A job leaves a clean worktree.** `lint`, `build` and `e2e` end by failing when `git status`
-   reports anything: whatever an installer, `make setup`, a build or a browser run leaves behind is
-   committed or gitignored in the same PR.
+2. **A job leaves a clean worktree.** Every job that runs project code (`lint`, `test`, `build`,
+   `e2e`, `perf`) ends with the composite action `.github/actions/clean-worktree`, which fails when
+   `git status` reports anything: whatever an installer, `make setup`, a build or a browser run
+   leaves behind is committed or gitignored in the same PR.
 3. **Shell is verified like TypeScript.** `make verify` runs `shellcheck` over every script and the
    shell tests (`make test-shell`: hook fixtures and the spec-freeze gate test); the devcontainer
    image carries shellcheck; the `lint` job calls the same targets. A shell gate ships with a passing
@@ -83,7 +86,14 @@ Three of the folds change the workflow and are the decision proper:
   mean less than a green `lint` job).
 - The `.claude/audit.log` still records every command in full; only the matching changed. A phrase
   in a commit message or PR body no longer blocks the agent, and a command that reads a dotenv file
-  through an expansion still does.
+  through an expansion still does. The dotenv pattern also got wider: `.env` followed by a quote, a
+  bracket or an operator is denied; the old class (whitespace, dot, end of text) never denied `.env)`.
+- Known limit of the head tier: a heredoc body written to a file and run on a later line is not seen
+  as code, because the interpreter is detected on the heredoc line only. The settings deny rules
+  and the audit log stand behind it, as before.
+- The hook needs GNU sed (`-z`, `\x27`) and a POSIX awk (mawk on the CI runner and in the
+  devcontainer). On another sed the pipeline exits non-zero and the hook fails open, like an
+  unparsable payload; the smoke test would show it.
 - Each rule folded here is on probation: a rule that never fires again after two more folds is
   deleted (guide §4.0.3). The next fold is due after 3–5 more retro rows, recorded as ADR
   `000N-retro-fold-2.md` with the same table shape.
