@@ -1,8 +1,8 @@
 # Plan: increment-1
 
 Status: reviewed, 2026-10-10: the Owner's plan-mode review (guide §4.2 step 1) and the independent
-review (§4.2 step 3, two passes) are folded in; awaiting the approval commit `plan: approve
-increment-1`. Ticket: #21. Spec: `docs/spec/increment-1.md`, approved 2026-10-08 (commit 408c7f8).
+review (§4.2 step 3, two passes) are folded in; Q1–Q4 answered; awaiting the approval commit
+`plan: approve increment-1`. Ticket: #21. Spec: `docs/spec/increment-1.md`, approved 2026-10-08 (commit 408c7f8).
 Then
 `/to-tickets` cuts §11 into tracker issues in the PR of that commit. ADR stubs 0009–0012 are `Proposed` until that commit accepts them.
 
@@ -240,7 +240,8 @@ images[0].alt: required`. Checked in this order, first failure wins:
 
 1. `site.yaml` parses and matches `siteFileSchema`.
 2. Every directory under `content/exhibits/` has a valid id and an `index.md` (a stray directory is
-   an error, never hidden). Exhibits are ordered by `year` descending, then `title`.
+   an error, never hidden). Exhibits are ordered by the last year in `year`, descending, then
+   `title`.
 3. Each Exhibit file: front matter matches the schema; body empty; `visibility` is one of the two
    values (an unknown value names the field, AC-26.2).
 4. References exist on disk relative to the Exhibit's directory: each `images[].src`, `video.src`,
@@ -305,7 +306,7 @@ export type Content = {
   captions: { hub: string; zones: Record<ExhibitId, string> }
   preview: { url: string; width: number; height: number }
   bioHtml: string
-  exhibits: Exhibit[]                                            // by year descending, then title
+  exhibits: Exhibit[]                                            // by the last year in `year`, descending, then `title`
 }
 declare module 'virtual:content' { export const content: Content }   // emitted by build/content-plugin.ts
 export class ContentError extends Error { readonly file: string; readonly path: string }
@@ -562,13 +563,26 @@ in increment-1; a later spec decides client metrics).
      reading (Phase 0b plan: "the plan may swap it for a Title Screen mark") because TTI would count
      the World chunk's evaluation, which the spec deliberately puts after the Title Screen is usable
      (AC-1.1 "without waiting for the World bundle"); condition (b) is what keeps the swap honest.
-     The threshold starts at 200 ms and is decided by Q1's measurement; T5b writes it into
-     `perf/budget.json` (`limits.longTaskBetweenMarksMs`) next to the three existing limits. TTI
+     The threshold is **100 ms** (Q1's measurement: 53 ms median, 65 ms maximum between the marks
+     for the 3.14 MB chunk; ADR 0010); T5b writes it into `perf/budget.json`
+     (`limits.longTaskBetweenMarksMs`) next to the three existing limits. TTI
      stays **printed as an informational line**, with LCP, CLS and TBT from the same run, so a
      regression is seen without being gated.
   2. **World playable**: mark `world-playable` ≤ 5000 ms, recorded on the first frame after Rapier
      initialised with the key listener attached, while the World sits paused behind the Title Screen
-     (§2 entry policy). This is the instrument the spec asked the plan to pick.
+     (§2 entry policy). This is the instrument the spec asked the plan to pick. **Q3, answered
+     2026-10-10:** Lighthouse 13 sees a mark recorded after the load event. With
+     `throttlingMethod: 'devtools'` the config raises `pauseAfterLoadMs`, `networkQuietThresholdMs`
+     and `cpuQuietThresholdMs` to at least 5250 ms (`core/config/config.js`,
+     `overrideThrottlingWindows`, a `Math.max`: they can be raised, never lowered), so a navigation
+     waits ≥ 5.25 s after load, ≥ 5.25 s of network-2-quiet (two or fewer requests in flight: one
+     chunk alone never keeps it waiting) and ≥ 5.25 s of CPU quiet, within `maxWaitForLoad` 45 s.
+     The Q1 prototype's seven runs recorded the mark at 1.27–1.88 s with load at 0.16–0.22 s and
+     the trace ending at 11.9–12.5 s; `lhr.json` lists it under
+     `audits['user-timings'].details.items` as `{"name": "world-playable", "timingType": "Mark",
+     "startTime": 1311.5}`. A mark later than load + 5.25 s may fall outside the trace, but it
+     breaches the 5000 ms limit anyway and the evaluator already fails the line as "mark not
+     recorded". No runner setting changes.
   3. **Download until playable**: Σ `transferSize` of requests that finished before that mark,
      ≤ 4,000,000 B (Phase 0b, decimal). **Excluded by URL path prefix `/media/exhibits/<id>/`**
      (the Exhibit media the spec puts outside the budget), not by resource type: World textures, the
@@ -579,7 +593,7 @@ in increment-1; a later spec decides client metrics).
   `cumulative-layout-shift`, `total-blocking-time`); the evaluator stays pure and unit-tested; the
   runner's retry-once and print-all behaviour stays.
 - **Build output**: the `build` job keeps printing gzip sizes per chunk; T0 adds the `tests/build`
-  Vitest project; T1, which creates the `world` chunk (`manualChunks`), adds its check that the entry
+  Vitest project; T1, which creates the `world` chunk (`codeSplitting.groups`, ADR 0010), adds its check that the entry
   chunk does not import it (three, R3F, Rapier never leak into the Title Screen path).
 - **Errors**: nothing leaves the browser. A failure after entry becomes the readable message of
   AC-22.2 with the Fallback link; the error boundary logs the typed `WorldFailure` to the console
@@ -657,8 +671,8 @@ Riskiest first. Each names the ticket that retires it early (tracer-bullet order
 | 6 | **Content pipeline on Vercel**: sharp's native binary, pnpm 10's build-script allowlist, AVIF encode time per deploy | §12 Q4 research before T3; variants capped at source width; one Exhibit now; a cache directory is a later increment's concern | T3 |
 | 7 | **Keyboard focus and routing across three owners** (Title Screen, World, Panel): Enter on a focused list link must open the Panel, not enter the World; R inside the Panel; focus restoration | the pure `routeKey` and `focusAfter` are unit-tested before the components exist; e2e checks `activeElement` after every transition | T5a, T6, T7 |
 | 8 | **Determinism of the model**: Rapier results differ across versions or step counts, so model tolerances flake | fixed timestep, fixed Rapier version (lockfile), tolerances from ADR 0005's spread, seeded pseudo-random input for AC-9.2 | T1 |
-| 9 | **Budget of time**: ten tickets at ~4–5 h each is the whole 12 weeks | tickets ≤ ~400 lines, one PR each; the scope guard order is written; T11 touch is optional and last | all |
-| 10 | **Production shows work in progress** from T1 on (production deploys on every merge; the domain is live) | T1 and T2 ship the World behind a `?world` query on the root (one line in `main.tsx`): the live domain keeps the skeleton root, the preview URL with `?world` is enough for the Owner's sign-off and the perf run navigates to `/?world`; T4's pre-rendered root keeps the guard (no way into the World before T5b's preload policy); T5b removes it and returns the perf run to `/` together with the long-task line | T1 (guard), T5b (removal) |
+| 9 | **Budget of time**: twelve tickets at ~4–5 h each is the whole 12 weeks | tickets ≤ ~400 lines, one PR each; the scope guard order is written; T11 touch is optional and last | all |
+| 10 | **Production shows work in progress** from T1 on (production deploys on every merge; the domain is live) | T1 and T2 ship the World behind a `?world` query on the root (one line in `main.tsx`). The guard: `?world` mounts the World at once regardless of the preload policy; it never replaces the Title Screen: from T4 on the Title Screen renders and hydrates exactly as without the flag, so at `/?world` both marks fire (T5a's perf run depends on that); before T4 there is no Title Screen and `/?world` shows the World alone. The live domain keeps the skeleton root, the preview URL with `?world` is enough for the Owner's sign-off and the perf run navigates to `/?world`; T5b removes the guard and returns the perf run to `/` together with the long-task line | T1 (guard), T5b (removal) |
 
 ## 10. Rollout
 
@@ -683,12 +697,12 @@ are a guide at ~4 h/week; T1 and T5b are the tracer bullets.
 |---|---|---|---|---|---|
 | T0 | `chore/headers-csp` | **The policy before the code**: response headers (ADR 0012) in `vercel.json` + the `vite preview`/`server` mirror in `vite.config.ts`; the shared e2e fixture (`pageerror`, `console.error`, `securitypolicyviolation` fail the test); the `tests/build` Vitest project (first check: the built `index.html` carries no inline script and no `style` attribute); the coverage include list; all proven against the existing skeleton: its canvas mounts and the `world-playable` canary still fires in three browsers under CSP, and `make perf` still passes. Demo: the skeleton on its preview URL with the headers in the response, zero violations | (none new; keeps the Phase 0b canary) | — | 1 |
 | | | Owner: confirm headers on the preview URL; note the Vercel Toolbar violation (§6) or disable the toolbar | | | |
-| T1 | `feat/world-hub` | **The Puck on the Hub, end to end**: model (Hub Rink, boards, Puck, Direct Drive, Reset, fixed step), scene mirroring it, keyboard by physical code, the `world` chunk (`manualChunks`) with the `tests/build` chunk-isolation check, fixed-yaw Follow Camera, `world-playable` moved to its final place, perf gate on the real chunk with the `/media/exhibits/` prefix rule and the perf run navigating to `/?world`, the `?world` guard (risk 10), skeleton removed. Demo: steer the Puck on the Hub at `/?world` on the preview URL | 7.1–7.4, 8.1–8.4, 9.1/9.2 (Hub), 11.1, 11.3, 12.1, 4.3 (line) | T0 | 1–2 |
+| T1 | `feat/world-hub` | **The Puck on the Hub, end to end**: model (Hub Rink, boards, Puck, Direct Drive, Reset, fixed step), scene mirroring it, keyboard by physical code, the `world` chunk (`codeSplitting.groups`, ADR 0010) with the `tests/build` chunk-isolation check, fixed-yaw Follow Camera, `world-playable` moved to its final place, perf gate on the real chunk with the `/media/exhibits/` prefix rule and the perf run navigating to `/?world`, the `?world` guard (risk 10: `?world` mounts the World at once regardless of the preload policy; it never replaces the Title Screen: from T4 on the Title Screen renders and hydrates exactly as without the flag, so at `/?world` both marks fire (T5a's perf run depends on that); before T4 there is no Title Screen and `/?world` shows the World alone), skeleton removed. Demo: steer the Puck on the Hub at `/?world` on the preview URL | 7.1–7.4, 8.1–8.4, 9.1/9.2 (Hub), 11.1, 11.3, 12.1, 4.3 (line) | T0 | 1–2 |
 | | | Owner: fps (23.1) and feel sign-off on the EliteBook | | | |
 | T2 | `feat/world-path-zone` | Path and Zone as one continuous space, Goal sensor with re-arm, solid posts and net, Banner placeholder text from the layout, Zone-entered event, camera framing proofs. Demo: drive Hub → Path → Zone → Goal; a placeholder overlay line says "Goal" | 5.2, 9.1/9.2 (all), 10.1, 11.2, 13.1 (model), 14.1–14.3 (model) | T1 | 3 |
 | T3 | `feat/content-pipeline` | `content/` with the Owner's Exhibit-1, Bio and `site.yaml`; schema, validator, Vite plugin, `virtual:content`, `markdown-it`, image variants under `/media/exhibits/<id>/`; `tests/build` fixtures incl. `html-in-summary`; `content/**` added to CODEOWNERS (ticket names the path). Demo: `make build` prints the content summary; a broken fixture fails with file and field | 26.1 (build), 26.2, 26.3, 27.1 (build) | T0 (build project) · Owner content due | 4 |
 | T4 | `feat/prerender-fallback` | `build/build.ts` orchestrator, SSR entry, pre-rendered `/` (static Title Screen: name, one line, Contact line, way-in present, list as links, Fallback link, meta/OG, preview image) and `/exhibits` (every Exhibit, Bio, Contact, anchors, link back); `vercel.json` `buildCommand`; the `?world` guard stays (without T5b's preload policy the World is unreachable from the root, so the perf run keeps navigating to `/?world` and lines 2 and 3 keep their mark). Demo: both pages with script disabled; link preview tags | 1.2, 2.3, 3.1, 19.1–19.3, 20.1–20.3, 21.2, 26.4 | T3 | 5 |
-| T5a | `feat/title-screen-hydration` | The pre-rendered Title Screen hydrates: `title-screen-interactive` mark, store/reducer, key router and focus rules (pure, unit-tested), the coarse-pointer flag (only what the preload policy needs; no hints yet), the way-in control's loading state; perf gate's first line switched from TTI to the mark (the long-task condition follows in T5b). Demo: the hydrated Title Screen on the preview URL, perf line 1 reading the mark | 1.1 (mark) | T4 | 6 |
+| T5a | `feat/title-screen-hydration` | The pre-rendered Title Screen hydrates: `title-screen-interactive` mark, store/reducer, key router and focus rules (pure, unit-tested), the coarse-pointer flag (only what the preload policy needs; no hints yet), the way-in control's loading state; perf gate's first line switched from TTI to the mark (the long-task condition follows in T5b); perf run stays on `/?world`; both marks must fire there. Demo: the hydrated Title Screen on the preview URL, perf line 1 reading the mark | 1.1 (mark) | T4 | 6 |
 | T5b | `feat/enter-world` | **Title Screen → World → Escape → Title Screen, end to end**: preload policy, World mounted paused behind the Title Screen, Enter/Space/way-in entry with the loading hand-over, Escape pause/resume, World overlay (Reset control, key legend), the long-task condition with the Q1 threshold in `perf/budget.json`; the `?world` guard removed and the perf run back to `/`. Demo: the whole way in and out | 1.1 (long-task line), 1.3, 4.1, 4.2, 5.1 (wiring), 6.1, 6.2, 12.2 | T1, T5a | 7 |
 | | | Owner: fps and feel re-check; TTI/TBT/long-task lines read | | | |
 | T6 | `feat/exhibit-panel` | Exhibit Panel over the Title Screen from the list: every field, scroll, 320 px, focus trap and restore, lazy media with `<picture>`, video poster/controls. Demo: open and close the Panel before the World has loaded | 2.1, 2.2, 15.1, 16.1–16.3, 17.1–17.3, 26.1 (Panel), 27.1 (Panel) | T5a | 8 |
@@ -710,16 +724,16 @@ and shares week 1 with T1. Every ticket: `make verify` per task, `/code-review` 
 
 ## 12. Open questions
 
-Each is assigned. Q1–Q4 are answered **before the `plan: approve` commit**, so the ADR stubs they
-touch are complete when accepted (`docs/adr/README.md`: supersede, don't edit); Q5's answer lives in
-its test file. The "before" column names where the answer lands.
+Each is assigned. Q1–Q4 were answered on 2026-10-10, before the `plan: approve` commit, so the ADR
+stubs they touch are complete when accepted (`docs/adr/README.md`: supersede, don't edit); Q5's
+answer lives in its test file. The last column names where each answer landed, or lands.
 
-| # | question | action | before |
+| # | question | action | answer |
 |---|---|---|---|
-| Q1 | Does importing a ~1.5 MB `world` chunk in an idle callback after hydration keep the Title Screen's hydration mark under 2 s **and** the longest main-thread task between the two marks under 200 ms on the 10 Mbit profile, or must the chunk be split (three+R3F first, Rapier on mount) or the import wait for a later signal? | `/prototype`, **one throwaway branch and one `make perf` run shared with Q2 and Q3**: the Phase 0b skeleton plus a pre-rendered stub Title Screen and a lazy chunk that imports three + Rapier; the runner prints the marks, the `long-tasks` audit and TBT; the measured longest task sets `longTaskBetweenMarksMs`; delete the branch afterwards; answer in ADR 0010 | the approval commit; the threshold lands in T5b |
-| Q2 | `@dimforge/rapier3d-compat` (wasm inlined as base64, no plugin, works under Node today) vs `@dimforge/rapier3d` + `vite-plugin-wasm` (streaming compile, smaller transfer): what do the download and world-playable lines say? | `/prototype`, same branch and run as Q1: both packages, the lines side by side; the compat package stays unless the non-compat one buys ≥ 300 KB or ≥ 300 ms; answer in ADR 0009 | the approval commit; the package lands in T1 |
-| Q3 | Can Lighthouse's `user-timings` audit see a mark recorded after the load event while the World chunk is still arriving (needed for `world-playable` from a plain navigation; decides whether §7 line 2 is measurable at all)? | `/research` against the Lighthouse 13 gatherer source and the Phase 0b run (mark at 0.55 s was before load), confirmed by the Q1 run's `lhr.json`; if not, the runner extends `maxWaitForLoad`/`pauseAfterLoadMs` in `scripts/perf-budget.ts`; answer folded into §7 **before the approval commit** | the `plan: approve` commit |
-| Q4 | Does `sharp` install on Vercel's build image and under pnpm 10's build-script policy without an allowlist entry (`pnpm.onlyBuiltDependencies`), and inside the devcontainer? | `/research`: sharp's install docs for 0.34, pnpm 10 changelog; the devcontainer run; answer in ADR 0011 | the approval commit; applied in T3 |
+| Q1 | Does importing a ~1.5 MB `world` chunk in an idle callback after hydration keep the Title Screen's hydration mark under 2 s **and** the longest main-thread task between the two marks under 200 ms on the 10 Mbit profile, or must the chunk be split (three+R3F first, Rapier on mount) or the import wait for a later signal? | `/prototype`, **one throwaway branch and one `make perf` run shared with Q2 and Q3**: the Phase 0b skeleton plus a pre-rendered stub Title Screen and a lazy chunk that imports three + Rapier; the runner prints the marks, the `long-tasks` audit and TBT; the measured longest task sets `longTaskBetweenMarksMs`; delete the branch afterwards; answer in ADR 0010 | answered 2026-10-10 → ADR 0010 |
+| Q2 | `@dimforge/rapier3d-compat` (wasm inlined as base64, no plugin, works under Node today) vs `@dimforge/rapier3d` + `vite-plugin-wasm` (streaming compile, smaller transfer): what do the download and world-playable lines say? | `/prototype`, same branch and run as Q1: both packages, the lines side by side; the compat package stays unless the non-compat one buys ≥ 300 KB or ≥ 300 ms; answer in ADR 0009 | answered 2026-10-10 → ADR 0009 |
+| Q3 | Can Lighthouse's `user-timings` audit see a mark recorded after the load event while the World chunk is still arriving (needed for `world-playable` from a plain navigation; decides whether §7 line 2 is measurable at all)? | `/research` against the Lighthouse 13 gatherer source and the Phase 0b run (mark at 0.55 s was before load), confirmed by the Q1 run's `lhr.json`; if not, the runner extends `maxWaitForLoad`/`pauseAfterLoadMs` in `scripts/perf-budget.ts`; answer folded into §7 **before the approval commit** | answered 2026-10-10 → §7 line 2 |
+| Q4 | Does `sharp` install on Vercel's build image and under pnpm 10's build-script policy without an allowlist entry (`pnpm.onlyBuiltDependencies`), and inside the devcontainer? | `/research`: sharp's install docs for 0.34, pnpm 10 changelog; the devcontainer run; answer in ADR 0011 | answered 2026-10-10 → ADR 0011 |
 | Q5 | How does each Playwright browser emulate a coarse pointer for AC-21.1 (Chromium and WebKit via `isMobile`; Firefox has no `isMobile`)? | `/research`: Playwright 1.64 docs and source for `isMobile`/`hasTouch` per browser; the test uses the device descriptor where it works and an init-script stub of `matchMedia` elsewhere, documented in the spec file | T8b |
 
 ## 13. Hand-offs (tracker issues opened in the PR of the `plan: approve` commit)
