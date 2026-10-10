@@ -55,7 +55,8 @@ proves the toolchain; application code starts with the Phase 3 tickets.
   | `ai-review` | independent Claude review (`anthropics/claude-code-action`, read-only tools, one tracking comment); skipped with a notice until `ANTHROPIC_API_KEY` is stored, and for Renovate branches | no: its findings are a Definition of Done item |
 
   Job ids stay stable across phases: the `main` ruleset and Vercel's Deployment Checks match them
-  by name.
+  by name. `lint`, `build` and `e2e` end by failing when the job left untracked or modified files:
+  whatever a tool generates is committed or gitignored in the same PR (ADR 0008).
 - The independent reviewer is the `ai-review` job. It posts once the setup wizard
   (`scripts/setup-wizard.sh`, runbook in `docs/runbooks/setup-wizard.md`) stores
   `ANTHROPIC_API_KEY`; until then the Definition of Done item for it is ticked as "n/a".
