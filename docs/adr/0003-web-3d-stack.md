@@ -1,6 +1,7 @@
 # ADR 0003 — TypeScript, React Three Fiber and Rapier for the 3D site
 
-Status: Accepted (2026-10-07)
+Status: Accepted (2026-10-07); the phrase "via its R3F binding" in the Decision is superseded by
+ADR 0009 (Proposed 2026-10-10), the rest stands
 
 ## Context
 
