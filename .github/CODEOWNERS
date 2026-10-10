@@ -3,3 +3,4 @@
 /.claude/ @cov1983
 /docs/spec/ @cov1983
 /infra/ @cov1983
+/vercel.json @cov1983
