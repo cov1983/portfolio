@@ -35,7 +35,7 @@ before the next stage.
 |---|---|---|---|
 | 1 Vercel project | vercel.com, GitHub app installation | A Vercel project linked to `cov1983/portfolio`; the Vercel GitHub App installed on this repository only; production tracks `main`; a preview per pull request | Project → Settings → Advanced → Delete Project; GitHub → Settings → Applications → Vercel → Uninstall |
 | 2 Deployment Checks | Vercel project → Settings → Build and Deployment → Deployment Checks | Production deployments wait for the nine CI jobs named in `CHECKS` before they are aliased to the domain | Remove the checks there; "Force Promote" on a deployment bypasses them once |
-| 3 `ANTHROPIC_API_KEY` | console.anthropic.com; GitHub repository secrets | A key named `portfolio-ci-review`; the repository secret the `ai-review` job reads | Delete the key in the console (the job goes back to "skipped with a notice"); `gh secret delete ANTHROPIC_API_KEY` |
+| 3 `ANTHROPIC_API_KEY` | console.anthropic.com; GitHub repository secrets | A key named `portfolio-ci-review` in a workspace with purchased credit (promotional credits exclude Claude Code: the job then ends with `result is_error:true`, zero tokens, no error text); the repository secret the `ai-review` job reads | Delete the key in the console (the job goes back to "skipped with a notice"); `gh secret delete ANTHROPIC_API_KEY` |
 | 4 Renovate | github.com/apps/renovate; repository Settings → General | The Renovate app on this repository; "Allow auto-merge" on; a Dependency Dashboard issue | Uninstall the app; untick "Allow auto-merge" (ADR 0007: patch PRs then wait for the Owner) |
 | 5 CodeQL, dependency graph | repository Settings → Code security | CodeQL "default setup" off so the committed `sast` job can upload; dependency graph on for the `deps` job | Switch default setup back on (the `sast` job then fails to upload; remove the job first) |
 | 6 Domain | Vercel project → Settings → Domains; Infomaniak DNS zone | The Owner's existing domain assigned to the project; an A record (apex) and a CNAME (`www`) in the Infomaniak zone with the values Vercel shows; Vercel issues the certificate. Fallback, only on an explicit yes: a domain bought through Vercel | Remove the domain from the project; delete the two records at Infomaniak (the old site, if any, needs its records back) |
@@ -49,6 +49,10 @@ before the next stage.
 - Choosing and configuring the uptime check (constitution principle 5; ADR 0006 leaves it open).
 - Rotating `ANTHROPIC_API_KEY`: create the new key, re-run the wizard answering `n` (or Enter) to
   every stage but 3, then delete the old key in the console.
+- Testing a key with a Claude Code call before it is stored, not only with curl: curl against
+  `/v1/messages` succeeds on promotional credits, Claude Code does not
+  (`ANTHROPIC_API_KEY=<key> claude -p 'reply with ok' --model claude-opus-5-5`). Found on the first
+  live `ai-review` run (PR #19, 2026-10-10), fixed in the console, nothing in the repository changed.
 
 ## Related
 
