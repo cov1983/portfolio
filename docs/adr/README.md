@@ -16,3 +16,4 @@ Index
 - [0005 — Puck feel: the Standard ice preset, with a fixed-yaw Follow Camera](0005-puck-feel.md)
 - [0006 — Vercel hosts the site through its Git integration; `vercel.json` is the only hosting config](0006-hosting-vercel.md)
 - [0007 — Renovate merges grouped patch updates that passed every gate](0007-renovate-automerge.md)
+- [0008 — Retro fold 1: where the Phase 0–1 lessons went](0008-retro-fold-1.md)

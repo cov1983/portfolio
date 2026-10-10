@@ -1,5 +1,5 @@
 # Development container: the same toolchain `make verify` uses in CI (docs/workflow-guide.md §4.0.2).
-# Node 24 LTS + pnpm (corepack), make, jq, xauth (xvfb-run needs it; xvfb itself comes with the Playwright
+# Node 24 LTS + pnpm (corepack), make, jq, shellcheck, xauth (xvfb-run needs it; xvfb itself comes with the Playwright
 # OS deps), gitleaks. Playwright browsers are not baked in: `make setup` installs them (postCreateCommand),
 # so the browser build always matches @playwright/test.
 FROM mcr.microsoft.com/devcontainers/typescript-node:5-24-bookworm@sha256:570427e760c3b6cc1ff6c50e0971103cc27abcfb5134066a39db639389150946
@@ -9,7 +9,7 @@ ARG GITLEAKS_SHA256_X64=551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b
 ARG GITLEAKS_SHA256_ARM64=e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080
 
 RUN apt-get update \
-  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends make jq xauth \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends make jq xauth shellcheck \
   && rm -r /var/lib/apt/lists/*
 
 RUN set -eu; \

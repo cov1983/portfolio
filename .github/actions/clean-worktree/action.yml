@@ -1,0 +1,10 @@
+name: clean-worktree
+description: Fail when the job left untracked or modified files; whatever a tool generates is committed or gitignored in the same PR (ADR 0008)
+
+runs:
+  using: composite
+  steps:
+    - run: |
+        status=$(git status --porcelain)
+        if [ -n "$status" ]; then printf '%s\n' "$status"; echo "::error::the job left files that are neither committed nor gitignored"; exit 1; fi
+      shell: bash

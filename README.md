@@ -12,12 +12,13 @@ proves the toolchain; application code starts with the Phase 3 tickets.
 
 ## Run it locally
 - **Devcontainer** (recommended): open the repo in VS Code and "Reopen in Container", or
-  `devcontainer up --workspace-folder .`. The image (`.devcontainer/`) has Node 24, pnpm, make, jq
-  and gitleaks; `make setup` runs on create. `devcontainer-lock.json` pins the feature digests and
+  `devcontainer up --workspace-folder .`. The image (`.devcontainer/`) has Node 24, pnpm, make, jq,
+  shellcheck and gitleaks; `make setup` runs on create. `devcontainer-lock.json` pins the feature digests and
   is committed; the first container start regenerates it, so a diff there is a feature update.
 - **Host**: Node 24 (`.nvmrc`), `corepack enable` (pnpm comes from `packageManager`), then
   `make setup` (installs the Playwright browsers too; their OS packages need sudo on a host).
-- Then: `make verify` (format check, lint, types, unit and headless-physics tests), `make test-e2e`
+- Then: `make verify` (format check, lint, types, shellcheck, the hook and gate tests, unit and
+  headless-physics tests), `make test-e2e`
   (production build driven in Chromium, Firefox and WebKit with axe; Firefox runs headed because
   headless Firefox has no WebGL: under Xvfb where `xvfb-run` exists, otherwise in a window on your
   display, and it fails to launch with neither), `make dev` (dev server, listening on every
@@ -42,7 +43,7 @@ proves the toolchain; application code starts with the Phase 3 tickets.
 
   | check | what it runs | required on `main` |
   |---|---|---|
-  | `lint` | `make format-check lint typecheck`, agent-file identity and line count, shellcheck (hooks, pre-commit), actionlint, settings JSON, hook smoke test | yes |
+  | `lint` | `make format-check lint typecheck`, agent-file identity and line count, `make shellcheck` (hooks, pre-commit, gates and their tests), actionlint, settings JSON, `make test-shell` (hook smoke tests, spec-freeze gate test) | yes |
   | `test` | `make test` (Vitest with the coverage ratchet) | yes |
   | `build` | `make build`, prints compressed asset sizes | after the setup wizard's ruleset stage |
   | `e2e` | `make test-e2e` (Playwright in Chromium, Firefox and WebKit with axe against the production build) | after the setup wizard |
@@ -54,7 +55,9 @@ proves the toolchain; application code starts with the Phase 3 tickets.
   | `ai-review` | independent Claude review (`anthropics/claude-code-action`, read-only tools, one tracking comment); skipped with a notice until `ANTHROPIC_API_KEY` is stored, and for Renovate branches | no: its findings are a Definition of Done item |
 
   Job ids stay stable across phases: the `main` ruleset and Vercel's Deployment Checks match them
-  by name.
+  by name. Every job that runs project code ends with `.github/actions/clean-worktree`, which fails
+  when the job left untracked or modified files: whatever a tool generates is committed or
+  gitignored in the same PR (ADR 0008).
 - The independent reviewer is the `ai-review` job. It posts once the setup wizard
   (`scripts/setup-wizard.sh`, runbook in `docs/runbooks/setup-wizard.md`) stores
   `ANTHROPIC_API_KEY`; until then the Definition of Done item for it is ticked as "n/a".

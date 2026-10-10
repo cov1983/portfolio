@@ -9,7 +9,8 @@
 #   ai-review                           (needs lint, test, build; pull requests only)
 #
 # Every job that runs project code runs the make target a developer runs locally, so a green
-# `make verify` predicts a green pipeline.
+# `make verify` predicts a green pipeline, and ends with the clean-worktree action: a file the job
+# generated is committed or gitignored in the same PR (ADR 0008).
 name: ci
 
 on:
@@ -41,8 +42,8 @@ jobs:
           lines=$(wc -l < CLAUDE.md)
           if [ "$lines" -gt 150 ]; then echo "CLAUDE.md has $lines lines; the limit is 150"; exit 1; fi
 
-      - name: Shell scripts pass shellcheck
-        run: shellcheck .claude/hooks/*.sh .claude/hooks/tests/run.sh .githooks/pre-commit scripts/*.sh
+      - name: Shell scripts pass shellcheck (hooks, pre-commit, gates and their tests)
+        run: make shellcheck
 
       - name: Workflow files pass actionlint (shellcheck on every run block)
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
@@ -50,8 +51,10 @@ jobs:
       - name: .claude/settings.json is valid JSON
         run: jq empty .claude/settings.json
 
-      - name: guard-bash hook smoke test
-        run: .claude/hooks/tests/run.sh
+      - name: Hook smoke tests and the spec-freeze gate test
+        run: make test-shell
+
+      - uses: ./.github/actions/clean-worktree
 
   test:
     name: test
@@ -63,6 +66,8 @@ jobs:
 
       - name: Unit tests with coverage (ratchet thresholds in vitest.config.ts)
         run: make test
+
+      - uses: ./.github/actions/clean-worktree
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
@@ -95,6 +100,8 @@ jobs:
           sort -rn "$sizes"
           echo "total gzip bytes: $total"
 
+      - uses: ./.github/actions/clean-worktree
+
   e2e:
     name: e2e
     needs: build
@@ -108,6 +115,8 @@ jobs:
 
       - name: Built site in Chromium, Firefox and WebKit with axe (spec seam 1)
         run: make test-e2e
+
+      - uses: ./.github/actions/clean-worktree
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
@@ -126,6 +135,8 @@ jobs:
 
       - name: Lighthouse budget against the production build (perf/budget.json; retries once, prints all three lines)
         run: make perf
+
+      - uses: ./.github/actions/clean-worktree
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
