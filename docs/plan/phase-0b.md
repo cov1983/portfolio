@@ -403,6 +403,10 @@ end to end by the agent. Runbook: when to re-run, what each stage changes, how t
   behind a red warning and a `confirm`; stage 8 also checks `allow_auto_merge` and lists every
   unmet item under "still to do by hand". The library's unused `RED` is used by that warning so
   shellcheck stays clean without touching the template.
+- **Commands**: `/phase` accepts `Status: amended` next to `approved` (the spec README's status
+  set; an amended spec is still frozen and approved); `/fix-review` also replies on each review
+  thread and updates the PR body's "Reviewer notes", so a dismissed finding has a written reason
+  where the reviewer looks (constitution 7).
 - **ADR index** only needed +0006 (0007 was indexed in PR 3). Netlify added to the rejected list.
   `docs/spec/README.md` still said "draft, awaiting approval"; it now names the approval commit and
   the `spec-freeze` gate.
@@ -410,6 +414,19 @@ end to end by the agent. Runbook: when to re-run, what each stage changes, how t
   `devcontainer.json` features only; whether it rewrites `devcontainer-lock.json` is not documented.
   If a feature bump arrives without a lock change, the next container start regenerates the lock
   and the diff is committed by hand.
+- From `/code-review`: the format hook ran Prettier in the session's cwd, from where Prettier
+  would not find `.prettierignore` and would rewrite Markdown, the frozen spec included; it now
+  runs from the project root and the smoke test starts it from `/` with a JSON and a Markdown
+  fixture in a temp dir at the repo root (Prettier honours `.gitignore` too, so an ignored dir
+  would hide the formatting). The wizard's secret check greps a captured string (SIGPIPE under
+  pipefail), the "no key" skip is listed once, stage 3 names the review model, the runbook says
+  which stages have a y/N gate. Dismissed: `Bash(pnpm exec *)` lets `pnpm exec curl` past the
+  `curl`/`wget` denies (the Owner chose the rule; guard-bash is the second line and "Bash rules are
+  not a boundary" is the Phase 0a retro line, so the sandbox is the answer, not a longer allow
+  list); the spec README in the hosting commit (the plan groups the three READMEs under Vercel);
+  CLAUDE.md in the closing docs commit (the plan's own item, as in PR 2 and PR 3); the `extract`
+  helper copied from guard-bash (standalone hooks, as planned); `vercel.json` restating the make
+  commands (decision 9).
 
 ---
 

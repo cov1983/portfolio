@@ -240,13 +240,12 @@ say "The ai-review CI job (anthropics/claude-code-action, read-only tools) posts
 say "comment per pull request. Until the key exists the job is skipped with a notice."
 open_url "https://console.anthropic.com/settings/keys"
 step "Create a key named 'portfolio-ci-review'. Copy it: it is shown once."
-note "The key is used only by that job, which cannot write files or push; spend is a few cents per review."
+note "The job runs claude-opus-5-5 (ci.yml) with read-only tools: it cannot write files or push; spend is a few cents per review."
 ask_secret ANTHROPIC_API_KEY "Paste the key (hidden):"
 if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
   set_secret ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY"
 else
-  SKIPPED+=("GitHub secret ANTHROPIC_API_KEY (gh secret set ANTHROPIC_API_KEY)")
-  warn "no key entered; the ai-review job stays skipped"
+  warn "no key entered; the ai-review job stays skipped (the smoke stage lists it)"
 fi
 unset ANTHROPIC_API_KEY
 
@@ -310,7 +309,8 @@ pause "Press Enter once the ruleset is saved."
 # ── 8. Smoke ──────────────────────────────────────────────────────────────
 stage "Smoke: what gh can verify from here"
 if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-  if gh secret list --repo "$REPO" 2>/dev/null | grep -q '^ANTHROPIC_API_KEY'; then
+  # grep on a captured string, not a pipe: grep -q closing early would hand gh a SIGPIPE under pipefail
+  if grep -q '^ANTHROPIC_API_KEY' <<<"$(gh secret list --repo "$REPO" 2>/dev/null || true)"; then
     printf '  %s✓%s secret ANTHROPIC_API_KEY is stored\n' "$GREEN" "$RESET"
   else
     warn "secret ANTHROPIC_API_KEY not found"

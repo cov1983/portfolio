@@ -6,7 +6,8 @@
 # Not part of the audit trail (docs/adr/0001-hook-events.md): it logs nothing. It never blocks an
 # edit: every path exits 0, including a payload it cannot parse, a file outside the project, a
 # vendored file under .agents/, a file Prettier ignores, or a missing Prettier. .prettierignore
-# decides what is formatted (Markdown and docs/spec/** never are).
+# decides what is formatted (Markdown and docs/spec/** never are): Prettier reads it from the
+# working directory, so the hook always runs from the project root, whatever the session's cwd.
 set -uo pipefail
 
 payload="$(cat)"
@@ -36,5 +37,6 @@ case "$file" in
   *) exit 0 ;; # outside the project: not ours to format
 esac
 
+cd "$root" || exit 0
 pnpm exec prettier --write --ignore-unknown --log-level warn "$file" >/dev/null 2>&1 || true
 exit 0

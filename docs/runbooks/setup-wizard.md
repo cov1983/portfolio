@@ -12,8 +12,9 @@ of the script is `.agents/skills/wizard/template.sh` unchanged, the stages are o
 - Once, after Phase 0b PR 4 is merged: the repository is complete, the dashboards are not.
 - Again, in part, when a stage's target changes: a new API key (stage 3), a new domain (stage 6), a
   job renamed in `ci.yml` (stages 2 and 7: both read the `CHECKS` array at the top of the script, so
-  update that array first), a fresh Vercel project. Every stage ends with a y/N question; answer `n`
-  to a stage you are not repeating and it is listed under "still to do by hand" instead of failing.
+  update that array first), a fresh Vercel project. Stages 1, 2, 4, 5 and 6 end with a y/N question:
+  answer `n` to a stage you are not repeating and it is listed under "still to do by hand" instead
+  of failing. Stage 3 takes an empty key as "skip", stage 7 only waits for Enter, and stage 8 reports.
 - Never by an agent, never in CI: it opens a browser and waits for a human at every stage.
 
 ## How to run it
@@ -46,8 +47,8 @@ before the next stage.
 - Confirming in the Vercel dashboard that the preview appeared on the open pull request and that a
   merge to `main` produced a production deployment that waited for the checks.
 - Choosing and configuring the uptime check (constitution principle 5; ADR 0006 leaves it open).
-- Rotating `ANTHROPIC_API_KEY`: create the new key, re-run the wizard answering `n` to every stage
-  but 3, then delete the old key in the console.
+- Rotating `ANTHROPIC_API_KEY`: create the new key, re-run the wizard answering `n` (or Enter) to
+  every stage but 3, then delete the old key in the console.
 
 ## Related
 
