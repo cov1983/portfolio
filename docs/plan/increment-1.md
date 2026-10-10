@@ -3,7 +3,7 @@
 Status: approved, 2026-10-10 (commit `plan: approve increment-1`): the Owner's plan-mode review
 (guide §4.2 step 1) and the independent review (§4.2 step 3, two passes) are folded in; Q1–Q4
 answered. Ticket: #21. Spec: `docs/spec/increment-1.md`, approved 2026-10-08 (commit 408c7f8).
-`/to-tickets` cuts §11 into tracker issues in the PR of that commit.
+`/to-tickets` cut §11 into tracker issues on 2026-10-10 (#23–#39, listed at the end of §11 and in §13).
 
 Vocabulary is `GLOSSARY.md`; terms in capitals are defined there. Spec words that the glossary does
 not define yet (the Title Screen's *one line*, the *way-in control*, the *key legend*, the World's
@@ -715,6 +715,12 @@ are a guide at ~4 h/week; T1 and T5b are the tracer bullets.
 
 Blocking edges for `/to-tickets` (GitHub native dependencies): T1←T0; T2←T1; T3←T0; T4←T3;
 T5a←T4; T5b←T1,T5a; T6←T5a; T7←T2,T5b,T6; T8a←T7; T8b←T8a; T9←T8b; T10←T9; T11←T10.
+
+**Tracker issues** (2026-10-10, sub-issues of #21, edges as GitHub native dependencies): T0 #23 ·
+T1 #24 · T2 #25 · T3 #26 (`ready-for-human` until the Owner's content is in) · T4 #27 · T5a #28 ·
+T5b #29 · T6 #30 · T7 #31 · T8a #32 · T8b #33 · T9 #34 · T10 #35 · T11 #39 (also blocked by the
+amendment hand-off #38). Hand-offs: §13.
+
 Twelve tickets in twelve weeks leaves no slack (T9 shares week 11 with T8b); the scope guard in §1
 is the release valve, in the spec's order. T3 depends on nothing but T0's
 build project and can be the Owner's content week while T1/T2 are reviewed. T0 is about two hours
@@ -741,9 +747,9 @@ Beyond the brief's twelve sections: CLAUDE.md makes a hand-off without an issue 
 issues to open are listed here.
 
 - **Uptime check** on the production URL (constitution 5, ADR 0006): choose a free external monitor,
-  point it at `/` and `/exhibits`, write `docs/runbooks/uptime.md`. `ready-for-human`.
+  point it at `/` and `/exhibits`, write `docs/runbooks/uptime.md`. `ready-for-human`. Issue #36.
 - **Glossary additions** for `/domain-modeling`: One line, Way-in control, Key legend, Overlay (the
-  spec's own list). `ready-for-agent`, closed by T10 at the latest.
+  spec's own list). `ready-for-agent`, closed by T10 at the latest. Issue #37.
 - **Touch steering spec amendment** (precondition of T11): a user story with ACs, by `amend:` commit.
-  `ready-for-human` (the Owner decides whether it enters increment-1 at all).
+  `ready-for-human` (the Owner decides whether it enters increment-1 at all). Issue #38.
 
