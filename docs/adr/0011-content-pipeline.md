@@ -1,6 +1,6 @@
 # ADR 0011 — Content pipeline: Markdown + YAML front matter, zod, a Vite plugin, sharp
 
-Status: Proposed (2026-10-10; accepted by `plan: approve increment-1`)
+Status: Accepted (2026-10-10)
 
 ## Context
 

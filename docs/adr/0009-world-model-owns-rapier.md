@@ -1,6 +1,6 @@
 # ADR 0009 — The World model owns Rapier and runs outside React; React Three Fiber mirrors it
 
-Status: Proposed (2026-10-10; accepted by `plan: approve increment-1`)
+Status: Accepted (2026-10-10)
 
 ## Context
 

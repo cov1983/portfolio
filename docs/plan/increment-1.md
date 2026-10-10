@@ -1,10 +1,9 @@
 # Plan: increment-1
 
-Status: reviewed, 2026-10-10: the Owner's plan-mode review (guide §4.2 step 1) and the independent
-review (§4.2 step 3, two passes) are folded in; Q1–Q4 answered; awaiting the approval commit
-`plan: approve increment-1`. Ticket: #21. Spec: `docs/spec/increment-1.md`, approved 2026-10-08 (commit 408c7f8).
-Then
-`/to-tickets` cuts §11 into tracker issues in the PR of that commit. ADR stubs 0009–0012 are `Proposed` until that commit accepts them.
+Status: approved, 2026-10-10 (commit `plan: approve increment-1`): the Owner's plan-mode review
+(guide §4.2 step 1) and the independent review (§4.2 step 3, two passes) are folded in; Q1–Q4
+answered. Ticket: #21. Spec: `docs/spec/increment-1.md`, approved 2026-10-08 (commit 408c7f8).
+`/to-tickets` cuts §11 into tracker issues in the PR of that commit.
 
 Vocabulary is `GLOSSARY.md`; terms in capitals are defined there. Spec words that the glossary does
 not define yet (the Title Screen's *one line*, the *way-in control*, the *key legend*, the World's

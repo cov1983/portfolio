@@ -1,6 +1,6 @@
 # ADR 0010 — Pre-rendering: a Vite SSR build of two routes, rendered with react-dom/server
 
-Status: Proposed (2026-10-10; accepted by `plan: approve increment-1`)
+Status: Accepted (2026-10-10)
 
 ## Context
 
