@@ -17,3 +17,7 @@ Index
 - [0006 — Vercel hosts the site through its Git integration; `vercel.json` is the only hosting config](0006-hosting-vercel.md)
 - [0007 — Renovate merges grouped patch updates that passed every gate](0007-renovate-automerge.md)
 - [0008 — Retro fold 1: where the Phase 0–1 lessons went](0008-retro-fold-1.md)
+- [0009 — The World model owns Rapier and runs outside React; React Three Fiber mirrors it](0009-world-model-owns-rapier.md) — Proposed, accepted by `plan: approve increment-1`
+- [0010 — Pre-rendering: a Vite SSR build of two routes, rendered with react-dom/server](0010-prerender-two-routes.md) — Proposed, same
+- [0011 — Content pipeline: Markdown + YAML front matter, zod, a Vite plugin, sharp](0011-content-pipeline.md) — Proposed, same
+- [0012 — Response headers: CSP and companions in vercel.json, mirrored into vite preview](0012-response-headers.md) — Proposed, same
