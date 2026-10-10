@@ -8,8 +8,7 @@ Testing decisions). Stack: ADR 0003.
 
 This file is the plan of record. It was approved before PR 1 and committed in PR 2 with the Owner
 decisions of 2026-10-09 folded in and the outcome of PR 1 and PR 2 recorded, so later sessions read
-it from here. Deviations made while implementing are listed per PR under "As delivered"; PR 4 is
-still the plan as approved.
+it from here. Deviations made while implementing are listed per PR under "As delivered".
 
 ## Context
 
@@ -72,8 +71,8 @@ license allow/deny lists in the dependency scan (license is a PR-body DoD item).
 |---|---|---|---|---|
 | 1 | `chore/phase-0b` | #10 | devcontainer, pnpm/Vite/TS/R3F skeleton, ESLint + Prettier, Vitest + coverage ratchet, real Makefile, CI `lint`/`test`/`build` real, CLAUDE.md/AGENTS.md | merged, PR #14 |
 | 2 | `chore/phase-0b-e2e` | #11 | Playwright 3 browsers + axe, headless Rapier model test, `world-playable` instrument, `make test-e2e`, CI `e2e`, pre-commit hook, actionlint, this file | merged, PR #15 |
-| 3 | `chore/phase-0b-gates` | #12 | CI `perf` (Lighthouse budget), `sast` (CodeQL), `deps`, `spec-freeze`, `ai-review`; Renovate; ADR 0007; README checks table; PR template wording | this PR |
-| 4 | `chore/phase-0b-hosting` | #13 | `vercel.json`, ADR 0006, `.claude` settings widening + format hook + `commands/{phase,fix-review}.md`, docs READMEs, wizard script + runbook, final CLAUDE.md/AGENTS.md | planned |
+| 3 | `chore/phase-0b-gates` | #12 | CI `perf` (Lighthouse budget), `sast` (CodeQL), `deps`, `spec-freeze`, `ai-review`; Renovate; ADR 0007; README checks table; PR template wording | merged, PR #16 |
+| 4 | `chore/phase-0b-hosting` | #13 | `vercel.json`, ADR 0006, `.claude` settings widening + format hook + `commands/{phase,fix-review}.md`, docs READMEs, wizard script + runbook, final CLAUDE.md/AGENTS.md | this PR |
 
 Every PR: conventional commits (one task per commit, agent trailer), `make verify` before each
 commit, `/code-review` before `gh pr create --label ai-assisted`, retro line in `docs/retro.md`, PR
@@ -383,6 +382,34 @@ end to end by the agent. Runbook: when to re-run, what each stage changes, how t
 - CLAUDE.md/AGENTS.md: hosting line (Vercel; `vercel.json` only; dashboard steps in the wizard),
   `.claude/commands`, `scripts/` in the map, wizard pointer; ≤ 150 lines, byte-identical.
 - `docs/retro.md`: one line per PR.
+
+### As delivered
+- **Owner additions (2026-10-10)**: `make dev` passes `--host` (Vite binds `::1` only while VS Code
+  port forwarding dials `127.0.0.1`, so the forwarded port was dead); `.devcontainer/
+  devcontainer-lock.json` (the feature digest pin, generated on first container start) is committed;
+  `buildCommand` is `pnpm exec vite build` as decision 9 says.
+- **Permissions, narrower than planned (Owner)**: `Bash(pnpm exec *)` and
+  `Bash(pnpm install --frozen-lockfile)` instead of `Bash(pnpm *)`; `Bash(pnpm publish *)` added to
+  deny; `pnpm add/remove/update/dlx` are explicit `ask` entries, since a dependency change is
+  reviewed in the PR body. Every pre-existing deny unchanged.
+- **Format-hook smoke test uses a `.json` fixture**, not the planned `.md`: this repo's
+  `.prettierignore` excludes Markdown, so a Markdown file can never prove the hook formats. The
+  fixture lives in a temp dir passed as `CLAUDE_PROJECT_DIR`; without Prettier the check is `SKIP`.
+  `.claude/settings.json` left `.prettierignore` and is Prettier-formatted, as PR 1 planned.
+- **Wizard**: `ENV_FILE=/dev/null` below the marker so the unchanged library can neither read nor
+  write a dotenv file (the chore/skills retro line, without editing `.agents/**`); one `CHECKS`
+  array feeds stages 2, 7 and 8; stage 6 leads with the Owner's existing domain and its DNS zone at
+  Infomaniak (A + CNAME as Vercel shows them), purchase through Vercel only as an explicit fallback
+  behind a red warning and a `confirm`; stage 8 also checks `allow_auto_merge` and lists every
+  unmet item under "still to do by hand". The library's unused `RED` is used by that warning so
+  shellcheck stays clean without touching the template.
+- **ADR index** only needed +0006 (0007 was indexed in PR 3). Netlify added to the rejected list.
+  `docs/spec/README.md` still said "draft, awaiting approval"; it now names the approval commit and
+  the `spec-freeze` gate.
+- **Known gap for the retro**: Renovate's `devcontainer` manager documents updates to
+  `devcontainer.json` features only; whether it rewrites `devcontainer-lock.json` is not documented.
+  If a feature bump arrives without a lock change, the next container start regenerates the lock
+  and the diff is committed by hand.
 
 ---
 

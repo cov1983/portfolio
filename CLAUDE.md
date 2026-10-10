@@ -4,15 +4,20 @@
 Thomas's personal website: an immersive, interactive 3D portfolio in which visitors steer an ice-hockey
 puck through a playful virtual world to discover his projects and background. Physics, hockey-inspired
 challenges and light storytelling make exploring the portfolio an experience that itself demonstrates
-his development skills. Status: **toolchain wired, Phase 0b in progress**. The stack is ADR 0003
-(TypeScript, React Three Fiber, Rapier); `src/` holds only the Phase 0b skeleton until Phase 3 tickets.
+his development skills. Status: **Phase 0b done in the repo; the Owner runs the setup wizard
+(`scripts/setup-wizard.sh`) for the dashboards**. The stack is ADR 0003 (TypeScript, React Three
+Fiber, Rapier); `src/` holds only the Phase 0b skeleton until Phase 3 tickets.
 
 ## Environment
-- Hosting: GitHub, public repository `cov1983/portfolio`. CI: GitHub Actions (`.github/workflows/ci.yml`).
+- Code: GitHub, public repository `cov1983/portfolio`. CI: GitHub Actions (`.github/workflows/ci.yml`).
+- Site: Vercel through its Git integration (ADR 0006). `vercel.json` is the only hosting config:
+  a preview per PR, production from `main`, held by Deployment Checks until the CI gates pass.
+  Dashboard settings (project, checks, domain, ruleset, secret) are stages of the setup wizard.
 - Team: solo. No required human approvals; the independent reviewer is the `ai-review` CI job
   (posts once the setup wizard stores `ANTHROPIC_API_KEY`; skipped with a notice before). The owner merges.
 - `main` is protected by a ruleset: PR required, no force-push, no deletion. Required status checks:
-  `lint`, `test`, `gitleaks` (job ids are stable across phases).
+  `lint`, `test`, `gitleaks`, plus `build`, `e2e`, `perf`, `sast`, `deps`, `spec-freeze` once the
+  wizard's ruleset stage has run (job ids are stable across phases).
 - Branches: `chore/<topic>`, `feat/<topic>`, `fix/<topic>`. One ticket = one branch = one PR.
 - Commits carry the agent trailer (`Co-Authored-By: …`). Every PR carries the label `ai-assisted`.
 - Pushes are run by the owner. The agent stops at `git push` and asks; it never holds push credentials.
@@ -28,7 +33,7 @@ his development skills. Status: **toolchain wired, Phase 0b in progress**. The s
 - Build:   `make build`         # production build to dist/
 - Perf:    `make perf`          # make build, then the Lighthouse budget (perf/budget.json) against dist/; needs a Chrome:
                                 # CHROME_PATH where none is installed system-wide, CHROME_NO_SANDBOX=1 inside a container
-- Run:     `make dev`           # Vite dev server; `make preview` serves dist/
+- Run:     `make dev`           # Vite dev server on every interface (VS Code forwarding dials 127.0.0.1); `make preview` serves dist/
 - Single steps: `make format`, `make format-check`, `make lint`, `make typecheck`
 
 ## Repository map
@@ -37,14 +42,16 @@ his development skills. Status: **toolchain wired, Phase 0b in progress**. The s
 - `docs/spec/`              frozen specs — never edit without an `amend:` commit
 - `docs/plan/`              implementation plans per feature
 - `docs/adr/`               decision records, `NNNN-<slug>.md`
-- `docs/runbooks/`          operational procedures
+- `docs/runbooks/`          operational procedures; `setup-wizard.md` for the dashboard setup and how to revert it
 - `docs/retro.md`           one line per ticket; append only
 - `docs/agents/`            config the engineering skills read: issue tracker, triage labels, domain docs
-- `.claude/`                settings, hooks (`hooks/`), hook tests (`hooks/tests/`), skill symlinks (`skills/`)
+- `.claude/`                settings, hooks (`hooks/`: guard-bash, log-session, format-file), hook tests (`hooks/tests/`),
+                            commands (`/phase` plans a ticket, `/fix-review` works a PR review), skill symlinks (`skills/`)
 - `.agents/skills/`         vendored engineering skills from `mattpocock/skills`; `.claude/skills/*` link here
 - `skills-lock.json`        pins the vendored skills (source, path, content hash)
 - `.github/`                CI (`workflows/ci.yml`), weekly audit (`workflows/audit.yml`), composite setup action (`actions/setup/`), PR template, CODEOWNERS
-- `scripts/`                `perf-budget.ts` (+ `perf/budget.ts`, the pure evaluator and its test) and `spec-freeze.sh`; TypeScript runs under plain Node 24
+- `scripts/`                `perf-budget.ts` (+ `perf/budget.ts`, the pure evaluator and its test), `spec-freeze.sh` and
+                            `setup-wizard.sh` (the Owner's dashboard steps; never run by an agent); TypeScript runs under plain Node 24
 - `perf/budget.json`        the performance budget: throttling profile and the three limits; nowhere else
 - `renovate.json`           Renovate: grouped patch automerge, majors behind the Dependency Dashboard (ADR 0007)
 - `.devcontainer/`          Dockerfile + devcontainer.json: the reference toolchain
@@ -52,7 +59,8 @@ his development skills. Status: **toolchain wired, Phase 0b in progress**. The s
 - `tests/`                  `e2e/` (Playwright, spec seam 1) and `model/` (headless Rapier under Node, seam 2)
 - `.githooks/`              `pre-commit`: lint-staged (Prettier, ESLint) then gitleaks; wired by `make setup`
 - root configs              `vite.config.ts`, `vitest.config.ts`, `playwright.config.ts`, `eslint.config.js`, `tsconfig*.json`, `.prettierrc`
-- `infra/`                  does not exist: no infrastructure beyond Vercel; the hosting ADR lands in Phase 0b PR 4
+- `vercel.json`             the whole hosting configuration (ADR 0006); owned by the Owner in CODEOWNERS
+- `infra/`                  does not exist: no infrastructure beyond Vercel
 - `GLOSSARY.md`             shared vocabulary (called CONTEXT.md in docs/workflow-guide.md); produced by `/grill-with-docs` in Phase 1
 
 ## Conventions
