@@ -20,9 +20,16 @@ This repo is single-context: one glossary and one ADR directory at the root.
 │   ├── 0001-hook-events.md
 │   ├── 0002-tracker-and-glossary.md
 │   ├── 0003-web-3d-stack.md
-│   └── 0004-pre-rendered-root.md
+│   ├── 0004-pre-rendered-root.md
+│   └── …
 └── src/
 ```
+
+## Where grilling outcomes go
+
+A term goes to `GLOSSARY.md`, a decision to `docs/adr/`, and everything else a grilling settles
+(scope, rules, targets, open questions) to a tracker issue, as #3 did for increment 1. The glossary
+stays a glossary: no field lists, increment scope or rules in it (retro 2026-10-07; ADR 0008).
 
 ## Use the glossary's vocabulary
 

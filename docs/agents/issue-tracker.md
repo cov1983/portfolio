@@ -28,7 +28,17 @@ GitHub shares one number space across issues and PRs, so a bare `#42` may be eit
 
 ## When a skill says "publish to the issue tracker"
 
-Create a GitHub issue.
+Create a GitHub issue. Exception: `/to-spec` publishes the spec as a comment on the input issue and
+writes the file under `docs/spec/` (`docs/agents/skill-overrides.md`).
+
+## Execution plans and hand-offs
+
+- A single ticket's approved execution plan is posted as a comment on the ticket before
+  implementation starts (`gh issue comment <number> --body-file -`). Work that spans more than one
+  PR or changes the process gets `docs/plan/<name>.md` in the first commit instead.
+- When a spec, plan or grilling defers work to "its own ticket", open that issue in the PR of the
+  approving commit (`spec: approve`, plan acceptance), labelled `ready-for-agent` or
+  `ready-for-human`, with `Part of #<parent>` at the top. A hand-off without an issue is a Blocker.
 
 ## When a skill says "fetch the relevant ticket"
 

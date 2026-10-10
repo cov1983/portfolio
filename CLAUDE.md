@@ -4,9 +4,8 @@
 Thomas's personal website: an immersive, interactive 3D portfolio in which visitors steer an ice-hockey
 puck through a playful virtual world to discover his projects and background. Physics, hockey-inspired
 challenges and light storytelling make exploring the portfolio an experience that itself demonstrates
-his development skills. Status: **Phase 0b done in the repo; the Owner runs the setup wizard
-(`scripts/setup-wizard.sh`) for the dashboards**. The stack is ADR 0003 (TypeScript, React Three
-Fiber, Rapier); `src/` holds only the Phase 0b skeleton until Phase 3 tickets.
+his development skills. Status: **Phase 0b done; the Owner runs the setup wizard (`scripts/setup-wizard.sh`)**.
+The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); `src/` holds only the Phase 0b skeleton until Phase 3.
 
 ## Environment
 - Code: GitHub, public repository `cov1983/portfolio`. CI: GitHub Actions (`.github/workflows/ci.yml`).
@@ -22,35 +21,38 @@ Fiber, Rapier); `src/` holds only the Phase 0b skeleton until Phase 3 tickets.
 - Commits carry the agent trailer (`Co-Authored-By: …`). Every PR carries the label `ai-assisted`.
 - Pushes are run by the owner. The agent stops at `git push` and asks; it never holds push credentials.
 - Process guide: `docs/workflow-guide.md`. Constitution: `docs/constitution.md` (v1.0, ratified 2026-10-08).
-- Toolchain: Node 24 (`.nvmrc`), pnpm via `packageManager`, make, jq, gitleaks. The devcontainer
-  (`.devcontainer/`) has all of them; CI runs the same make targets, so local verify == CI.
+- Toolchain: Node 24 (`.nvmrc`), pnpm via `packageManager`, make, jq, shellcheck, gitleaks. The devcontainer
+  (`.devcontainer/`) has all of them; CI runs the same make targets, so local verify == CI. A host without
+  Node 24 or shellcheck runs make through the devcontainer image, never around it.
+- No GPU on the agent machine: the agent never checks WebGL output (headless Firefox has no WebGL; e2e runs
+  Firefox headed under Xvfb). Visual checks go to the Owner, announced in the plan up front.
 
 ## Commands (single entry points — use these, not ad-hoc variants)
 - Setup:   `make setup`         # pnpm install --frozen-lockfile, git hooks path, then `make browsers` (Playwright)
-- Verify:  `make verify`        # Prettier check + ESLint + tsc --noEmit + Vitest with coverage; MUST pass before any commit
+- Verify:  `make verify`        # Prettier check + ESLint + tsc --noEmit + shellcheck + shell tests + Vitest with coverage; MUST pass before any commit
 - Test:    `make test`          # Vitest projects `unit` (src) and `model` (headless Rapier); ratchet in vitest.config.ts
 - E2E:     `make test-e2e`      # make build, then Playwright (Chromium, Firefox, WebKit, axe) against dist/
 - Build:   `make build`         # production build to dist/
 - Perf:    `make perf`          # make build, then the Lighthouse budget (perf/budget.json) against dist/; needs a Chrome:
                                 # CHROME_PATH where none is installed system-wide, CHROME_NO_SANDBOX=1 inside a container
 - Run:     `make dev`           # Vite dev server on every interface (VS Code forwarding dials 127.0.0.1); `make preview` serves dist/
-- Single steps: `make format`, `make format-check`, `make lint`, `make typecheck`
+- Single steps: `make format`, `make format-check`, `make lint`, `make typecheck`, `make shellcheck`, `make test-shell`
 
 ## Repository map
 - `docs/workflow-guide.md`  the process this repo follows; templates in §7
-- `docs/constitution.md`    principles, v1.0 ratified 2026-10-08; amendments need a version bump + ADR
+- `docs/constitution.md`    principles, v1.0 ratified 2026-10-08; an amendment names its target principle, bumps the version, gets an ADR
 - `docs/spec/`              frozen specs — never edit without an `amend:` commit
 - `docs/plan/`              implementation plans per feature
 - `docs/adr/`               decision records, `NNNN-<slug>.md`
 - `docs/runbooks/`          operational procedures; `setup-wizard.md` for the dashboard setup and how to revert it
 - `docs/retro.md`           one line per ticket; append only
-- `docs/agents/`            config the engineering skills read: issue tracker, triage labels, domain docs
+- `docs/agents/`            config the engineering skills read: issue tracker, triage labels, domain docs, skill overrides
 - `.claude/`                settings, hooks (`hooks/`: guard-bash, log-session, format-file), hook tests (`hooks/tests/`),
                             commands (`/phase` plans a ticket, `/fix-review` works a PR review), skill symlinks (`skills/`)
 - `.agents/skills/`         vendored engineering skills from `mattpocock/skills`; `.claude/skills/*` link here
 - `skills-lock.json`        pins the vendored skills (source, path, content hash)
 - `.github/`                CI (`workflows/ci.yml`), weekly audit (`workflows/audit.yml`), composite setup action (`actions/setup/`), PR template, CODEOWNERS
-- `scripts/`                `perf-budget.ts` (+ `perf/budget.ts`, the pure evaluator and its test), `spec-freeze.sh` and
+- `scripts/`                `perf-budget.ts` (+ `perf/budget.ts`, the pure evaluator and its test), `spec-freeze.sh` (+ its test) and
                             `setup-wizard.sh` (the Owner's dashboard steps; never run by an agent); TypeScript runs under plain Node 24
 - `perf/budget.json`        the performance budget: throttling profile and the three limits; nowhere else
 - `renovate.json`           Renovate: grouped patch automerge, majors behind the Dependency Dashboard (ADR 0007)
@@ -74,6 +76,12 @@ Fiber, Rapier); `src/` holds only the Phase 0b skeleton until Phase 3 tickets.
   ratchet measures model code and instruments.
 - Dependencies: exact versions in `package.json`, lockfile committed; a new dependency is the newest
   version the whole toolchain's peer ranges accept, listed in the PR body with license and reason.
+- Third-party code: an action's inputs are checked against its source for the mode it runs in, not its
+  README; a vendored skill is reviewed against Boundaries at install or update (`docs/agents/skill-overrides.md`).
+- Generated files: whatever an installer, `make setup`, a build or a container start leaves behind is
+  committed or gitignored in the same PR; `lint`, `build` and `e2e` fail on a dirty worktree (ADR 0008).
+- Shell gates (`scripts/*.sh`, hooks) ship with a passing and a failing case (`make test-shell`) before their
+  CI job exists; a fixture for a secret scanner looks like a real random secret, sequential text is ignored.
 - CI job ids (`lint`, `test`, `build`, `e2e`, `perf`, `sast`, `deps`, `gitleaks`, `spec-freeze`, `ai-review`)
   are stable: the `main` ruleset and Vercel's Deployment Checks match the required ones by name.
 - Errors: never swallow; typed errors at boundaries.
@@ -99,28 +107,24 @@ Fiber, Rapier); `src/` holds only the Phase 0b skeleton until Phase 3 tickets.
   blocker into the ticket, and wait for the Owner.
 
 ## Working protocol
-- Start every piece of work from its ticket; follow its tasks in order. Use the vocabulary defined in
-  `GLOSSARY.md`.
-- Plan before editing (plan mode). After each task run `make verify`, then commit.
+- Start every piece of work from its ticket; follow its tasks in order. Use the vocabulary of `GLOSSARY.md`.
+- Plan before editing (plan mode). The approved plan leaves the chat before implementation: a comment on the
+  ticket, or `docs/plan/<name>.md` in the first commit when the work spans PRs or changes the process.
+  After each task run `make verify`, then commit.
 - If the spec and reality conflict, STOP and write the conflict into the ticket under "Blockers".
+- Hand-offs: when a spec, plan or grilling defers work to "its own ticket", the tracker issue is opened in
+  the PR of the approving commit; a hand-off without an issue is a Blocker.
 - Before opening the PR, run `/code-review`; open the PR with `gh pr create --label ai-assisted` using
   the PR template and tick only the Definition of Done items that are actually true.
 - In the same PR, append one line to `docs/retro.md` (main is protected; a separate PR per retro
-  line is not worth it): date · ticket · what cost time · what I overrode · rule I would add. Every 3–5 tickets those lines become a rule here, a lint rule or a CI gate.
+  line is not worth it): date · ticket · what cost time · what I overrode · rule I would add. Every 3–5 tickets the lines are folded (ADR 0008 is fold 1).
 
 ## Definition of Done
 See the checklist in `.github/pull_request_template.md`.
 
 ## Agent skills
-
-### Issue tracker
-
-Issues live in GitHub Issues for `cov1983/portfolio`, operated via the `gh` CLI. See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-The five canonical triage labels are used unchanged: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context: one `GLOSSARY.md` at the repo root (written by `/grill-with-docs`) and ADRs in `docs/adr/`. See `docs/agents/domain.md`.
+- Issue tracker: GitHub Issues for `cov1983/portfolio`, operated via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+- Triage labels: the five canonical labels unchanged: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+- Domain docs: single-context, one `GLOSSARY.md` at the root (written by `/grill-with-docs`) and ADRs in `docs/adr/`. See `docs/agents/domain.md`.
+- Skill overrides: vendored skills are never edited; where this repo differs (`/to-spec`, `/wizard`, `/prototype`,
+  grilling, the installer) `docs/agents/skill-overrides.md` wins over the skill's own text.
