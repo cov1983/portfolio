@@ -1,17 +1,23 @@
 #!/usr/bin/env bash
 # PreToolUse hook (matcher: Bash). Reads the tool call as JSON on stdin, appends the command to
 # the audit log, and denies commands that touch secrets, production targets or protected refs.
-# Docs: https://code.claude.com/docs/en/hooks  ·  Decision: docs/adr/0001-hook-events.md
+# Docs: https://code.claude.com/docs/en/hooks  ·  Decisions: docs/adr/0001-hook-events.md (events),
+# docs/adr/0008-retro-fold-1.md (what is matched where).
 #
 # Second line of defence behind permissions.deny in .claude/settings.json: permission rules match
-# the literal command prefix, this script matches patterns anywhere in the command text.
+# the literal command prefix, this script matches patterns in the command text, in two tiers.
+#   HEAD_PATTERNS run against the command heads only. A heredoc body that is not fed to an
+#   interpreter (`gh pr create --body-file - <<'EOF'`, `git commit -F -`, `cat > file`) and a quoted
+#   -m/--body/--title value are text, not commands, and are blanked before matching. A quoted value
+#   that contains `$(`, a backtick or `${` is kept: the shell expands it, so it is a command.
+#   ANY_PATTERNS (secret material) run against the whole text: a token in a PR body is still a leak.
 # Never fails closed on missing tooling: if the payload cannot be parsed, it logs and allows.
 set -euo pipefail
 
 # --- deny patterns (case-insensitive ERE) with a static reason each ---------------------------
 # Format: <ERE pattern>@@<reason>. Keep reasons free of quotes/backslashes: they go into JSON verbatim.
-PATTERNS=(
-  '(^|[[:space:]/"'"'"'=])\.env($|[[:space:]]|\.)@@Reads or writes a .env file (secrets). Use .env.example for templates.'
+HEAD_PATTERNS=(
+  '(^|[[:space:]/"'"'"'=(])\.env($|[[:space:]."'"'"';)|&<>])@@Reads or writes a .env file (secrets). Use .env.example for templates.'
   'secrets/@@Touches a secrets/ directory.'
   'git[[:space:]]+push[[:space:]].*(--force|-f([[:space:]]|$))@@Force-push is forbidden (main is protected; history is append-only).'
   'git[[:space:]]+push[[:space:]].*(^|[[:space:]:])main([[:space:]]|$)@@Pushing to main is forbidden; open a PR from a branch.'
@@ -20,15 +26,17 @@ PATTERNS=(
   'kubectl[[:space:]]+delete@@Destructive cluster command.'
   'az[[:space:]].*[[:space:]]delete@@Destructive Azure CLI command.'
   'rm[[:space:]]+-[a-z]*(r[a-z]*f|f[a-z]*r)[a-z]*[[:space:]]+/([[:space:]]|$)@@Refusing rm -rf on the filesystem root.'
+  # Bash(pnpm exec *) is allowed in settings.json; permission rules match the command prefix only,
+  # so the two escapes below are closed here instead (Owner, 2026-10-10).
+  'pnpm[[:space:]]+exec[[:space:]]+(curl|wget)([[:space:]]|$)@@curl and wget are denied; pnpm exec does not change that.'
+  '(^|[[:space:]]|[;&|(])(npx|pnpm[[:space:]]+dlx)[[:space:]]+@@npx and pnpm dlx fetch and run an arbitrary package; add it after review in the PR body, then use pnpm exec.'
+)
+ANY_PATTERNS=(
   'ghp_[A-Za-z0-9]{20,}@@GitHub personal access token in command.'
   'gho_[A-Za-z0-9]{20,}@@GitHub OAuth token in command.'
   'AKIA[0-9A-Z]{16}@@AWS access key id in command.'
   'sk-[A-Za-z0-9_-]{20,}@@API secret key in command.'
   '-----BEGIN [A-Z ]*PRIVATE KEY@@Private key material in command.'
-  # Bash(pnpm exec *) is allowed in settings.json; permission rules match the command prefix only,
-  # so the two escapes below are closed here instead (Owner, 2026-10-10).
-  'pnpm[[:space:]]+exec[[:space:]]+(curl|wget)([[:space:]]|$)@@curl and wget are denied; pnpm exec does not change that.'
-  '(^|[[:space:]]|[;&|(])(npx|pnpm[[:space:]]+dlx)[[:space:]]+@@npx and pnpm dlx fetch and run an arbitrary package; add it after review in the PR body, then use pnpm exec.'
 )
 
 LOG="${GUARD_BASH_LOG:-${CLAUDE_PROJECT_DIR:-.}/.claude/audit.log}"
@@ -62,12 +70,39 @@ printf '%s\t%s\t%s\n' "$ts" "${session_id:-unknown}" "${command_text//$'\n'/ }" 
 # Normalise: template env files are allowed, so remove them before matching.
 normalised="$(printf '%s' "$command_text" | sed -E 's/\.env\.(example|template|sample)//g')"
 
-for entry in "${PATTERNS[@]}"; do
-  pattern="${entry%%@@*}"
-  reason="${entry#*@@}"
-  if printf '%s' "$normalised" | grep -Eiq -- "$pattern"; then
-    printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"guard-bash: %s"}}\n' "$reason"
-    exit 0
-  fi
+# Command heads: drop heredoc bodies unless the heredoc line runs an interpreter (then the body is
+# code), and blank quoted message/body/title values unless the shell would expand them.
+# Portable awk (mawk in CI): match() with RSTART/RLENGTH only. `<<<` is a here-string, not a heredoc.
+# shellcheck disable=SC2016  # the $ and backticks in the sed program are for sed, not for the shell
+heads="$(printf '%s\n' "$normalised" | awk '
+  BEGIN { skip = 0; tag = "" }
+  {
+    if (skip) {
+      line = $0; sub(/^[ \t]+/, "", line)
+      if (line == tag) skip = 0
+      next
+    }
+    print
+    probe = $0; gsub(/<<</, "HERESTRING", probe)
+    if (match(probe, /<<-?[ \t]*['"'"'"]?[A-Za-z_][A-Za-z0-9_]*['"'"'"]?/)) {
+      t = substr(probe, RSTART, RLENGTH); sub(/^<<-?[ \t]*/, "", t); gsub(/['"'"'"]/, "", t)
+      rest = substr(probe, 1, RSTART - 1) " " substr(probe, RSTART + RLENGTH)
+      if (rest !~ /(^|[ \t;&|(])(bash|sh|zsh|dash|ksh|fish|node|deno|bun|python[0-9.]*|perl|ruby|php|eval|source|exec|xargs|ssh|\.)([ \t]|$)/) {
+        skip = 1; tag = t
+      }
+    }
+  }
+' | sed -Ez 's/(^|[[:space:]])(-m|-b|-t|--message|--body|--title|--notes|--comment)([[:space:]]+|=)(\x27([^\x27`$]|\$[^({\x27`])*\x27|"(\\.|[^"\\`$]|\$[^({"`\\])*")/\1\2\3<text>/g')"
+
+deny() {
+  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"guard-bash: %s"}}\n' "$1"
+  exit 0
+}
+
+for entry in "${ANY_PATTERNS[@]}"; do
+  if printf '%s' "$normalised" | grep -Eiq -- "${entry%%@@*}"; then deny "${entry#*@@}"; fi
+done
+for entry in "${HEAD_PATTERNS[@]}"; do
+  if printf '%s' "$heads" | grep -Eiq -- "${entry%%@@*}"; then deny "${entry#*@@}"; fi
 done
 exit 0
