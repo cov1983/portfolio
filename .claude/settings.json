@@ -2,9 +2,17 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "allow": [
+      "Bash(make setup)",
       "Bash(make verify)",
+      "Bash(make format*)",
+      "Bash(make lint)",
+      "Bash(make typecheck)",
       "Bash(make test *)",
+      "Bash(make test-e2e)",
       "Bash(make build)",
+      "Bash(make perf)",
+      "Bash(pnpm exec *)",
+      "Bash(pnpm install --frozen-lockfile)",
       "Bash(git status *)",
       "Bash(git diff *)",
       "Bash(git log *)",
@@ -12,7 +20,10 @@
       "Bash(git commit *)",
       "Bash(gh pr *)",
       "Read(/**)",
-      "Edit(/docs/**)"
+      "Edit(/docs/**)",
+      "Edit(/src/**)",
+      "Edit(/tests/**)",
+      "Edit(/scripts/**)"
     ],
     "deny": [
       "Bash(git push --force *)",
@@ -32,6 +43,7 @@
       "Bash(az * delete *)",
       "Bash(kubectl delete *)",
       "Bash(npm publish *)",
+      "Bash(pnpm publish *)",
       "Bash(curl *)",
       "Bash(wget *)",
       "Read(/.env)",
@@ -42,7 +54,11 @@
       "Edit(/infra/prod/**)"
     ],
     "ask": [
-      "Edit(/docs/spec/**)"
+      "Edit(/docs/spec/**)",
+      "Bash(pnpm add *)",
+      "Bash(pnpm remove *)",
+      "Bash(pnpm update *)",
+      "Bash(pnpm dlx *)"
     ]
   },
   "hooks": {
@@ -54,6 +70,18 @@
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-bash.sh",
             "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format-file.sh",
+            "timeout": 30
           }
         ]
       }
