@@ -422,8 +422,9 @@ end to end by the agent. Runbook: when to re-run, what each stage changes, how t
   pipefail), the "no key" skip is listed once, stage 3 names the review model, the runbook says
   which stages have a y/N gate. Dismissed: `Bash(pnpm exec *)` lets `pnpm exec curl` past the
   `curl`/`wget` denies (the Owner chose the rule; guard-bash is the second line and "Bash rules are
-  not a boundary" is the Phase 0a retro line, so the sandbox is the answer, not a longer allow
-  list); the spec README in the hosting commit (the plan groups the three READMEs under Vercel);
+  not a boundary" is the Phase 0a retro line); the Owner kept the rule and closed the escape in
+  guard-bash instead: `pnpm exec curl|wget` and any `npx` / `pnpm dlx` are deny patterns with
+  fixtures, so the hook covers what a prefix-matched permission rule cannot; the spec README in the hosting commit (the plan groups the three READMEs under Vercel);
   CLAUDE.md in the closing docs commit (the plan's own item, as in PR 2 and PR 3); the `extract`
   helper copied from guard-bash (standalone hooks, as planned); `vercel.json` restating the make
   commands (decision 9).

@@ -25,6 +25,10 @@ PATTERNS=(
   'AKIA[0-9A-Z]{16}@@AWS access key id in command.'
   'sk-[A-Za-z0-9_-]{20,}@@API secret key in command.'
   '-----BEGIN [A-Z ]*PRIVATE KEY@@Private key material in command.'
+  # Bash(pnpm exec *) is allowed in settings.json; permission rules match the command prefix only,
+  # so the two escapes below are closed here instead (Owner, 2026-10-10).
+  'pnpm[[:space:]]+exec[[:space:]]+(curl|wget)([[:space:]]|$)@@curl and wget are denied; pnpm exec does not change that.'
+  '(^|[[:space:]]|[;&|(])(npx|pnpm[[:space:]]+dlx)[[:space:]]+@@npx and pnpm dlx fetch and run an arbitrary package; add it after review in the PR body, then use pnpm exec.'
 )
 
 LOG="${GUARD_BASH_LOG:-${CLAUDE_PROJECT_DIR:-.}/.claude/audit.log}"
