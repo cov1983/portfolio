@@ -41,8 +41,8 @@ jobs:
           lines=$(wc -l < CLAUDE.md)
           if [ "$lines" -gt 150 ]; then echo "CLAUDE.md has $lines lines; the limit is 150"; exit 1; fi
 
-      - name: Shell scripts pass shellcheck
-        run: shellcheck .claude/hooks/*.sh .claude/hooks/tests/run.sh .githooks/pre-commit scripts/*.sh
+      - name: Shell scripts pass shellcheck (hooks, pre-commit, gates and their tests)
+        run: make shellcheck
 
       - name: Workflow files pass actionlint (shellcheck on every run block)
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
@@ -50,8 +50,8 @@ jobs:
       - name: .claude/settings.json is valid JSON
         run: jq empty .claude/settings.json
 
-      - name: guard-bash hook smoke test
-        run: .claude/hooks/tests/run.sh
+      - name: Hook smoke tests and the spec-freeze gate test
+        run: make test-shell
 
   test:
     name: test
