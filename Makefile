@@ -22,7 +22,7 @@ help:
 	@echo "  make test-e2e      build, then Playwright in Chromium, Firefox and WebKit against dist/"
 	@echo "  make perf          build, then the Lighthouse performance budget (perf/budget.json) against dist/"
 	@echo "  make build         production build to dist/"
-	@echo "  make dev           Vite dev server"
+	@echo "  make dev           Vite dev server on every interface, so VS Code port forwarding reaches it"
 	@echo "  make preview       serve dist/ as production would"
 
 setup:
@@ -65,8 +65,9 @@ verify: format-check lint typecheck test
 build:
 	$(PNPM) exec vite build
 
+# --host: Vite alone binds ::1 only and VS Code port forwarding dials 127.0.0.1, so the forwarded port is dead.
 dev:
-	$(PNPM) exec vite
+	$(PNPM) exec vite --host
 
 preview:
 	$(PNPM) exec vite preview
