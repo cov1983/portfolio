@@ -1,0 +1,91 @@
+=== compat run 1
+node scripts/perf-budget.ts
+perf budget (Phase 0b lines, informational): pass
+  Title Screen interactive          1282 ms   limit 2000 ms   pass
+  World playable                    1312 ms   limit 5000 ms   pass
+  Download until playable       1,143,068 B   limit 4,000,000 B   pass
+variant compat
+  title-screen-interactive  170.271 ms
+  world-playable            1311.534 ms
+  long tasks between marks  1082ms+65ms, 1230ms+52ms
+  longest task between      65 ms
+  TBT                       17.027000000000044 ms
+  TTI                       1281.827000061035 ms
+  observed load / trace end 161 / 11902 ms
+  download until playable   1,143,068 B over 5 requests
+=== compat run 2
+node scripts/perf-budget.ts
+perf budget (Phase 0b lines, informational): pass
+  Title Screen interactive           223 ms   limit 2000 ms   pass
+  World playable                    1325 ms   limit 5000 ms   pass
+  Download until playable       1,143,068 B   limit 4,000,000 B   pass
+variant compat
+  title-screen-interactive  230.75 ms
+  world-playable            1324.574 ms
+  long tasks between marks  none
+  longest task between      0 ms
+  TBT                       0 ms
+  TTI                       222.673 ms
+  observed load / trace end 223 / 11944 ms
+  download until playable   1,143,068 B over 5 requests
+=== compat run 3
+node scripts/perf-budget.ts
+perf budget (Phase 0b lines, informational): pass
+  Title Screen interactive          1164 ms   limit 2000 ms   pass
+  World playable                    1310 ms   limit 5000 ms   pass
+  Download until playable       1,143,068 B   limit 4,000,000 B   pass
+variant compat
+  title-screen-interactive  187.492 ms
+  world-playable            1309.73 ms
+  long tasks between marks  1111ms+53ms
+  longest task between      53 ms
+  TBT                       3.2339999999999236 ms
+  TTI                       1164.057 ms
+  observed load / trace end 179 / 11932 ms
+  download until playable   1,143,068 B over 5 requests
+=== wasm run 1
+node scripts/perf-budget.ts
+perf budget (Phase 0b lines, informational): pass
+  Title Screen interactive           176 ms   limit 2000 ms   pass
+  World playable                    1857 ms   limit 5000 ms   pass
+  Download until playable       1,915,168 B   limit 4,000,000 B   pass
+variant wasm
+  title-screen-interactive  182.969 ms
+  world-playable            1857.158 ms
+  long tasks between marks  none
+  longest task between      0 ms
+  TBT                       0 ms
+  TTI                       175.639 ms
+  observed load / trace end 176 / 12552 ms
+  download until playable   1,915,168 B over 7 requests
+=== wasm run 2
+node scripts/perf-budget.ts
+perf budget (Phase 0b lines, informational): pass
+  Title Screen interactive          1882 ms   limit 2000 ms   pass
+  World playable                    1882 ms   limit 5000 ms   pass
+  Download until playable       1,915,168 B   limit 4,000,000 B   pass
+variant wasm
+  title-screen-interactive  183.708 ms
+  world-playable            1882.373 ms
+  long tasks between marks  1811ms+72ms
+  longest task between      72 ms
+  TBT                       21.51299999999992 ms
+  TTI                       1882.119 ms
+  observed load / trace end 172 / 12545 ms
+  download until playable   1,915,168 B over 7 requests
+=== wasm run 3
+node scripts/perf-budget.ts
+perf budget (Phase 0b lines, informational): pass
+  Title Screen interactive           165 ms   limit 2000 ms   pass
+  World playable                    1850 ms   limit 5000 ms   pass
+  Download until playable       1,915,168 B   limit 4,000,000 B   pass
+variant wasm
+  title-screen-interactive  172.469 ms
+  world-playable            1849.645 ms
+  long tasks between marks  none
+  longest task between      0 ms
+  TBT                       0 ms
+  TTI                       165.256 ms
+  observed load / trace end 165 / 12545 ms
+  download until playable   1,915,168 B over 7 requests
+done
