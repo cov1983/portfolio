@@ -18,10 +18,10 @@ application code starts with the Phase 3 tickets.
 - Then: `make verify` (format check, lint, types, unit and headless-physics tests), `make test-e2e`
   (production build driven in Chromium, Firefox and WebKit with axe; Firefox runs headed because
   headless Firefox has no WebGL: under Xvfb where `xvfb-run` exists, otherwise in a window on your
-  display, and it fails to launch with neither), `make dev` (dev server),
-  `make build` + `make preview` (production build), `make perf` (the Lighthouse budget; needs a
-  Chrome: `CHROME_PATH` where none is installed system-wide, `CHROME_NO_SANDBOX=1` inside a
-  container). `make help` lists everything.
+  display, and it fails to launch with neither), `make dev` (dev server, listening on every
+  interface so VS Code port forwarding reaches it), `make build` + `make preview` (production
+  build), `make perf` (the Lighthouse budget; needs a Chrome: `CHROME_PATH` where none is installed
+  system-wide, `CHROME_NO_SANDBOX=1` inside a container). `make help` lists everything.
 
 ## Where to look
 - `CLAUDE.md` / `AGENTS.md` — instructions for AI coding agents (identical files)
