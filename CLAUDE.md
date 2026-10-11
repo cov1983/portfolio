@@ -73,6 +73,8 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
                             CODEOWNERS. `vercel-headers.ts` reads its headers for `vite.config.ts` and the e2e fixture
 - `infra/`                  does not exist: no infrastructure beyond Vercel
 - `GLOSSARY.md`             shared vocabulary (called CONTEXT.md in docs/workflow-guide.md); produced by `/grill-with-docs` in Phase 1
+- `AGENTS.md`               a byte-for-byte copy of this file for other agents; the `lint` job fails when they differ, so
+                            every CLAUDE.md edit is copied over in the same commit (`cp CLAUDE.md AGENTS.md`)
 
 ## Conventions
 - Formatter and linter are law; do not disable rules without an ADR. Prettier formats code and
