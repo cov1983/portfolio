@@ -72,9 +72,9 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); `src/` holds only
 - TypeScript strict plus `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`; no `any`, no
   non-null assertion, no `eslint-disable` without a comment naming the issue.
 - Coverage ratchet: raise the coverage floor with `make coverage-ratchet` and commit the result; it
-  never moves on its own. Lowering one needs an ADR. Scope is `src/**` minus `main.tsx` and components,
-  plus the perf evaluator `scripts/perf/budget.ts`: rendering is proven by the Playwright seam, the
-  ratchet measures model code and instruments.
+  never moves on its own. Lowering one needs an ADR. Scope (plan §6) is `src/**/*.ts` and `build/**/*.ts`
+  minus `build/build.ts` and `build/content-plugin.ts` (glue), plus the perf evaluator `scripts/perf/budget.ts`;
+  no `*.tsx`: rendering is proven by the Playwright seam, the ratchet measures model code and instruments.
 - Dependencies: exact versions in `package.json`, lockfile committed; a new dependency is the newest
   version the whole toolchain's peer ranges accept, listed in the PR body with license and reason.
 - Third-party code: an action's inputs are checked against its source for the mode it runs in, not its

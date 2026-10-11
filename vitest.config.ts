@@ -36,8 +36,12 @@ export default defineConfig({
     ],
     coverage: {
       provider: 'v8',
-      include: ['src/**/*.{ts,tsx}', 'scripts/perf/budget.ts'],
-      exclude: ['src/main.tsx', 'src/App.tsx', 'src/vite-env.d.ts', '**/*.test.*'],
+      // Scope (plan §6): model code and instruments under src/, the pure build modules under
+      // build/ and the perf evaluator. Every *.tsx (src/main.tsx, src/entry-prerender.tsx,
+      // components) is outside through the include pattern: seam 1 proves rendering. build/build.ts
+      // (I/O glue) and build/content-plugin.ts (Vite glue) are outside by name.
+      include: ['src/**/*.ts', 'build/**/*.ts', 'scripts/perf/budget.ts'],
+      exclude: ['**/*.d.ts', '**/*.test.ts', 'build/build.ts', 'build/content-plugin.ts'],
       reporter: ['text', 'lcov'],
       // Ratchet: the floor never moves on its own. `make coverage-ratchet` sets COVERAGE_RATCHET=1,
       // which lets autoUpdate rewrite these numbers to the measured coverage; commit the result.
