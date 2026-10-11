@@ -1,9 +1,10 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from '@playwright/test'
 
 import { WORLD_PLAYABLE_MARK } from '../../src/perf/world-playable'
+import { expect, test } from './fixtures'
 
-// Phase 0b skeleton checks: presence and wiring of the built page, never WebGL output.
+// Phase 0b skeleton checks: presence and wiring of the built page, never WebGL output. Through the
+// shared fixture they also prove the skeleton runs under the CSP without a violation (ADR 0012).
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
 })
