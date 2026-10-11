@@ -1,6 +1,6 @@
 // Physical-key state (plan §5, Input): `KeyboardEvent.code` → DriveInput, so the W/A/S/D positions
 // steer on every layout (AC-7.2), plus the R, Escape, Enter and Space commands. No three, no Rapier.
-import type { DriveInput } from '../model/world'
+import { NO_INPUT, type DriveInput } from '../model/world'
 
 export const DRIVE_CODES = {
   up: ['ArrowUp', 'KeyW'],
@@ -38,13 +38,18 @@ function directionOf(code: string): Direction | undefined {
   )
 }
 
-/** True for a code the World handles, so the page can keep it from scrolling. */
+/** True for a steering code: the page keeps those from scrolling. */
+export function isDriveCode(code: string): boolean {
+  return directionOf(code) !== undefined
+}
+
+/** True for a code the World handles at all: a steering key or a command. */
 export function handlesCode(code: string): boolean {
-  return directionOf(code) !== undefined || code in COMMAND_CODES
+  return isDriveCode(code) || code in COMMAND_CODES
 }
 
 export function createKeyState(): KeyState {
-  const input: DriveInput = { up: false, down: false, left: false, right: false }
+  const input: DriveInput = { ...NO_INPUT }
   return {
     input,
     onKey(event) {
@@ -56,10 +61,7 @@ export function createKeyState(): KeyState {
       return event.type === 'keydown' ? (COMMAND_CODES[event.code] ?? null) : null
     },
     clear() {
-      input.up = false
-      input.down = false
-      input.left = false
-      input.right = false
+      Object.assign(input, NO_INPUT)
     },
   }
 }

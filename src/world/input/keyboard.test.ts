@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { createKeyState, DRIVE_CODES } from './keyboard'
+import { NO_INPUT } from '../model/world'
+import { createKeyState, DRIVE_CODES, handlesCode, isDriveCode } from './keyboard'
 
 // AC-7.1 (arrow and letter steer alike), AC-7.2 (physical key position, never the character),
 // AC-12.1 (R is Reset): the key state as the scene reads it.
-const NONE = { up: false, down: false, left: false, right: false }
+const NONE = NO_INPUT
 
 describe('createKeyState', () => {
   it('reads the physical code, not the character: KeyW with a non-Latin key still steers up', () => {
@@ -81,5 +82,18 @@ describe('createKeyState', () => {
     keys.onKey({ code: 'KeyD', type: 'keydown' })
     keys.clear()
     expect(keys.input).toEqual(NONE)
+  })
+})
+
+describe('isDriveCode and handlesCode', () => {
+  it('tells a steering key from a command key', () => {
+    expect(isDriveCode('ArrowUp')).toBe(true)
+    expect(isDriveCode('KeyR')).toBe(false)
+  })
+
+  it('handles steering keys and commands, nothing else', () => {
+    expect(handlesCode('KeyD')).toBe(true)
+    expect(handlesCode('Space')).toBe(true)
+    expect(handlesCode('KeyQ')).toBe(false)
   })
 })

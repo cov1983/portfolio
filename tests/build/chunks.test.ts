@@ -10,6 +10,8 @@ import { removeBuild, runProductionBuild, type BuildResult } from './production-
 // Title Screen path. The markers are strings each library leaves in its bundle: three sets
 // `globalThis.__THREE__`, Rapier's inlined wasm is instantiated through `WebAssembly`.
 const WORLD_CHUNK = /^world-.*\.js$/
+/** The library chunk or the World's own code (`World-*.js`, the dynamic import's module). */
+const ANY_WORLD_CHUNK = /^world-.*\.js$/i
 const MARKERS = { three: '__THREE__', rapier: 'WebAssembly' }
 
 /** Every file reachable from `entry` through static imports, `entry` included; absolute paths. */
@@ -61,11 +63,12 @@ describe('the built chunks', () => {
     expect(source).toContain(MARKERS.rapier)
   })
 
-  it('never reaches the world chunk through the static imports of the entry chunk', async () => {
+  it('never reaches a World chunk through the static imports of the entry chunk', async () => {
     const closure = await staticImportClosure(entryFile)
-    expect([...closure.keys()].filter((f) => WORLD_CHUNK.test(f.split('/').pop() ?? ''))).toEqual(
-      [],
+    const reached = [...closure.keys()].filter((f) =>
+      ANY_WORLD_CHUNK.test(f.split('/').pop() ?? ''),
     )
+    expect(reached).toEqual([])
   })
 
   it('keeps three and Rapier out of the entry chunk and its static imports', async () => {

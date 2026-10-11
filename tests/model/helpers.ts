@@ -1,8 +1,13 @@
 // Shared helpers of the model seam: inputs, stepping and sampling, a seeded generator.
 import type { Vec2 } from '../../src/world/model/layout'
-import type { DriveInput, PuckState, WorldModel } from '../../src/world/model/world'
+import {
+  NO_INPUT,
+  type DriveInput,
+  type PuckState,
+  type WorldModel,
+} from '../../src/world/model/world'
 
-export const NONE: DriveInput = { up: false, down: false, left: false, right: false }
+export const NONE: DriveInput = NO_INPUT
 export const UP: DriveInput = { ...NONE, up: true }
 export const DOWN: DriveInput = { ...NONE, down: true }
 export const LEFT: DriveInput = { ...NONE, left: true }

@@ -13,6 +13,8 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
 - Site: Vercel through its Git integration (ADR 0006). `vercel.json` is the only hosting config:
   a preview per PR, production from `main`, held by Deployment Checks until the CI gates pass.
   Dashboard settings (project, checks, domain, ruleset, secret) are stages of the setup wizard.
+- World guard (plan §9 risk 10): until T5b the World is reachable only at /?world; the perf run, the e2e canary
+  and the Owner's checks use that URL, the live root is a placeholder.
 - Team: solo. No required human approvals; the independent reviewer is the `ai-review` CI job
   (posts once the setup wizard stores `ANTHROPIC_API_KEY`; skipped with a notice before). The owner merges.
 - `main` is protected by a ruleset: PR required, no force-push, no deletion. Required status checks:
@@ -60,8 +62,8 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
 - `renovate.json`           Renovate: grouped patch automerge, majors behind the Dependency Dashboard (ADR 0007)
 - `.devcontainer/`          Dockerfile + devcontainer.json: the reference toolchain
 - `src/`                    application code: `main.tsx` (the `?world` guard, plan §9 risk 10), `world/` (`model/`: layout, Rapier
-                            model, pure camera; `input/`: keys by physical code; `scene/`: the R3F mirror, the `world` chunk's
-                            entry `World.tsx`), `perf/` (the marks), `content/` and `app/` (types only until T3 and T5a)
+                            model, pure camera; `input/`: keys by physical code; `scene/`: the R3F mirror; `World.tsx`: the entry
+                            the `?world` guard imports), `perf/` (the marks), `content/` and `app/` (types only until T3 and T5a)
 - `tests/`                  `e2e/` (Playwright, spec seam 1; `fixtures.ts` fails a test on pageerror, console.error, CSP violation),
                             `build/` (seam 1's build half: the production build spawned, output checked as text: CSP-safe HTML,
                             the `world` chunk isolated from the entry), `model/` (headless Rapier, seam 2)

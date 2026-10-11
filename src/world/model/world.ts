@@ -5,9 +5,19 @@
 import type RAPIER from '@dimforge/rapier3d-compat'
 
 import type { ExhibitId } from '../../content/types'
-import { insideRect, type Rect, type Segment, type Vec2, type WorldLayout } from './layout'
+import {
+  insideRect,
+  type Rect,
+  type Segment,
+  type Vec2,
+  type Vec3,
+  type WorldLayout,
+} from './layout'
 
 export type DriveInput = { up: boolean; down: boolean; left: boolean; right: boolean }
+
+/** Nothing pressed. Spread it to start a fresh input. */
+export const NO_INPUT: DriveInput = { up: false, down: false, left: false, right: false }
 
 export type PuckFeel = {
   friction: number
@@ -98,8 +108,8 @@ function iceRect(layout: WorldLayout, margin: number): Rect {
 }
 
 export type Box = {
-  centre: { x: number; y: number; z: number }
-  size: { x: number; y: number; z: number }
+  centre: Vec3
+  size: Vec3
 }
 
 /**

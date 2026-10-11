@@ -1,7 +1,13 @@
 import RAPIER from '@dimforge/rapier3d-compat'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 
-import { hubLayout, insideRect, type WorldLayout } from '../../src/world/model/layout'
+import { cameraGoal, framesPoint } from '../../src/world/model/camera'
+import {
+  blueLineOffset,
+  hubLayout,
+  insideRect,
+  type WorldLayout,
+} from '../../src/world/model/layout'
 import {
   createWorldModel,
   FIXED_DT,
@@ -26,7 +32,7 @@ import {
 // Spec seam 2: the Puck under Direct Drive on the Hub, stepped under Node with fixed timesteps.
 // Tolerances come from ADR 0005's reference numbers and plan §6 (row 8.1 as corrected on #24).
 const layout = hubLayout()
-const BLUE_LINE = layout.hub.rect.length / 6 // the prototype's marking, 6.67 m from the centre
+const BLUE_LINE = blueLineOffset(layout.hub.rect) // 6.67 m from the centre
 
 let model: WorldModel
 
@@ -67,6 +73,14 @@ describe('Direct Drive (AC-7.1, 7.3, 7.4)', () => {
   it('sends the Puck towards negative z on "up", with no sideways drift', () => {
     const samples = drive(create(), UP, 30)
     expect(samples.every((s) => s.velocity.z < 0 && Math.abs(s.velocity.x) < 1e-9)).toBe(true)
+  })
+
+  it('keeps the Follow Camera yaw constant while the Puck travels "up" (AC-7.4)', () => {
+    const yaws = drive(create(), UP, 30).map((s) => {
+      const { position, target } = cameraGoal(s.position)
+      return Math.atan2(position.x - target.x, position.z - target.z)
+    })
+    expect(Math.max(...yaws) - Math.min(...yaws)).toBeLessThan(1e-12)
   })
 })
 
@@ -163,6 +177,14 @@ describe('Reset (AC-12.1, AC-5.1 model half)', () => {
     const [last] = drive(model, NONE, 60).slice(-1)
     expect(last?.position.x).toBeCloseTo(layout.hub.resetPoint.x, 4)
     expect(last?.position.z).toBeCloseTo(layout.hub.resetPoint.z, 4)
+  })
+
+  it('is framed by the Follow Camera after Reset (AC-5.1 model half)', () => {
+    drive(create(), UP_RIGHT, 60)
+    model.reset()
+    const { position, height } = model.puck()
+    const puck = { x: position.x, y: height, z: position.z }
+    expect(framesPoint(cameraGoal(position), puck, 16 / 9)).toBe(true)
   })
 })
 

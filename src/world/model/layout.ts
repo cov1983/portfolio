@@ -4,6 +4,7 @@
 import type { ExhibitId } from '../../content/types'
 
 export type Vec2 = { x: number; z: number }
+export type Vec3 = { x: number; y: number; z: number }
 export type Rect = { centre: Vec2; length: number; width: number }
 export type Segment = { a: Vec2; b: Vec2 }
 /** A boarded playable surface; `boards` exclude the openings a Path leaves. */
@@ -37,6 +38,11 @@ export function insideRect(rect: Rect, point: Vec2): boolean {
     Math.abs(point.x - rect.centre.x) <= rect.width / 2 &&
     Math.abs(point.z - rect.centre.z) <= rect.length / 2
   )
+}
+
+/** Distance of a Rink's blue lines from its centre, along z: a sixth of the length (the prototype's marking). */
+export function blueLineOffset(rect: Rect): number {
+  return rect.length / 6
 }
 
 /** The four edges of a rect as segments: far (−z), near (+z), left (−x), right (+x). */

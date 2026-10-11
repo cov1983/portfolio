@@ -12,9 +12,9 @@ import type { Mesh } from 'three'
 
 import type { WorldFailure } from '../../app/types'
 import { markOnce, WORLD_PLAYABLE_MARK } from '../../perf/marks'
-import { createKeyState, handlesCode } from '../input/keyboard'
+import { createKeyState, handlesCode, isDriveCode } from '../input/keyboard'
 import { cameraFollow, cameraGoal, RIG, type CameraPose } from '../model/camera'
-import type { Rect, Segment, WorldLayout } from '../model/layout'
+import { blueLineOffset, type Rect, type Segment, type WorldLayout } from '../model/layout'
 import {
   boardBox,
   createWorldModel,
@@ -70,6 +70,7 @@ function Scene({ layout, paused, reducedMotion, onEvent, onReady, onFailure }: W
   const pose = useRef<CameraPose | null>(null)
   const accumulator = useRef(0)
   const skipFrame = useRef(false)
+  const firstFrameRendered = useRef(false)
   const marked = useRef(false)
   const puckMesh = useRef<Mesh>(null)
   const callbacks = useRef({ onEvent, onReady, onFailure })
@@ -104,7 +105,9 @@ function Scene({ layout, paused, reducedMotion, onEvent, onReady, onFailure }: W
   useEffect(() => {
     const handle = (type: 'keydown' | 'keyup') => (event: KeyboardEvent) => {
       if (!handlesCode(event.code)) return
-      event.preventDefault()
+      // Steering keys would scroll the page; Enter, Space and Escape keep their default so the
+      // Title Screen's links and controls work once T4 adds them (T5a's key router decides then).
+      if (isDriveCode(event.code)) event.preventDefault()
       const command = keys.onKey({ code: event.code, type })
       const current = model.current
       if (command === 'reset' && current !== null) {
@@ -139,10 +142,18 @@ function Scene({ layout, paused, reducedMotion, onEvent, onReady, onFailure }: W
   useFrame((state, dt) => {
     const current = model.current
     if (current === null) return
+    // The spec marks "World playable" when the first frame after physics initialisation has
+    // rendered: this callback runs before R3F renders the frame, so the first ready frame asks for
+    // one more and the second records the mark (the listener was attached by the mount effect).
     if (!marked.current) {
-      marked.current = true
-      markOnce(performance, WORLD_PLAYABLE_MARK)
-      callbacks.current.onReady()
+      if (firstFrameRendered.current) {
+        marked.current = true
+        markOnce(performance, WORLD_PLAYABLE_MARK)
+        callbacks.current.onReady()
+      } else {
+        firstFrameRendered.current = true
+        state.invalidate()
+      }
     }
     if (!paused && !skipFrame.current) {
       accumulator.current += Math.min(dt, MAX_FRAME_DT)
@@ -184,7 +195,7 @@ function Scene({ layout, paused, reducedMotion, onEvent, onReady, onFailure }: W
 /** The ice with the prototype's markings: the centre line and the blue lines at a sixth of the length. */
 function Ice({ rect }: { rect: Rect }) {
   const { x, z } = rect.centre
-  const blue = rect.length / 6
+  const blue = blueLineOffset(rect)
   return (
     <group position={[x, 0, z]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]}>

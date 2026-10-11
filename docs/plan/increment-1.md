@@ -474,7 +474,7 @@ cases use a context with `javaScriptEnabled: false`; reduced motion uses
 | 7.2 | unit | keyboard: the map reads `KeyboardEvent.code` only; an event with `code: 'KeyW'` and a non-Latin `key` still yields `up` | T1 |
 | 7.3 | model | up+right for 60 steps: speed equals single-key speed within 1 % | T1 |
 | 7.4 | model | up → velocity has negative z, zero x; camera yaw constant | T1 |
-| 8.1 | model | from rest, time to reach `maxSpeed − 0.5` ≈ 0.6 s (± 0.15 s) and distance ≤ blue line, 6.67 m from centre (the blue line is at length/6; measured ≈ 3.3 m; corrected on #24, 2026-10-11: 13.3 m was the line's distance from the end board) | T1 |
+| 8.1 | model | from rest, time to reach `maxSpeed − 0.5` ≈ 0.6 s (± 0.15 s) and distance ≤ blue line, 6.67 m from centre (the blue line is at length/6; measured 3.46 m under Rapier 0.19.2; corrected on #24, 2026-10-11: 13.3 m was the line's distance from the end board) | T1 |
 | 8.2 | model | release at top speed: rests (speed < 0.05) after ≈ 19 m ± 3, within 4 s ± 1 | T1 |
 | 8.3 | model | 600 steps of input: speed ≤ `maxSpeed` + 1e-6 | T1 |
 | 8.4 | model | angular velocity 0, y position constant, rotations locked | T1 |

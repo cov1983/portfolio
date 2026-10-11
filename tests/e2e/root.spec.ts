@@ -20,7 +20,7 @@ test('the root page never requests the world chunk', async ({ page }) => {
   page.on('request', (request) => urls.push(request.url()))
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  expect(urls.filter((url) => /\/assets\/world-/.test(url))).toEqual([])
+  expect(urls.filter((url) => /\/assets\/world-/i.test(url))).toEqual([])
 })
 
 test('the root page has no WCAG 2.2 AA violations', async ({ page }) => {

@@ -1,27 +1,27 @@
 import { describe, expect, it } from 'vitest'
 
-import { BOARD, boardBox, driveVector } from './world'
+import { BOARD, boardBox, driveVector, NO_INPUT } from './world'
 
 // The pure parts of the model; the Rapier-backed behaviour is seam 2 (tests/model).
 describe('driveVector', () => {
   it('is null when nothing is pressed', () => {
-    expect(driveVector({ up: false, down: false, left: false, right: false })).toBeNull()
+    expect(driveVector(NO_INPUT)).toBeNull()
   })
 
   it('points up along negative z', () => {
-    expect(driveVector({ up: true, down: false, left: false, right: false })).toEqual({
+    expect(driveVector({ ...NO_INPUT, up: true })).toEqual({
       x: 0,
       z: -1,
     })
   })
 
   it('normalises a diagonal to unit length (AC-7.3)', () => {
-    const v = driveVector({ up: true, down: false, left: false, right: true })
+    const v = driveVector({ ...NO_INPUT, up: true, right: true })
     expect(Math.hypot(v?.x ?? 0, v?.z ?? 0)).toBeCloseTo(1, 12)
   })
 
   it('cancels opposite keys', () => {
-    expect(driveVector({ up: true, down: true, left: false, right: false })).toBeNull()
+    expect(driveVector({ ...NO_INPUT, up: true, down: true })).toBeNull()
   })
 })
 
