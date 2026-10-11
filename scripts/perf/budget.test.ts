@@ -27,7 +27,12 @@ const budget: Budget = {
   },
 }
 
-type Request = { transferSize: number; networkEndTime: number; resourceType?: string }
+type Request = {
+  transferSize: number
+  networkEndTime: number
+  url?: string
+  resourceType?: string
+}
 
 /** A Lighthouse result reduced to the three audits the budget reads. */
 function lhr(opts: { interactive?: number; markAt?: number; requests?: Request[] } = {}): unknown {
@@ -141,15 +146,59 @@ describe('evaluateBudget', () => {
     ).toBe(1000)
   })
 
-  it('excludes Image and Media resources (Exhibit media is outside the budget)', () => {
+  it('excludes requests under /media/exhibits/<id>/ (Exhibit media is outside the budget)', () => {
     const requests = [
-      { transferSize: 1000, networkEndTime: 100, resourceType: 'Script' },
-      { transferSize: 2000, networkEndTime: 100, resourceType: 'Image' },
-      { transferSize: 4000, networkEndTime: 100, resourceType: 'Media' },
+      { transferSize: 1000, networkEndTime: 100, url: 'http://localhost:4173/assets/world-a1.js' },
+      {
+        transferSize: 2000,
+        networkEndTime: 100,
+        url: 'http://localhost:4173/media/exhibits/first/a-1440.jpg',
+      },
+      {
+        transferSize: 4000,
+        networkEndTime: 100,
+        url: 'http://localhost:4173/media/exhibits/first/clip.mp4',
+      },
     ]
     expect(
       lineById(evaluateBudget(lhr({ requests }), budget), 'download-until-playable').measured,
     ).toBe(1000)
+  })
+
+  it('counts images and media outside that prefix (World textures, icons, the preview image)', () => {
+    const requests = [
+      {
+        transferSize: 1000,
+        networkEndTime: 100,
+        url: 'http://localhost:4173/media/site/ice.png',
+        resourceType: 'Image',
+      },
+      {
+        transferSize: 2000,
+        networkEndTime: 100,
+        url: 'http://localhost:4173/assets/icon.svg',
+        resourceType: 'Image',
+      },
+      {
+        transferSize: 4000,
+        networkEndTime: 100,
+        url: 'http://localhost:4173/media/exhibits.mp4',
+        resourceType: 'Media',
+      },
+    ]
+    expect(
+      lineById(evaluateBudget(lhr({ requests }), budget), 'download-until-playable').measured,
+    ).toBe(7000)
+  })
+
+  it('counts a request without a usable URL rather than dropping it', () => {
+    const requests = [
+      { transferSize: 1000, networkEndTime: 100 },
+      { transferSize: 2000, networkEndTime: 100, url: 'not a url' },
+    ]
+    expect(
+      lineById(evaluateBudget(lhr({ requests }), budget), 'download-until-playable').measured,
+    ).toBe(3000)
   })
 
   it('fails the download line above the limit', () => {

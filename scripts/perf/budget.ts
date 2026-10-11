@@ -76,8 +76,17 @@ const LIMIT_KEYS = [
   'downloadUntilPlayableBytes',
 ] as const
 
-/** Resources that the download line excludes: Exhibit media is outside the budget (spec). */
-const EXCLUDED_RESOURCE_TYPES = new Set(['Image', 'Media'])
+/**
+ * The download line excludes requests by URL path prefix, never by resource type (plan §7): the
+ * Exhibit media under /media/exhibits/<id>/ is outside the budget (spec, AC-4.3), while World
+ * textures, icons and the preview image count. A request without a parsable URL counts.
+ */
+const EXCLUDED_PATH_PREFIX = '/media/exhibits/'
+
+function isExcludedUrl(url: unknown): boolean {
+  if (typeof url !== 'string' || !URL.canParse(url)) return false
+  return new URL(url).pathname.startsWith(EXCLUDED_PATH_PREFIX)
+}
 
 /** A plain object (not an array): the shape every Lighthouse node is narrowed through. */
 export function isRecord(value: unknown): value is Record<string, unknown> {
@@ -167,7 +176,7 @@ function worldPlayable(lhr: unknown): Measurement {
 }
 
 /**
- * Bytes transferred by every request that finished before the mark, Exhibit media excluded.
+ * Bytes transferred by every request that finished before the mark, Exhibit media excluded by prefix.
  * Lighthouse reports request times relative to the earliest request and the mark relative to
  * navigation start; the main document is that earliest request, so the offset is far below the
  * resolution that matters for a megabyte-scale line.
@@ -179,10 +188,10 @@ function downloadUntilPlayable(lhr: unknown, mark: Measurement): Measurement {
   let bytes = 0
   for (const item of items) {
     if (!isRecord(item)) continue
-    const { transferSize, networkEndTime, resourceType } = item
+    const { transferSize, networkEndTime, url } = item
     if (typeof transferSize !== 'number' || typeof networkEndTime !== 'number') continue
     if (networkEndTime > mark.value) continue
-    if (typeof resourceType === 'string' && EXCLUDED_RESOURCE_TYPES.has(resourceType)) continue
+    if (isExcludedUrl(url)) continue
     bytes += transferSize
   }
   return { value: bytes }

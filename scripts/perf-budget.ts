@@ -30,7 +30,9 @@ import {
 const BUDGET_FILE = 'perf/budget.json'
 const OUT_DIR = '.lighthouse'
 const PORT = 4173
-const URL_UNDER_TEST = `http://localhost:${String(PORT)}/`
+// `/?world` until T5b: the World ships behind that query on the root while production shows the
+// placeholder (plan §9 risk 10); T5b removes the guard and returns this run to `/`.
+const URL_UNDER_TEST = `http://localhost:${String(PORT)}/?world`
 const RUNS = 2
 const CHROME_FLAGS = [
   '--headless=new',
