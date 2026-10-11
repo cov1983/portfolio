@@ -12,6 +12,7 @@ import {
   type Vec2,
   type Vec3,
   type WorldLayout,
+  type Zone,
 } from './layout'
 
 export type DriveInput = { up: boolean; down: boolean; left: boolean; right: boolean }
@@ -139,13 +140,17 @@ export function boardBox(segment: Segment, rect: Rect): Box {
   }
 }
 
-function boardCollider(
-  rapier: typeof RAPIER,
-  segment: Segment,
-  rect: Rect,
-  feel: PuckFeel,
-): RAPIER.ColliderDesc {
-  const { centre, size } = boardBox(segment, rect)
+/** A rect of the layout standing on the ice as a box of `height`: the net's frame, shared with the scene. */
+export function rectBox(rect: Rect, height: number): Box {
+  return {
+    centre: { x: rect.centre.x, y: height / 2, z: rect.centre.z },
+    size: { x: rect.width, y: height, z: rect.length },
+  }
+}
+
+/** A solid the Puck rebounds off: boards and the net's frame share the board restitution and no friction. */
+function solidCollider(rapier: typeof RAPIER, box: Box, feel: PuckFeel): RAPIER.ColliderDesc {
+  const { centre, size } = box
   return rapier.ColliderDesc.cuboid(size.x / 2, size.y / 2, size.z / 2)
     .setTranslation(centre.x, centre.y, centre.z)
     .setFriction(0)
@@ -168,7 +173,7 @@ export function createWorldModel(
       .setRestitution(0),
   )
 
-  const boards = world.createRigidBody(rapier.RigidBodyDesc.fixed())
+  const solids = world.createRigidBody(rapier.RigidBodyDesc.fixed())
   const rinks = [
     layout.hub,
     { rect: layout.path.rect, boards: layout.path.boards },
@@ -176,7 +181,12 @@ export function createWorldModel(
   ]
   for (const rink of rinks) {
     for (const segment of rink.boards) {
-      world.createCollider(boardCollider(rapier, segment, rink.rect, feel), boards)
+      world.createCollider(solidCollider(rapier, boardBox(segment, rink.rect), feel), solids)
+    }
+  }
+  for (const zone of layout.zones) {
+    for (const post of zone.goal.posts) {
+      world.createCollider(solidCollider(rapier, rectBox(post, BOARD.height), feel), solids)
     }
   }
 
@@ -199,6 +209,55 @@ export function createWorldModel(
 
   const force = feel.acceleration * feel.mass
 
+  // The events' state (plan §5): a Zone reports its first entry once per page load, which is the
+  // model's lifetime; each Goal is armed until the Puck's position enters its sensor volume and
+  // armed again once it has left (AC-14.2), so a Panel closed over a Puck still in the net does not
+  // reopen. Reset emits nothing itself: the next step sees the Puck outside and re-arms.
+  const entered = new Set<ExhibitId>()
+  const goals = layout.zones.map((zone) => ({ zone, armed: true }))
+
+  function readPuck(): PuckState {
+    const t = body.translation()
+    const v = body.linvel()
+    const w = body.angvel()
+    return {
+      position: { x: t.x, z: t.z },
+      velocity: { x: v.x, z: v.z },
+      speed: Math.hypot(v.x, v.z),
+      height: t.y,
+      angularSpeed: Math.hypot(w.x, w.y, w.z),
+    }
+  }
+
+  function zoneAt(position: Vec2): Zone | undefined {
+    return layout.zones.find((zone) => insideRect(zone.rect, position))
+  }
+
+  function placeOf(position: Vec2): Place {
+    if (insideRect(layout.hub.rect, position)) return 'hub'
+    return zoneAt(position)?.exhibitId ?? 'path'
+  }
+
+  function eventsAt(position: Vec2): WorldEvent[] {
+    const events: WorldEvent[] = []
+    const zone = zoneAt(position)
+    if (zone !== undefined && !entered.has(zone.exhibitId)) {
+      entered.add(zone.exhibitId)
+      events.push({ type: 'zone-entered', zoneId: zone.exhibitId })
+    }
+    for (const goal of goals) {
+      const inside = insideRect(goal.zone.goal.sensor, position)
+      if (inside && goal.armed) {
+        goal.armed = false
+        events.push({ type: 'goal', zoneId: goal.zone.exhibitId })
+      } else if (!inside && !goal.armed) {
+        goal.armed = true
+        events.push({ type: 'goal-left', zoneId: goal.zone.exhibitId })
+      }
+    }
+    return events
+  }
+
   return {
     layout,
 
@@ -214,7 +273,7 @@ export function createWorldModel(
         const scale = feel.maxSpeed / speed
         body.setLinvel({ x: v.x * scale, y: v.y, z: v.z * scale }, true)
       }
-      return []
+      return eventsAt(readPuck().position)
     },
 
     reset() {
@@ -225,23 +284,11 @@ export function createWorldModel(
     },
 
     puck() {
-      const t = body.translation()
-      const v = body.linvel()
-      const w = body.angvel()
-      return {
-        position: { x: t.x, z: t.z },
-        velocity: { x: v.x, z: v.z },
-        speed: Math.hypot(v.x, v.z),
-        height: t.y,
-        angularSpeed: Math.hypot(w.x, w.y, w.z),
-      }
+      return readPuck()
     },
 
     place() {
-      const position = this.puck().position
-      if (insideRect(layout.hub.rect, position)) return 'hub'
-      const zone = layout.zones.find((z) => insideRect(z.rect, position))
-      return zone === undefined ? 'path' : zone.exhibitId
+      return placeOf(readPuck().position)
     },
 
     dispose() {

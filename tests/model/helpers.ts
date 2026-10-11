@@ -1,9 +1,12 @@
 // Shared helpers of the model seam: inputs, stepping and sampling, a seeded generator.
-import type { Vec2 } from '../../src/world/model/layout'
+import type { ExhibitId } from '../../src/content/types'
+import type { Vec2, WorldLayout, ZoneExhibit } from '../../src/world/model/layout'
 import {
   NO_INPUT,
   type DriveInput,
+  type Place,
   type PuckState,
+  type WorldEvent,
   type WorldModel,
 } from '../../src/world/model/world'
 
@@ -60,4 +63,33 @@ export function seededRandom(seed: number): () => number {
 
 export function randomInput(random: () => number): DriveInput {
   return { up: random() < 0.5, down: random() < 0.5, left: random() < 0.5, right: random() < 0.5 }
+}
+
+/** The one Zone's Exhibit until T3's content exists: only the schema produces a real ExhibitId. */
+export const PLACEHOLDER_EXHIBIT: ZoneExhibit = {
+  id: 'exhibit-1' as ExhibitId,
+  bannerText: 'Exhibit 1 — placeholder',
+}
+
+/** The same layout with the Puck starting at `point` (the Reset point moved by data, not by API). */
+export function at(layout: WorldLayout, point: Vec2): WorldLayout {
+  return { ...layout, hub: { ...layout.hub, resetPoint: point } }
+}
+
+/** What one step produced: the events, the Puck afterwards and where it is. */
+export type StepRecord = { events: WorldEvent[]; state: PuckState; place: Place }
+
+/** Steps the model `steps` times with `input` and records every step. */
+export function collect(model: WorldModel, input: DriveInput, steps: number): StepRecord[] {
+  const records: StepRecord[] = []
+  for (let i = 0; i < steps; i += 1) {
+    const events = model.step(input)
+    records.push({ events, state: model.puck(), place: model.place() })
+  }
+  return records
+}
+
+/** The indexes of the steps that produced an event of `type`. */
+export function stepsWith(records: StepRecord[], type: WorldEvent['type']): number[] {
+  return records.flatMap((record, i) => (record.events.some((e) => e.type === type) ? [i] : []))
 }

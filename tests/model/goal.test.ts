@@ -1,0 +1,141 @@
+import RAPIER from '@dimforge/rapier3d-compat'
+import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+
+import { insideRect, worldLayout, type WorldLayout } from '../../src/world/model/layout'
+import { createWorldModel, type Place, type WorldModel } from '../../src/world/model/world'
+import {
+  at,
+  collect,
+  DOWN,
+  drive,
+  NONE,
+  PLACEHOLDER_EXHIBIT,
+  RIGHT,
+  stepsWith,
+  UP,
+} from './helpers'
+
+// Spec seam 2, the Zone's events: the Goal is a sensor volume inside the net behind the goal line,
+// armed again only after the Puck has left it (AC-14.1, 14.2); posts and the net's outside are solid
+// (AC-14.3); the Zone reports its first entry once per page load (AC-13.1, model half).
+const layout = worldLayout(PLACEHOLDER_EXHIBIT)
+const zone = layout.zones[0]
+if (zone === undefined) throw new Error('the placeholder layout has no Zone')
+const ZONE_ID = zone.exhibitId
+const ZONE_CENTRE = zone.rect.centre
+const LINE_Z = zone.goal.line.a.z
+const STEPS = 360 // 6 s at top speed: the Zone is 30 m long
+
+let model: WorldModel
+
+function create(withLayout: WorldLayout): WorldModel {
+  model = createWorldModel(RAPIER, withLayout)
+  return model
+}
+
+beforeAll(async () => {
+  await RAPIER.init()
+})
+
+afterEach(() => {
+  model.dispose()
+})
+
+describe('Goal (AC-14.1)', () => {
+  it('fires once, at the step the Puck crosses the goal line into the net', () => {
+    const run = collect(create(at(layout, ZONE_CENTRE)), UP, STEPS)
+    const goals = stepsWith(run, 'goal')
+    expect(goals).toHaveLength(1)
+    const i = goals[0] ?? 0
+    expect(run[i]?.events).toEqual([{ type: 'goal', zoneId: ZONE_ID }])
+    expect(run[i]?.state.position.z).toBeLessThanOrEqual(LINE_Z)
+    expect(run[i - 1]?.state.position.z).toBeGreaterThan(LINE_Z)
+  })
+})
+
+describe('Goal re-arm (AC-14.2)', () => {
+  it('fires nothing while the Puck stays in the net', () => {
+    const entering = collect(create(at(layout, ZONE_CENTRE)), UP, STEPS)
+    expect(stepsWith(entering, 'goal')).toHaveLength(1)
+    expect(collect(model, UP, 120).flatMap((r) => r.events)).toEqual([])
+  })
+
+  it('reports goal-left once, at the step the Puck leaves the sensor, then fires again on re-entry', () => {
+    collect(create(at(layout, ZONE_CENTRE)), UP, STEPS)
+    const leaving = collect(model, DOWN, 120)
+    const left = stepsWith(leaving, 'goal-left')
+    expect(left).toHaveLength(1)
+    const i = left[0] ?? 0
+    expect(leaving[i]?.events).toEqual([{ type: 'goal-left', zoneId: ZONE_ID }])
+    expect(leaving[i]?.state.position.z).toBeGreaterThan(LINE_Z)
+    expect(leaving[i - 1]?.state.position.z).toBeLessThanOrEqual(LINE_Z)
+    expect(leaving.slice(0, i).flatMap((r) => r.events)).toEqual([])
+    const again = collect(model, UP, STEPS)
+    expect(stepsWith(again, 'goal')).toHaveLength(1)
+  })
+
+  it('re-arms after a Reset out of the net, on the next step', () => {
+    collect(create(at(layout, ZONE_CENTRE)), UP, STEPS)
+    model.reset()
+    const [first] = collect(model, NONE, 1)
+    expect(first?.events).toEqual([{ type: 'goal-left', zoneId: ZONE_ID }])
+    expect(stepsWith(collect(model, UP, STEPS), 'goal')).toHaveLength(1)
+  })
+})
+
+describe('Posts and the net outside (AC-14.3)', () => {
+  it.each<[string, { x: number; z: number }, 'x' | 'z', number]>([
+    ["the net's left side, from beside it", { x: -6, z: -62 }, 'x', 1],
+    ["the net's back, from behind it", { x: 0, z: -64 }, 'z', 1],
+    ['the left post, brushing it on the way up', { x: -3.6, z: -55 }, 'z', -1],
+  ])('rebounds off %s without a goal', (_name, start, axis, sign) => {
+    const input = axis === 'x' ? RIGHT : sign > 0 ? DOWN : UP
+    const run = collect(create(at(layout, start)), input, STEPS)
+    const rebounded = run.findIndex(
+      (r) => Math.sign(r.state.velocity[axis]) === -sign && r.state.speed > 0.1,
+    )
+    expect(rebounded).toBeGreaterThan(0)
+    expect(stepsWith(run, 'goal')).toEqual([])
+    expect(run.some((r) => insideRect(zone.goal.sensor, r.state.position))).toBe(false)
+  })
+})
+
+describe('Zone entered (AC-13.1, model half)', () => {
+  it('reports the first entry once, at the step the Puck enters the Zone', () => {
+    const run = collect(create(layout), UP, 400)
+    const entries = stepsWith(run, 'zone-entered')
+    expect(entries).toHaveLength(1)
+    const i = entries[0] ?? 0
+    expect(run[i]?.events).toEqual([{ type: 'zone-entered', zoneId: ZONE_ID }])
+    expect(run[i]?.place).toBe(ZONE_ID)
+    expect(run[i - 1]?.place).toBe('path')
+  })
+
+  it('stays silent on a second entry from the Path', () => {
+    collect(create(layout), UP, 400)
+    const back = collect(model, DOWN, 200)
+    expect(back.some((r) => r.place === 'path')).toBe(true)
+    const again = collect(model, UP, 200)
+    expect(stepsWith(again, 'zone-entered')).toEqual([])
+    expect(model.place()).toBe(ZONE_ID)
+  })
+
+  it('stays silent on a second entry after a Reset', () => {
+    collect(create(layout), UP, 400)
+    model.reset()
+    const again = collect(model, UP, 400)
+    expect(stepsWith(again, 'zone-entered')).toEqual([])
+    expect(model.place()).toBe(ZONE_ID)
+  })
+})
+
+describe('place() over the whole World', () => {
+  it.each<[Place, { x: number; z: number }]>([
+    ['hub', { x: 0, z: 0 }],
+    ['path', { x: 0, z: -27.5 }],
+    [ZONE_ID, { x: 0, z: -50 }],
+  ])('answers %s for a Puck resting there', (place, point) => {
+    drive(create(at(layout, point)), NONE, 10)
+    expect(model.place()).toBe(place)
+  })
+})

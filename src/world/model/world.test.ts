@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { BOARD, boardBox, driveVector, NO_INPUT } from './world'
+import { BOARD, boardBox, driveVector, NO_INPUT, rectBox } from './world'
 
 // The pure parts of the model; the Rapier-backed behaviour is seam 2 (tests/model).
 describe('driveVector', () => {
@@ -46,5 +46,14 @@ describe('boardBox', () => {
 
   it('refuses a board that is not axis-aligned', () => {
     expect(() => boardBox({ a: { x: 0, z: 0 }, b: { x: 1, z: 1 } }, rect)).toThrow(/axis-aligned/)
+  })
+})
+
+describe('rectBox', () => {
+  it('stands a rect on the ice as a box of the given height', () => {
+    expect(rectBox({ centre: { x: 1, z: -2 }, width: 0.3, length: 2 }, 1.2)).toEqual({
+      centre: { x: 1, y: 0.6, z: -2 },
+      size: { x: 0.3, y: 1.2, z: 2 },
+    })
   })
 })
