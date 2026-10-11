@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import type { ExhibitId } from '../../content/types'
 import {
   DIMENSIONS,
   hubLayout,
   insideRect,
+  PLACEHOLDER_EXHIBIT,
   type Rect,
   rectEdges,
   worldLayout,
-  type ZoneExhibit,
 } from './layout'
 
 describe('DIMENSIONS', () => {
@@ -58,11 +57,7 @@ describe('hubLayout', () => {
 })
 
 describe('worldLayout', () => {
-  // T3's schema is the only producer of an ExhibitId; the layout only carries it through.
-  const exhibit: ZoneExhibit = {
-    id: 'exhibit-1' as ExhibitId,
-    bannerText: 'Exhibit 1 — placeholder',
-  }
+  const exhibit = PLACEHOLDER_EXHIBIT
   const layout = worldLayout(exhibit)
   const zone = layout.zones[0]
 
@@ -115,10 +110,15 @@ describe('worldLayout', () => {
     ])
   })
 
-  it('names the Zone after its Exhibit and carries the Banner text through', () => {
-    expect(zone?.id).toBe(exhibit.id)
-    expect(zone?.exhibitId).toBe(exhibit.id)
-    expect(zone?.goal.zoneId).toBe(exhibit.id)
+  it('names the Zone and its Goal after the Exhibit', () => {
+    expect([zone?.id, zone?.exhibitId, zone?.goal.zoneId]).toEqual([
+      exhibit.id,
+      exhibit.id,
+      exhibit.id,
+    ])
+  })
+
+  it('carries the Banner text through', () => {
     expect(zone?.banner).toEqual({ text: exhibit.bannerText })
   })
 
@@ -142,17 +142,14 @@ describe('worldLayout', () => {
     expectRectClose(zone?.goal.sensor, { centre: { x: 0, z: -61.85 }, width: 6, length: 1.7 })
   })
 
-  it('keeps the sensor inside the Zone and clear of the frame', () => {
-    const sensor = zone?.goal.sensor
-    expect(sensor).toBeDefined()
-    if (sensor === undefined || zone === undefined) return
-    for (const edge of rectEdges(sensor)) {
-      expect(insideRect(zone.rect, edge.a)).toBe(true)
-      expect(insideRect(zone.rect, edge.b)).toBe(true)
-    }
-    for (const post of zone.goal.posts) {
-      expect(insideRect(sensor, post.centre)).toBe(false)
-    }
+  it('keeps the sensor inside the Zone', () => {
+    const corners = rectEdges(zone?.goal.sensor ?? layout.hub.rect).flatMap((e) => [e.a, e.b])
+    expect(corners.map((c) => insideRect(zone?.rect ?? layout.hub.rect, c))).not.toContain(false)
+  })
+
+  it('keeps the frame clear of the sensor', () => {
+    const sensor = zone?.goal.sensor ?? layout.hub.rect
+    expect(zone?.goal.posts.map((post) => insideRect(sensor, post.centre))).not.toContain(true)
   })
 })
 

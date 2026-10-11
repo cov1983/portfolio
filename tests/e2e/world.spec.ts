@@ -46,6 +46,11 @@ test('the World requests only same-origin files and no Exhibit media', async ({ 
 // takes longer than its 6 s of model time; the wait is generous rather than the check weakened.
 test('driving up from the Hub reaches the Goal without any loading', async ({ page }) => {
   test.setTimeout(120_000)
+  const scriptsAfterPlayable: string[] = []
+  let playable = false
+  page.on('request', (request) => {
+    if (playable && request.resourceType() === 'script') scriptsAfterPlayable.push(request.url())
+  })
   await page.goto('/?world')
   await expect
     .poll(() =>
@@ -55,13 +60,17 @@ test('driving up from the Hub reaches the Goal without any loading', async ({ pa
       ),
     )
     .toBe(1)
-  const scriptsAfterPlayable: string[] = []
-  page.on('request', (request) => {
-    if (request.resourceType() === 'script') scriptsAfterPlayable.push(request.url())
-  })
+  playable = true
+  const busy = page.locator('[aria-busy="true"], [role="progressbar"]')
   await page.keyboard.down('ArrowUp')
-  await expect(page.getByRole('status')).toHaveText('Goal', { timeout: 90_000 })
+  // Polled through the drive: a loading element seen on the way fails the run, not only at the end.
+  await expect
+    .poll(
+      async () =>
+        (await busy.count()) > 0 ? 'a loading element' : page.getByRole('status').textContent(),
+      { timeout: 90_000 },
+    )
+    .toBe('Goal')
   await page.keyboard.up('ArrowUp')
   expect(scriptsAfterPlayable).toEqual([])
-  await expect(page.locator('[aria-busy="true"], [role="progressbar"]')).toHaveCount(0)
 })

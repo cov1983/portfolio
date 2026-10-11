@@ -1,14 +1,14 @@
 import RAPIER from '@dimforge/rapier3d-compat'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 
-import { hubLayout, worldLayout } from '../../src/world/model/layout'
+import { hubLayout, PLACEHOLDER_EXHIBIT, worldLayout } from '../../src/world/model/layout'
 import {
   createWorldModel,
   STANDARD,
   type PuckState,
   type WorldModel,
 } from '../../src/world/model/world'
-import { at, collect, distance, driveUntil, NONE, PLACEHOLDER_EXHIBIT, UP } from './helpers'
+import { at, collect, distance, driveUntil, NONE, UP } from './helpers'
 
 // Spec seam 2, AC-10.1 (model half): Hub → Path → Zone is one continuous ice. Held at top speed the
 // Puck crosses both openings without losing speed or direction; released, its glide across them

@@ -7,6 +7,7 @@ import type RAPIER from '@dimforge/rapier3d-compat'
 import type { ExhibitId } from '../../content/types'
 import {
   insideRect,
+  type Goal,
   type Rect,
   type Segment,
   type Vec2,
@@ -151,10 +152,13 @@ export function boardBox(segment: Segment, rect: Rect, ends: BoardEnds = BOTH_EN
   }
 }
 
+/** Within a nanometre: the layout's corners come from the same arithmetic, inexact dimensions must not drop an extension. */
+const CORNER_EPSILON = 1e-9
+
 function isCorner(rect: Rect, point: Vec2): boolean {
   return (
-    Math.abs(point.x - rect.centre.x) === rect.width / 2 &&
-    Math.abs(point.z - rect.centre.z) === rect.length / 2
+    Math.abs(Math.abs(point.x - rect.centre.x) - rect.width / 2) < CORNER_EPSILON &&
+    Math.abs(Math.abs(point.z - rect.centre.z) - rect.length / 2) < CORNER_EPSILON
   )
 }
 
@@ -188,6 +192,11 @@ export function rectBox(rect: Rect, height: number): Box {
   }
 }
 
+/** The net's solid frame, board-high: the model's colliders and the scene's meshes are the same boxes. */
+export function frameBoxes(goal: Goal): Box[] {
+  return goal.posts.map((post) => rectBox(post, BOARD.height))
+}
+
 /** A solid the Puck rebounds off: boards and the net's frame share the board restitution and no friction. */
 function solidCollider(rapier: typeof RAPIER, box: Box, feel: PuckFeel): RAPIER.ColliderDesc {
   const { centre, size } = box
@@ -218,8 +227,8 @@ export function createWorldModel(
     world.createCollider(solidCollider(rapier, box, feel), solids)
   }
   for (const zone of layout.zones) {
-    for (const post of zone.goal.posts) {
-      world.createCollider(solidCollider(rapier, rectBox(post, BOARD.height), feel), solids)
+    for (const box of frameBoxes(zone.goal)) {
+      world.createCollider(solidCollider(rapier, box, feel), solids)
     }
   }
 

@@ -7,6 +7,7 @@ import {
   type CameraPose,
 } from '../../src/world/model/camera'
 import {
+  PLACEHOLDER_EXHIBIT,
   rectEdges,
   worldLayout,
   type Rect,
@@ -14,7 +15,7 @@ import {
   type Vec3,
 } from '../../src/world/model/layout'
 import { FIXED_DT, PUCK, STANDARD } from '../../src/world/model/world'
-import { PLACEHOLDER_EXHIBIT, seededRandom } from './helpers'
+import { seededRandom } from './helpers'
 
 // Spec seam 2, the Follow Camera over the whole World, pure: AC-5.2 (the first frame from the
 // Reset point holds the Hub's Path opening) and AC-11.2 (the Puck is inside the frame wherever it

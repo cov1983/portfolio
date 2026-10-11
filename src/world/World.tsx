@@ -3,14 +3,12 @@
 import { useCallback, useState, useSyncExternalStore } from 'react'
 
 import type { WorldFailure } from '../app/types'
-import type { ExhibitId } from '../content/types'
-import { worldLayout } from './model/layout'
+import { PLACEHOLDER_EXHIBIT, worldLayout } from './model/layout'
 import type { WorldEvent } from './model/world'
 import { WorldCanvas } from './scene/WorldCanvas'
 
-// Only T3's content schema produces an ExhibitId and T7's layoutFromContent builds the layout from
-// the content; until then the one Zone carries a placeholder id and Banner text (ticket #25).
-const layout = worldLayout({ id: 'exhibit-1' as ExhibitId, bannerText: 'Exhibit 1 — placeholder' })
+// T7's layoutFromContent builds the layout from the content; until then the one Zone is the placeholder.
+const layout = worldLayout(PLACEHOLDER_EXHIBIT)
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)'
 
 function ignore(): void {
@@ -38,7 +36,8 @@ export function World() {
   // Subscribed, so a change of the preference while the World runs applies at once (AC-11.3).
   const reducedMotion = useSyncExternalStore(subscribeReducedMotion, readReducedMotion)
   // The placeholder of #25: "Goal" while the Puck is in the net, so the re-arm is visible. T7
-  // routes the events to the store and opens the Exhibit Panel instead.
+  // routes the events to the store (ADR 0009: app state in one store, not component state) and
+  // opens the Exhibit Panel instead.
   const [goalShown, setGoalShown] = useState(false)
   const onEvent = useCallback((event: WorldEvent) => {
     if (event.type === 'goal') setGoalShown(true)

@@ -44,6 +44,15 @@ export type Dimensions = typeof DIMENSIONS
 /** What the layout needs of an Exhibit: T7's `layoutFromContent` derives it from the content. */
 export type ZoneExhibit = { id: ExhibitId; bannerText: string }
 
+/**
+ * The one Zone's Exhibit until the content exists: only T3's schema produces an ExhibitId, so this
+ * is the single cast in the code base; T7 replaces it with `layoutFromContent` and deletes it.
+ */
+export const PLACEHOLDER_EXHIBIT: ZoneExhibit = {
+  id: 'exhibit-1' as ExhibitId,
+  bannerText: 'Exhibit 1 — placeholder',
+}
+
 /** True when the point lies inside the rect, edges included. */
 export function insideRect(rect: Rect, point: Vec2): boolean {
   return (

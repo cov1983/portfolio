@@ -1,19 +1,14 @@
 import RAPIER from '@dimforge/rapier3d-compat'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 
-import { insideRect, worldLayout, type WorldLayout } from '../../src/world/model/layout'
-import { createWorldModel, type Place, type WorldModel } from '../../src/world/model/world'
 import {
-  at,
-  collect,
-  DOWN,
-  drive,
-  NONE,
+  insideRect,
   PLACEHOLDER_EXHIBIT,
-  RIGHT,
-  stepsWith,
-  UP,
-} from './helpers'
+  worldLayout,
+  type WorldLayout,
+} from '../../src/world/model/layout'
+import { createWorldModel, type Place, type WorldModel } from '../../src/world/model/world'
+import { at, collect, DOWN, drive, NONE, reboundAt, RIGHT, stepsWith, UP } from './helpers'
 
 // Spec seam 2, the Zone's events: the Goal is a sensor volume inside the net behind the goal line,
 // armed again only after the Puck has left it (AC-14.1, 14.2); posts and the net's outside are solid
@@ -48,7 +43,7 @@ describe('Goal (AC-14.1)', () => {
     expect(goals).toHaveLength(1)
     const i = goals[0] ?? 0
     expect(run[i]?.events).toEqual([{ type: 'goal', zoneId: ZONE_ID }])
-    expect(run[i]?.state.position.z).toBeLessThanOrEqual(LINE_Z)
+    expect(insideRect(zone.goal.sensor, run[i]?.state.position ?? ZONE_CENTRE)).toBe(true)
     expect(run[i - 1]?.state.position.z).toBeGreaterThan(LINE_Z)
   })
 })
@@ -60,7 +55,7 @@ describe('Goal re-arm (AC-14.2)', () => {
     expect(collect(model, UP, 120).flatMap((r) => r.events)).toEqual([])
   })
 
-  it('reports goal-left once, at the step the Puck leaves the sensor, then fires again on re-entry', () => {
+  it('reports goal-left once, at the step the Puck leaves the sensor', () => {
     collect(create(at(layout, ZONE_CENTRE)), UP, STEPS)
     const leaving = collect(model, DOWN, 120)
     const left = stepsWith(leaving, 'goal-left')
@@ -70,8 +65,12 @@ describe('Goal re-arm (AC-14.2)', () => {
     expect(leaving[i]?.state.position.z).toBeGreaterThan(LINE_Z)
     expect(leaving[i - 1]?.state.position.z).toBeLessThanOrEqual(LINE_Z)
     expect(leaving.slice(0, i).flatMap((r) => r.events)).toEqual([])
-    const again = collect(model, UP, STEPS)
-    expect(stepsWith(again, 'goal')).toHaveLength(1)
+  })
+
+  it('fires again once the Puck has left and re-enters', () => {
+    collect(create(at(layout, ZONE_CENTRE)), UP, STEPS)
+    expect(stepsWith(collect(model, DOWN, 120), 'goal-left')).toHaveLength(1)
+    expect(stepsWith(collect(model, UP, STEPS), 'goal')).toHaveLength(1)
   })
 
   it('re-arms after a Reset out of the net, on the next step', () => {
@@ -87,14 +86,24 @@ describe('Posts and the net outside (AC-14.3)', () => {
   it.each<[string, { x: number; z: number }, 'x' | 'z', number]>([
     ["the net's left side, from beside it", { x: -6, z: -62 }, 'x', 1],
     ["the net's back, from behind it", { x: 0, z: -64 }, 'z', 1],
-    ['the left post, brushing it on the way up', { x: -3.6, z: -55 }, 'z', -1],
   ])('rebounds off %s without a goal', (_name, start, axis, sign) => {
-    const input = axis === 'x' ? RIGHT : sign > 0 ? DOWN : UP
+    const input = axis === 'x' ? RIGHT : DOWN
     const run = collect(create(at(layout, start)), input, STEPS)
-    const rebounded = run.findIndex(
-      (r) => Math.sign(r.state.velocity[axis]) === -sign && r.state.speed > 0.1,
-    )
-    expect(rebounded).toBeGreaterThan(0)
+    const samples = run.map((r) => r.state)
+    expect(reboundAt(samples, axis, sign)).toBeGreaterThan(0)
+    expect(stepsWith(run, 'goal')).toEqual([])
+    expect(run.some((r) => insideRect(zone.goal.sensor, r.state.position))).toBe(false)
+  })
+
+  it('is knocked away from the mouth by the left post it brushes on the way up, without a goal', () => {
+    // The Puck's rim overlaps the post's face by 0.2 m: a round Puck on the post's corner is
+    // deflected outward (measured: −8.7 m/s sideways at the contact), not reversed. The contact
+    // must be the post, at the goal line, not the end board 4 m further on.
+    const run = collect(create(at(layout, { x: -3.6, z: -55 })), UP, STEPS)
+    const contact = run.findIndex((r) => Math.abs(r.state.velocity.x) > 0.1)
+    expect(contact).toBeGreaterThan(0)
+    expect(run[contact]?.state.velocity.x).toBeLessThan(-1)
+    expect(run[contact]?.state.position.z).toBeGreaterThan(LINE_Z - 0.5)
     expect(stepsWith(run, 'goal')).toEqual([])
     expect(run.some((r) => insideRect(zone.goal.sensor, r.state.position))).toBe(false)
   })

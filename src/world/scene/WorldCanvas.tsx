@@ -25,7 +25,6 @@ import {
   type WorldEvent,
   type WorldModel,
 } from '../model/world'
-import { Banner } from './Banner'
 import { Goal } from './Goal'
 import { interpolatePuck, renderAlpha } from './interpolate'
 import { IceLine, Solid } from './Solid'
@@ -48,8 +47,6 @@ const MAX_FRAME_DT = 0.1
 const MAX_STEPS_PER_FRAME = 4
 const ICE_COLOUR = '#eef4f8'
 const BOARD_COLOUR = '#d9dde2'
-/** The Banner hangs over the net: this high above the ice, this far behind the goal line. */
-const BANNER = { height: 3, behindLine: 1 }
 
 /** The last two model states; what the frame renders lies between them (interpolate.ts). */
 type PuckStates = { previous: PuckState; current: PuckState }
@@ -228,15 +225,7 @@ function Scene({ layout, paused, reducedMotion, onEvent, onReady, onFailure }: W
       {layout.zones.map((zone) => (
         <group key={zone.exhibitId}>
           <Ice rect={zone.rect} markings />
-          <Goal goal={zone.goal} rink={zone.rect} />
-          <Banner
-            text={zone.banner.text}
-            position={{
-              x: zone.goal.sensor.centre.x,
-              y: BANNER.height,
-              z: zone.goal.line.a.z - BANNER.behindLine,
-            }}
-          />
+          <Goal goal={zone.goal} rink={zone.rect} banner={zone.banner.text} />
         </group>
       ))}
       {boards.map((box, i) => (

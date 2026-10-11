@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { ExhibitId } from '../../content/types'
-
-import { hubLayout, rectEdges, worldLayout } from './layout'
+import { hubLayout, PLACEHOLDER_EXHIBIT, rectEdges, worldLayout } from './layout'
 import { BOARD, boardBox, boardBoxes, driveVector, NO_INPUT, rectBox } from './world'
 
 // The pure parts of the model; the Rapier-backed behaviour is seam 2 (tests/model).
@@ -71,8 +69,7 @@ describe('rectBox', () => {
 })
 
 describe('boardBoxes', () => {
-  const exhibit = { id: 'exhibit-1' as ExhibitId, bannerText: 'Exhibit 1' }
-  const boxes = boardBoxes(worldLayout(exhibit))
+  const boxes = boardBoxes(worldLayout(PLACEHOLDER_EXHIBIT))
   const t = BOARD.thickness
 
   it('equals the four extended boards of the closed Hub', () => {

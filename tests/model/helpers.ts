@@ -1,6 +1,5 @@
 // Shared helpers of the model seam: inputs, stepping and sampling, a seeded generator.
-import type { ExhibitId } from '../../src/content/types'
-import type { Vec2, WorldLayout, ZoneExhibit } from '../../src/world/model/layout'
+import type { Vec2, WorldLayout } from '../../src/world/model/layout'
 import {
   NO_INPUT,
   type DriveInput,
@@ -65,15 +64,14 @@ export function randomInput(random: () => number): DriveInput {
   return { up: random() < 0.5, down: random() < 0.5, left: random() < 0.5, right: random() < 0.5 }
 }
 
-/** The one Zone's Exhibit until T3's content exists: only the schema produces a real ExhibitId. */
-export const PLACEHOLDER_EXHIBIT: ZoneExhibit = {
-  id: 'exhibit-1' as ExhibitId,
-  bannerText: 'Exhibit 1 — placeholder',
-}
-
 /** The same layout with the Puck starting at `point` (the Reset point moved by data, not by API). */
 export function at(layout: WorldLayout, point: Vec2): WorldLayout {
   return { ...layout, hub: { ...layout.hub, resetPoint: point } }
+}
+
+/** The first sample where the Puck moves back along `axis` against `sign`, or −1: a rebound. */
+export function reboundAt(samples: PuckState[], axis: 'x' | 'z', sign: number): number {
+  return samples.findIndex((s) => Math.sign(s.velocity[axis]) === -sign && s.speed > 0.1)
 }
 
 /** What one step produced: the events, the Puck afterwards and where it is. */

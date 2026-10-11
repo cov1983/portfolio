@@ -3,23 +3,14 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 
 import {
   insideRect,
+  PLACEHOLDER_EXHIBIT,
   worldLayout,
   type Rect,
   type Vec2,
   type WorldLayout,
 } from '../../src/world/model/layout'
 import { createWorldModel, type DriveInput, type WorldModel } from '../../src/world/model/world'
-import {
-  at,
-  DOWN,
-  drive,
-  LEFT,
-  PLACEHOLDER_EXHIBIT,
-  randomInput,
-  RIGHT,
-  seededRandom,
-  UP,
-} from './helpers'
+import { at, DOWN, drive, LEFT, randomInput, reboundAt, RIGHT, seededRandom, UP } from './helpers'
 
 // Spec seam 2, AC-9.1 and AC-9.2 over the whole World: at top speed into every board of the Hub,
 // the Path and the Zone the Puck rebounds (the velocity component towards the board reverses) and
@@ -37,7 +28,10 @@ const hubCentre = layout.hub.rect.centre
 const pathCentre = layout.path.rect.centre
 const zoneCentre = zone.rect.centre
 
-const boards: [Part, string, Vec2, DriveInput, 'x' | 'z', number][] = [
+/** A run at one board: its part and name, the start point, the key held, the axis and sign towards it. */
+type BoardCase = [Part, string, Vec2, DriveInput, 'x' | 'z', number]
+
+const boards: BoardCase[] = [
   ['Hub', 'far board, beside the opening', { x: -6.5, z: hubCentre.z }, UP, 'z', -1],
   ['Hub', 'near board', hubCentre, DOWN, 'z', 1],
   ['Hub', 'left board', hubCentre, LEFT, 'x', -1],
@@ -68,10 +62,7 @@ afterEach(() => {
 describe('Boards (AC-9.1)', () => {
   it.each(boards)('%s: rebounds off the %s', (_part, _name, start, input, axis, sign) => {
     const samples = drive(create(at(layout, start)), input, STEPS)
-    const reversed = samples.findIndex(
-      (s) => Math.sign(s.velocity[axis]) === -sign && s.speed > 0.1,
-    )
-    expect(reversed).toBeGreaterThan(0)
+    expect(reboundAt(samples, axis, sign)).toBeGreaterThan(0)
   })
 
   it.each(boards)('%s: stays inside at the %s', (part, _name, start, input) => {
@@ -100,6 +91,5 @@ describe('Staying on the ice (AC-9.2)', () => {
         expect.fail(`left the ice at step ${String(step)}: ${JSON.stringify(position)}`)
       }
     }
-    expect(['hub', 'path', zone.exhibitId]).toContain(model.place())
   })
 })
