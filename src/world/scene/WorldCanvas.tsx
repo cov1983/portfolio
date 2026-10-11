@@ -1,7 +1,8 @@
 // The React Three Fiber mirror of the World model (plan §5, Scene loop ↔ model; ADR 0009): owns
-// the fixed-timestep accumulator, steps the model from the key state, copies the Puck pose into
-// its mesh, eases the Follow Camera and records `world-playable`. Nothing here steps physics
-// outside `model.step`, and nothing is fetched: no texture, no font.
+// the fixed-timestep accumulator, steps the model from the key state, renders the Puck mesh and
+// the camera goal from the state interpolated between the last two steps, eases the Follow
+// Camera and records `world-playable`. Nothing here steps physics outside `model.step`, and
+// nothing is fetched: no texture, no font.
 //
 // 'wasm-unsafe-eval' in the CSP (ADR 0012) exists for this import: the compat package inlines
 // Rapier's wasm and instantiates it in the page.
@@ -20,9 +21,11 @@ import {
   createWorldModel,
   FIXED_DT,
   PUCK,
+  type PuckState,
   type WorldEvent,
   type WorldModel,
 } from '../model/world'
+import { interpolatePuck, renderAlpha } from './interpolate'
 import './world.css'
 
 export type WorldCanvasProps = {
@@ -41,6 +44,15 @@ export type WorldCanvasProps = {
 const MAX_FRAME_DT = 0.1
 const MAX_STEPS_PER_FRAME = 4
 const ICE_COLOUR = '#eef4f8'
+
+/** The last two model states; what the frame renders lies between them (interpolate.ts). */
+type PuckStates = { previous: PuckState; current: PuckState }
+
+/** Both states at the model's state: a snap, nothing to blend. */
+function snapTo(model: WorldModel): PuckStates {
+  const state = model.puck()
+  return { previous: state, current: state }
+}
 const LINE_WIDTH = 0.3
 const LINE_HEIGHT = 0.01
 
@@ -69,6 +81,7 @@ export function WorldCanvas(props: WorldCanvasProps) {
 function Scene({ layout, paused, reducedMotion, onEvent, onReady, onFailure }: WorldCanvasProps) {
   const [keys] = useState(createKeyState)
   const model = useRef<WorldModel | null>(null)
+  const states = useRef<PuckStates | null>(null)
   const pose = useRef<CameraPose | null>(null)
   const pausedRef = useRef(paused)
   const accumulator = useRef(0)
@@ -92,6 +105,7 @@ function Scene({ layout, paused, reducedMotion, onEvent, onReady, onFailure }: W
         if (!live) return
         const created = createWorldModel(RAPIER, layout)
         model.current = created
+        states.current = snapTo(created)
         pose.current = cameraGoal(created.puck().position)
         invalidate()
       })
@@ -102,6 +116,7 @@ function Scene({ layout, paused, reducedMotion, onEvent, onReady, onFailure }: W
       live = false
       model.current?.dispose()
       model.current = null
+      states.current = null
     }
   }, [layout, invalidate])
 
@@ -117,10 +132,11 @@ function Scene({ layout, paused, reducedMotion, onEvent, onReady, onFailure }: W
       // Title Screen's links and controls work once T4 adds them (T5a's key router decides then).
       if (isDriveCode(event.code)) event.preventDefault()
       const command = keys.onKey({ code: event.code, type })
-      const current = model.current
-      if (command === 'reset' && current !== null) {
-        current.reset()
-        pose.current = cameraGoal(current.puck().position) // snap, AC-12.1
+      const world = model.current
+      if (command === 'reset' && world !== null) {
+        world.reset()
+        states.current = snapTo(world) // snap, AC-12.1: both states, so nothing is blended
+        pose.current = cameraGoal(world.puck().position)
         invalidate()
       }
     }
@@ -139,18 +155,21 @@ function Scene({ layout, paused, reducedMotion, onEvent, onReady, onFailure }: W
     }
   }, [keys, invalidate])
 
-  // On resume the accumulator is cleared and the resume frame's long delta is skipped.
+  // On resume the accumulator is cleared and the resume frame's long delta is skipped; the render
+  // state is the model's (the Puck keeps its state, AC-6.1), not a blend towards it.
   useEffect(() => {
     pausedRef.current = paused
     if (!paused) {
       accumulator.current = 0
       skipFrame.current = true
+      if (states.current !== null) states.current.previous = states.current.current
     }
   }, [paused])
 
   useFrame((state, dt) => {
-    const current = model.current
-    if (current === null) return
+    const world = model.current
+    const puckStates = states.current
+    if (world === null || puckStates === null) return
     // The spec marks "World playable" when the first frame after physics initialisation has
     // rendered: this callback runs before R3F renders the frame, so the first ready frame asks for
     // one more and the second records the mark (the listener was attached by the mount effect).
@@ -168,14 +187,25 @@ function Scene({ layout, paused, reducedMotion, onEvent, onReady, onFailure }: W
       accumulator.current += Math.min(dt, MAX_FRAME_DT)
       let steps = 0
       while (accumulator.current >= FIXED_DT && steps < MAX_STEPS_PER_FRAME) {
-        for (const event of current.step(keys.input)) callbacks.current.onEvent(event)
+        const events = world.step(keys.input)
+        puckStates.previous = puckStates.current
+        puckStates.current = world.puck()
+        for (const event of events) callbacks.current.onEvent(event)
         accumulator.current -= FIXED_DT
         steps += 1
       }
       if (steps === MAX_STEPS_PER_FRAME) accumulator.current = 0
     }
     skipFrame.current = false
-    const puck = current.puck()
+    // A frame holds 0, 1 or 2 steps, so the model's latest state moves in irregular jumps from
+    // frame to frame; the mesh and the camera goal take the state the accumulator's remainder
+    // points at between the last two steps, which moves smoothly (standard fixed-timestep
+    // interpolation, up to one step behind the model).
+    const puck = interpolatePuck(
+      puckStates.previous,
+      puckStates.current,
+      renderAlpha(accumulator.current, FIXED_DT),
+    )
     puckMesh.current?.position.set(puck.position.x, puck.height, puck.position.z)
     const goal = cameraGoal(puck.position)
     const next = pose.current === null ? goal : cameraFollow(pose.current, goal, dt, reducedMotion)
