@@ -41,6 +41,9 @@ export const DIMENSIONS = {
 
 export type Dimensions = typeof DIMENSIONS
 
+/** The Puck's body, shared by the model (its collider), the scene (its mesh) and the Goal rule. Metres. */
+export const PUCK = { radius: 0.5, height: 0.2 }
+
 /** What the layout needs of an Exhibit: T7's `layoutFromContent` derives it from the content. */
 export type ZoneExhibit = { id: ExhibitId; bannerText: string }
 
@@ -88,19 +91,24 @@ function withOpening(edge: Segment, width: number): Segment[] {
   ]
 }
 
-/** The Goal at the far end of a Zone: goal line, the net's solid frame and the sensor inside it. */
+/**
+ * The Goal at the far end of a Zone: goal line, the net's solid frame and the sensor inside it.
+ * The sensor starts one Puck radius behind the goal line, so the Puck's centre is inside it only
+ * once the whole Puck has crossed the line (Owner decision on #42), and ends at the net's back.
+ */
 function goalOf(zoneId: ExhibitId, zone: Rect, dims: Dimensions): Goal {
   const { mouth, depth, post, line } = dims.goal
   const cx = zone.centre.x
   const lineZ = zone.centre.z - zone.length / 2 + line
   const half = mouth / 2
+  const sensorLength = depth - post - PUCK.radius
   return {
     zoneId,
     line: { a: { x: cx - half, z: lineZ }, b: { x: cx + half, z: lineZ } },
     sensor: {
-      centre: { x: cx, z: lineZ - (depth - post) / 2 },
+      centre: { x: cx, z: lineZ - PUCK.radius - sensorLength / 2 },
       width: mouth,
-      length: depth - post,
+      length: sensorLength,
     },
     posts: [
       { centre: { x: cx - half - post / 2, z: lineZ - depth / 2 }, width: post, length: depth },

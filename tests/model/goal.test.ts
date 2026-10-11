@@ -7,7 +7,7 @@ import {
   worldLayout,
   type WorldLayout,
 } from '../../src/world/model/layout'
-import { createWorldModel, type Place, type WorldModel } from '../../src/world/model/world'
+import { createWorldModel, PUCK, type Place, type WorldModel } from '../../src/world/model/world'
 import { at, collect, DOWN, drive, NONE, reboundAt, RIGHT, stepsWith, UP } from './helpers'
 
 // Spec seam 2, the Zone's events: the Goal is a sensor volume inside the net behind the goal line,
@@ -19,6 +19,8 @@ if (zone === undefined) throw new Error('the placeholder layout has no Zone')
 const ZONE_ID = zone.exhibitId
 const ZONE_CENTRE = zone.rect.centre
 const LINE_Z = zone.goal.line.a.z
+/** Where the Puck's centre is once the whole Puck has crossed the goal line. */
+const GOAL_Z = LINE_Z - PUCK.radius
 const STEPS = 360 // 6 s at top speed: the Zone is 30 m long
 
 let model: WorldModel
@@ -37,14 +39,15 @@ afterEach(() => {
 })
 
 describe('Goal (AC-14.1)', () => {
-  it('fires once, at the step the Puck crosses the goal line into the net', () => {
+  it('fires once, at the step the whole Puck has crossed the goal line into the net', () => {
     const run = collect(create(at(layout, ZONE_CENTRE)), UP, STEPS)
     const goals = stepsWith(run, 'goal')
     expect(goals).toHaveLength(1)
     const i = goals[0] ?? 0
     expect(run[i]?.events).toEqual([{ type: 'goal', zoneId: ZONE_ID }])
+    expect(run[i]?.state.position.z).toBeLessThanOrEqual(GOAL_Z)
     expect(insideRect(zone.goal.sensor, run[i]?.state.position ?? ZONE_CENTRE)).toBe(true)
-    expect(run[i - 1]?.state.position.z).toBeGreaterThan(LINE_Z)
+    expect(run[i - 1]?.state.position.z).toBeGreaterThan(GOAL_Z)
   })
 })
 
@@ -62,8 +65,8 @@ describe('Goal re-arm (AC-14.2)', () => {
     expect(left).toHaveLength(1)
     const i = left[0] ?? 0
     expect(leaving[i]?.events).toEqual([{ type: 'goal-left', zoneId: ZONE_ID }])
-    expect(leaving[i]?.state.position.z).toBeGreaterThan(LINE_Z)
-    expect(leaving[i - 1]?.state.position.z).toBeLessThanOrEqual(LINE_Z)
+    expect(leaving[i]?.state.position.z).toBeGreaterThan(GOAL_Z)
+    expect(leaving[i - 1]?.state.position.z).toBeLessThanOrEqual(GOAL_Z)
     expect(leaving.slice(0, i).flatMap((r) => r.events)).toEqual([])
   })
 

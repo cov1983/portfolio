@@ -1,5 +1,6 @@
 // The Goal as the model lays it out: the net's solid frame from the same boxes as its colliders,
-// a translucent body over the sensor volume so the net reads as a net, the goal line painted
+// a translucent body filling the net from the goal line to its back so it reads as a net (the
+// sensor itself starts a Puck radius behind the line and is not drawn), the goal line painted
 // across the Zone as on a rink (the layout's `goal.line` is its part between the posts, the one
 // that counts), and the Banner hanging over the net. Nothing here senses anything; the model does
 // (ADR 0009).
@@ -14,13 +15,28 @@ const NET_OPACITY = 0.35
 /** The Banner hangs this high above the ice, this far behind the goal line. */
 const BANNER = { height: 3, behindLine: 1 }
 
+/** The net's cavity: from the goal line to the back, as wide as the mouth. */
+function netCavity(goal: GoalLayout): Rect {
+  const lineZ = goal.line.a.z
+  const back = goal.sensor.centre.z - goal.sensor.length / 2
+  return {
+    centre: { x: goal.sensor.centre.x, z: (lineZ + back) / 2 },
+    width: goal.sensor.width,
+    length: lineZ - back,
+  }
+}
+
 export function Goal({ goal, rink, banner }: { goal: GoalLayout; rink: Rect; banner: string }) {
   return (
     <group>
       {frameBoxes(goal).map((box, i) => (
         <Solid key={i} box={box} colour={FRAME_COLOUR} />
       ))}
-      <Solid box={rectBox(goal.sensor, BOARD.height)} colour={NET_COLOUR} opacity={NET_OPACITY} />
+      <Solid
+        box={rectBox(netCavity(goal), BOARD.height)}
+        colour={NET_COLOUR}
+        opacity={NET_OPACITY}
+      />
       <IceLine x={rink.centre.x} z={goal.line.a.z} width={rink.width} colour={FRAME_COLOUR} />
       <Banner
         text={banner}

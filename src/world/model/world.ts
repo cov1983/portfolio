@@ -7,6 +7,7 @@ import type RAPIER from '@dimforge/rapier3d-compat'
 import type { ExhibitId } from '../../content/types'
 import {
   insideRect,
+  PUCK,
   type Goal,
   type Rect,
   type Segment,
@@ -42,8 +43,7 @@ export const STANDARD: PuckFeel = {
 
 export const FIXED_DT = 1 / 60
 
-/** The Puck's body, shared with the scene so the mesh matches the collider. Metres. */
-export const PUCK = { radius: 0.5, height: 0.2 }
+export { PUCK } from './layout'
 
 /** A board's cross-section, shared with the scene. Metres. */
 export const BOARD = { thickness: 0.4, height: 1.2 }

@@ -138,8 +138,8 @@ describe('worldLayout', () => {
     expectRectClose(posts[2], { centre: { x: 0, z: -62.85 }, width: 6.6, length: 0.3 })
   })
 
-  it('puts the sensor volume inside the net, behind the goal line', () => {
-    expectRectClose(zone?.goal.sensor, { centre: { x: 0, z: -61.85 }, width: 6, length: 1.7 })
+  it('puts the sensor volume inside the net, one Puck radius behind the goal line', () => {
+    expectRectClose(zone?.goal.sensor, { centre: { x: 0, z: -62.1 }, width: 6, length: 1.2 })
   })
 
   it('keeps the sensor inside the Zone', () => {
