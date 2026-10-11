@@ -113,12 +113,17 @@ export type Box = {
   size: Vec3
 }
 
+/** Which ends of a board run a thickness past the segment. */
+export type BoardEnds = { a: boolean; b: boolean }
+
+const BOTH_ENDS: BoardEnds = { a: true, b: true }
+
 /**
  * The box of a board: along its segment, just outside the rect it belongs to, standing on the ice.
- * Each board runs a thickness past its ends, so two boards meeting at a corner leave no gap. The
- * collider and the mesh are built from the same box.
+ * An extended end runs a thickness past the segment, so two boards meeting at a corner leave no
+ * gap; by default both ends do (the closed Hub). The collider and the mesh are built from the same box.
  */
-export function boardBox(segment: Segment, rect: Rect): Box {
+export function boardBox(segment: Segment, rect: Rect, ends: BoardEnds = BOTH_ENDS): Box {
   const { a, b } = segment
   const half = BOARD.thickness / 2
   const alongZ = a.x === b.x
@@ -126,18 +131,53 @@ export function boardBox(segment: Segment, rect: Rect): Box {
     throw new Error(`boards must be axis-aligned: ${JSON.stringify(segment)}`)
   }
   const outward = alongZ ? Math.sign(a.x - rect.centre.x) : Math.sign(a.z - rect.centre.z)
+  const from = alongZ ? a.z : a.x
+  const to = alongZ ? b.z : b.x
+  const aFirst = from <= to
+  const low = Math.min(from, to) - ((aFirst ? ends.a : ends.b) ? BOARD.thickness : 0)
+  const high = Math.max(from, to) + ((aFirst ? ends.b : ends.a) ? BOARD.thickness : 0)
+  const middle = (low + high) / 2
   return {
     centre: {
-      x: (a.x + b.x) / 2 + (alongZ ? outward * half : 0),
+      x: alongZ ? a.x + outward * half : middle,
       y: BOARD.height / 2,
-      z: (a.z + b.z) / 2 + (alongZ ? 0 : outward * half),
+      z: alongZ ? middle : a.z + outward * half,
     },
     size: {
-      x: alongZ ? BOARD.thickness : Math.abs(b.x - a.x) + 2 * BOARD.thickness,
+      x: alongZ ? BOARD.thickness : high - low,
       y: BOARD.height,
-      z: alongZ ? Math.abs(b.z - a.z) + 2 * BOARD.thickness : BOARD.thickness,
+      z: alongZ ? high - low : BOARD.thickness,
     },
   }
+}
+
+function isCorner(rect: Rect, point: Vec2): boolean {
+  return (
+    Math.abs(point.x - rect.centre.x) === rect.width / 2 &&
+    Math.abs(point.z - rect.centre.z) === rect.length / 2
+  )
+}
+
+/**
+ * Every board of the layout as a box. A board end runs past its corner only where that corner is
+ * a corner of its own rect that no other rect touches: at an opening the neighbouring piece's box
+ * already covers the joint, and an extension there would leave a lip in the mouth or a stub on
+ * the ice (plan comment on #25, Q5).
+ */
+export function boardBoxes(layout: WorldLayout): Box[] {
+  const parts = [
+    { rect: layout.hub.rect, boards: layout.hub.boards },
+    { rect: layout.path.rect, boards: layout.path.boards },
+    ...layout.zones.map((zone) => ({ rect: zone.rect, boards: zone.boards })),
+  ]
+  const rects = parts.map((part) => part.rect)
+  const extendsAt = (rect: Rect, point: Vec2): boolean =>
+    isCorner(rect, point) && !rects.some((other) => other !== rect && insideRect(other, point))
+  return parts.flatMap(({ rect, boards }) =>
+    boards.map((segment) =>
+      boardBox(segment, rect, { a: extendsAt(rect, segment.a), b: extendsAt(rect, segment.b) }),
+    ),
+  )
 }
 
 /** A rect of the layout standing on the ice as a box of `height`: the net's frame, shared with the scene. */
@@ -174,15 +214,8 @@ export function createWorldModel(
   )
 
   const solids = world.createRigidBody(rapier.RigidBodyDesc.fixed())
-  const rinks = [
-    layout.hub,
-    { rect: layout.path.rect, boards: layout.path.boards },
-    ...layout.zones,
-  ]
-  for (const rink of rinks) {
-    for (const segment of rink.boards) {
-      world.createCollider(solidCollider(rapier, boardBox(segment, rink.rect), feel), solids)
-    }
+  for (const box of boardBoxes(layout)) {
+    world.createCollider(solidCollider(rapier, box, feel), solids)
   }
   for (const zone of layout.zones) {
     for (const post of zone.goal.posts) {
