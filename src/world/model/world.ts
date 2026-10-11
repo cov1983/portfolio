@@ -97,28 +97,47 @@ function iceRect(layout: WorldLayout, margin: number): Rect {
   }
 }
 
-/** A board collider: a cuboid along the segment, placed just outside the rect it belongs to. */
-function boardCollider(
-  rapier: typeof RAPIER,
-  segment: Segment,
-  rect: Rect,
-  feel: PuckFeel,
-): RAPIER.ColliderDesc {
+export type Box = {
+  centre: { x: number; y: number; z: number }
+  size: { x: number; y: number; z: number }
+}
+
+/**
+ * The box of a board: along its segment, just outside the rect it belongs to, standing on the ice.
+ * Each board runs a thickness past its ends, so two boards meeting at a corner leave no gap. The
+ * collider and the mesh are built from the same box.
+ */
+export function boardBox(segment: Segment, rect: Rect): Box {
   const { a, b } = segment
   const half = BOARD.thickness / 2
   const alongZ = a.x === b.x
   if (!alongZ && a.z !== b.z) {
     throw new Error(`boards must be axis-aligned: ${JSON.stringify(segment)}`)
   }
-  // Each board runs a thickness past its ends, so two boards meeting at a corner leave no gap.
-  const desc = alongZ
-    ? rapier.ColliderDesc.cuboid(half, BOARD.height / 2, Math.abs(b.z - a.z) / 2 + BOARD.thickness)
-    : rapier.ColliderDesc.cuboid(Math.abs(b.x - a.x) / 2 + BOARD.thickness, BOARD.height / 2, half)
   const outward = alongZ ? Math.sign(a.x - rect.centre.x) : Math.sign(a.z - rect.centre.z)
-  const midX = (a.x + b.x) / 2 + (alongZ ? outward * half : 0)
-  const midZ = (a.z + b.z) / 2 + (alongZ ? 0 : outward * half)
-  return desc
-    .setTranslation(midX, BOARD.height / 2, midZ)
+  return {
+    centre: {
+      x: (a.x + b.x) / 2 + (alongZ ? outward * half : 0),
+      y: BOARD.height / 2,
+      z: (a.z + b.z) / 2 + (alongZ ? 0 : outward * half),
+    },
+    size: {
+      x: alongZ ? BOARD.thickness : Math.abs(b.x - a.x) + 2 * BOARD.thickness,
+      y: BOARD.height,
+      z: alongZ ? Math.abs(b.z - a.z) + 2 * BOARD.thickness : BOARD.thickness,
+    },
+  }
+}
+
+function boardCollider(
+  rapier: typeof RAPIER,
+  segment: Segment,
+  rect: Rect,
+  feel: PuckFeel,
+): RAPIER.ColliderDesc {
+  const { centre, size } = boardBox(segment, rect)
+  return rapier.ColliderDesc.cuboid(size.x / 2, size.y / 2, size.z / 2)
+    .setTranslation(centre.x, centre.y, centre.z)
     .setFriction(0)
     .setRestitution(feel.boardRestitution)
 }
