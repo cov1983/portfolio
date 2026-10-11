@@ -3,7 +3,7 @@
 // budget file and runs Lighthouse, then prints what comes back from here. Every budget line is
 // always reported, also when its input is missing or the run failed, so a breach never hides
 // behind an error (Phase 0b plan, Owner decision 5).
-import { WORLD_PLAYABLE_MARK } from '../../src/perf/world-playable.ts'
+import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks.ts'
 
 export type Throttling = {
   rttMs: number

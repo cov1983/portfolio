@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { WORLD_PLAYABLE_MARK } from '../../src/perf/world-playable.ts'
+import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks.ts'
 import {
   BudgetFileError,
   evaluateBudget,

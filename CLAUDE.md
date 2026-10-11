@@ -4,8 +4,9 @@
 Thomas's personal website: an immersive, interactive 3D portfolio in which visitors steer an ice-hockey
 puck through a playful virtual world to discover his projects and background. Physics, hockey-inspired
 challenges and light storytelling make exploring the portfolio an experience that itself demonstrates
-his development skills. Status: **Phase 0b done; the Owner runs the setup wizard (`scripts/setup-wizard.sh`)**.
-The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); `src/` holds only the Phase 0b skeleton until Phase 3.
+his development skills. Status: **Phase 3, increment-1 in progress** (plan `docs/plan/increment-1.md`;
+T1 #24 ships the Puck on the Hub behind `/?world`, the live root stays a placeholder until T4).
+The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the model owns Rapier, the scene mirrors it.
 
 ## Environment
 - Code: GitHub, public repository `cov1983/portfolio`. CI: GitHub Actions (`.github/workflows/ci.yml`).
@@ -58,9 +59,12 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); `src/` holds only
 - `perf/budget.json`        the performance budget: throttling profile and the three limits; nowhere else
 - `renovate.json`           Renovate: grouped patch automerge, majors behind the Dependency Dashboard (ADR 0007)
 - `.devcontainer/`          Dockerfile + devcontainer.json: the reference toolchain
-- `src/`                    application code; today `main.tsx`, `App.tsx` (skeleton) and `perf/` (budget instrument)
+- `src/`                    application code: `main.tsx` (the `?world` guard, plan §9 risk 10), `world/` (`model/`: layout, Rapier
+                            model, pure camera; `input/`: keys by physical code; `scene/`: the R3F mirror, the `world` chunk's
+                            entry `World.tsx`), `perf/` (the marks), `content/` and `app/` (types only until T3 and T5a)
 - `tests/`                  `e2e/` (Playwright, spec seam 1; `fixtures.ts` fails a test on pageerror, console.error, CSP violation),
-                            `build/` (seam 1's build half: the production build spawned, output checked as text), `model/` (headless Rapier, seam 2)
+                            `build/` (seam 1's build half: the production build spawned, output checked as text: CSP-safe HTML,
+                            the `world` chunk isolated from the entry), `model/` (headless Rapier, seam 2)
 - `.githooks/`              `pre-commit`: lint-staged (Prettier, ESLint) then gitleaks; wired by `make setup`
 - root configs              `vite.config.ts`, `vitest.config.ts`, `playwright.config.ts`, `eslint.config.js`, `tsconfig*.json`, `.prettierrc`
 - `vercel.json`             the whole hosting configuration (ADR 0006), response headers included (ADR 0012); owned by the Owner in
