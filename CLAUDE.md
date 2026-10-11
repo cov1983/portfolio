@@ -30,12 +30,13 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); `src/` holds only
 ## Commands (single entry points — use these, not ad-hoc variants)
 - Setup:   `make setup`         # pnpm install --frozen-lockfile, git hooks path, then `make browsers` (Playwright)
 - Verify:  `make verify`        # Prettier check + ESLint + tsc --noEmit + shellcheck + shell tests + Vitest with coverage; MUST pass before any commit
-- Test:    `make test`          # Vitest projects `unit` (src) and `model` (headless Rapier); ratchet in vitest.config.ts
+- Test:    `make test`          # Vitest projects `unit` (src), `model` (headless Rapier), `build` (spawned production build); ratchet in vitest.config.ts
 - E2E:     `make test-e2e`      # make build, then Playwright (Chromium, Firefox, WebKit, axe) against dist/
 - Build:   `make build`         # production build to dist/
 - Perf:    `make perf`          # make build, then the Lighthouse budget (perf/budget.json) against dist/; needs a Chrome:
                                 # CHROME_PATH where none is installed system-wide, CHROME_NO_SANDBOX=1 inside a container
-- Run:     `make dev`           # Vite dev server on every interface (VS Code forwarding dials 127.0.0.1); `make preview` serves dist/
+- Run:     `make dev`           # Vite dev server on every interface (VS Code forwarding dials 127.0.0.1), under the ADR 0012 headers
+                                # plus a dev-only CSP nonce for Vite's injected tags; `make preview` serves dist/ under the headers as shipped
 - Single steps: `make format`, `make format-check`, `make lint`, `make typecheck`, `make shellcheck`, `make test-shell`
 
 ## Repository map
@@ -58,10 +59,12 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); `src/` holds only
 - `renovate.json`           Renovate: grouped patch automerge, majors behind the Dependency Dashboard (ADR 0007)
 - `.devcontainer/`          Dockerfile + devcontainer.json: the reference toolchain
 - `src/`                    application code; today `main.tsx`, `App.tsx` (skeleton) and `perf/` (budget instrument)
-- `tests/`                  `e2e/` (Playwright, spec seam 1) and `model/` (headless Rapier under Node, seam 2)
+- `tests/`                  `e2e/` (Playwright, spec seam 1; `fixtures.ts` fails a test on pageerror, console.error, CSP violation),
+                            `build/` (seam 1's build half: the production build spawned, output checked as text), `model/` (headless Rapier, seam 2)
 - `.githooks/`              `pre-commit`: lint-staged (Prettier, ESLint) then gitleaks; wired by `make setup`
 - root configs              `vite.config.ts`, `vitest.config.ts`, `playwright.config.ts`, `eslint.config.js`, `tsconfig*.json`, `.prettierrc`
-- `vercel.json`             the whole hosting configuration (ADR 0006); owned by the Owner in CODEOWNERS
+- `vercel.json`             the whole hosting configuration (ADR 0006), response headers included (ADR 0012); owned by the Owner in
+                            CODEOWNERS. `vercel-headers.ts` reads its headers for `vite.config.ts` and the e2e fixture
 - `infra/`                  does not exist: no infrastructure beyond Vercel
 - `GLOSSARY.md`             shared vocabulary (called CONTEXT.md in docs/workflow-guide.md); produced by `/grill-with-docs` in Phase 1
 
@@ -71,9 +74,9 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); `src/` holds only
 - TypeScript strict plus `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`; no `any`, no
   non-null assertion, no `eslint-disable` without a comment naming the issue.
 - Coverage ratchet: raise the coverage floor with `make coverage-ratchet` and commit the result; it
-  never moves on its own. Lowering one needs an ADR. Scope is `src/**` minus `main.tsx` and components,
-  plus the perf evaluator `scripts/perf/budget.ts`: rendering is proven by the Playwright seam, the
-  ratchet measures model code and instruments.
+  never moves on its own. Lowering one needs an ADR. Scope (plan §6) is `src/**/*.ts` and `build/**/*.ts`
+  minus `build/build.ts` and `build/content-plugin.ts` (glue), plus the perf evaluator `scripts/perf/budget.ts`;
+  no `*.tsx`: rendering is proven by the Playwright seam, the ratchet measures model code and instruments.
 - Dependencies: exact versions in `package.json`, lockfile committed; a new dependency is the newest
   version the whole toolchain's peer ranges accept, listed in the PR body with license and reason.
 - Third-party code: an action's inputs are checked against its source for the mode it runs in, not its
@@ -86,8 +89,9 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); `src/` holds only
   are stable: the `main` ruleset and Vercel's Deployment Checks match the required ones by name.
 - Errors: never swallow; typed errors at boundaries. Logging: structured, no personal data.
 - Tests: behaviour-level; one assertion concept per test; no sleeps. Two seams only: the built site in
-  a browser (`tests/e2e`, presence and wiring, never WebGL output) and the World model stepped under
-  Node (`tests/model`, fixed timesteps). No jsdom, no component tests. A fixture for a secret scanner
+  a browser (`tests/e2e`, presence and wiring, never WebGL output; its build half `tests/build` checks the
+  spawned build's output as text) and the World model stepped under Node (`tests/model`, fixed timesteps).
+  No jsdom, no component tests. A fixture for a secret scanner
   looks like a real random secret: sequential text is silently ignored.
 - Pre-commit (`.githooks/pre-commit`) formats and lints staged files and runs gitleaks when it is
   installed; the CI `gitleaks` job is the gate. Skip it only with `git commit --no-verify` and a reason.
