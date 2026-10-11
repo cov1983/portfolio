@@ -1,47 +1,48 @@
 import { expect, test as base } from '@playwright/test'
 
-import vercel from '../../vercel.json' with { type: 'json' }
+import { vercelHeaders } from '../../vercel-headers'
 
-// ADR 0012: the response headers live in vercel.json; vite.config.ts serves the same array from
-// `vite preview`, so what the e2e run sees is what the Vercel deployment sends.
-const ALL_PATHS = '/(.*)'
-
-/** The `/(.*)` headers of vercel.json, names lower-cased as a browser reports them. */
-export function vercelHeaders(): Record<string, string> {
-  const entry = vercel.headers.find((h) => h.source === ALL_PATHS)
-  if (entry === undefined) {
-    throw new Error(`vercel.json has no headers entry for ${ALL_PATHS}`)
-  }
-  return Object.fromEntries(entry.headers.map((h) => [h.key.toLowerCase(), h.value]))
+/** The `/(.*)` headers of vercel.json with names lower-cased, as a browser reports them. */
+export function expectedResponseHeaders(): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(vercelHeaders()).map(([name, value]) => [name.toLowerCase(), value]),
+  )
 }
+
+export type ProblemKind = 'pageerror' | 'console.error' | 'securitypolicyviolation'
+
+export type Problem = { kind: ProblemKind; detail: string }
 
 type Fixtures = {
   /** What the page reported during the test; the `page` fixture expects it empty at the end. */
-  problems: string[]
+  problems: Problem[]
 }
 
 type ReportViolation = (detail: string) => void
 
-/** Name of the binding `page.exposeFunction` installs on `window`; owned by this fixture, never read by a test. */
+/** Name of the binding `page.exposeFunction` installs on `window`. */
 const VIOLATION_BINDING = '__portfolioReportSecurityPolicyViolation'
 
 // Shared e2e fixture (plan §6, Observability): every test using this `test` fails when the page
 // raises an uncaught error, logs a `console.error` or reports a `securitypolicyviolation`, so the
 // CI gate sees what a Visitor's console would. The violation event only exists in the page, so an
-// init script forwards it through a binding before any page script runs.
+// init script forwards it through a binding before any page script runs. The binding is the only
+// window global in the suite and belongs to this fixture: plan §6's rule (tests read no window
+// globals and no component state) is about the site, and no test reads the binding.
 export const test = base.extend<Fixtures>({
   problems: async ({}, provide) => {
     await provide([])
   },
   page: async ({ page, problems }, provide) => {
     page.on('pageerror', (error) => {
-      problems.push(`pageerror: ${error.message}`)
+      problems.push({ kind: 'pageerror', detail: error.message })
     })
     page.on('console', (message) => {
-      if (message.type() === 'error') problems.push(`console.error: ${message.text()}`)
+      if (message.type() === 'error')
+        problems.push({ kind: 'console.error', detail: message.text() })
     })
     await page.exposeFunction(VIOLATION_BINDING, (detail: string) => {
-      problems.push(`securitypolicyviolation: ${detail}`)
+      problems.push({ kind: 'securitypolicyviolation', detail })
     })
     await page.addInitScript((binding) => {
       document.addEventListener('securitypolicyviolation', (event) => {

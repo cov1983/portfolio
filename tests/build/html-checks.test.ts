@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { inlineScripts, styleAttributes } from './html-checks'
+import { inlineScripts, nonceAttributes, styleAttributes } from './html-checks'
 
 describe('inlineScripts', () => {
   it('reports a script tag without src', () => {
@@ -27,5 +27,19 @@ describe('styleAttributes', () => {
     expect(
       styleAttributes('<link rel="stylesheet" href="/assets/a.css"><div class="root">'),
     ).toEqual([])
+  })
+})
+
+describe('nonceAttributes', () => {
+  it('reports a tag with a nonce attribute', () => {
+    expect(nonceAttributes('<script type="module" nonce="abc" src="/a.js"></script>')).toEqual([
+      '<script type="module" nonce="abc" src="/a.js">',
+    ])
+  })
+
+  it('accepts tags without a nonce attribute', () => {
+    expect(nonceAttributes('<meta property="csp" content="nonce=x"><script src="/a.js">')).toEqual(
+      [],
+    )
   })
 })

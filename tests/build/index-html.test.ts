@@ -6,20 +6,28 @@ import { dirname, join } from 'node:path'
 import { promisify } from 'node:util'
 import { beforeAll, describe, expect, it } from 'vitest'
 
-import { inlineScripts, styleAttributes } from './html-checks'
+import { inlineScripts, nonceAttributes, styleAttributes } from './html-checks'
 
 // Seam 1's build half (plan §6): the production build is spawned once per file into a directory
 // under the scratch dir, never into the worktree (ADR 0008), and its output is checked as text.
-// T0's check: the built index.html carries nothing the CSP of ADR 0012 would block.
+// T0's check: the built index.html carries nothing the CSP of ADR 0012 would block, and none of
+// the dev-only nonce of vite.config.ts.
 // The bin is not an exported subpath, so it is located from the package's exported package.json.
 const VITE_BIN = join(
   dirname(createRequire(import.meta.url).resolve('vite/package.json')),
   'bin/vite.js',
 )
 
-type Build = { code: number; stderr: string; indexHtml: string }
+type BuildResult = { code: number; stderr: string; indexHtml: string }
 
-async function runProductionBuild(): Promise<Build> {
+type SpawnFailure = { code?: number | string; stderr?: string }
+
+/** The boundary to the child process: execFile rejects with an Error carrying code and stderr. */
+function isSpawnFailure(error: unknown): error is SpawnFailure {
+  return typeof error === 'object' && error !== null && 'stderr' in error
+}
+
+async function runProductionBuild(): Promise<BuildResult> {
   const outDir = await mkdtemp(join(tmpdir(), 'portfolio-build-'))
   let code = 0
   let stderr = ''
@@ -30,16 +38,16 @@ async function runProductionBuild(): Promise<Build> {
       { env: { ...process.env, NO_COLOR: '1' } },
     ))
   } catch (error) {
-    const failure = error as { code?: number | string; stderr?: string }
-    code = typeof failure.code === 'number' ? failure.code : 1
-    stderr = failure.stderr ?? String(error)
+    if (!isSpawnFailure(error)) throw error
+    code = typeof error.code === 'number' ? error.code : 1
+    stderr = error.stderr ?? ''
   }
   const indexHtml = code === 0 ? await readFile(join(outDir, 'index.html'), 'utf8') : ''
   return { code, stderr, indexHtml }
 }
 
 describe('the production build', () => {
-  let build: Build
+  let build: BuildResult
 
   beforeAll(async () => {
     build = await runProductionBuild()
@@ -55,5 +63,9 @@ describe('the production build', () => {
 
   it('writes an index.html without a style attribute', () => {
     expect(styleAttributes(build.indexHtml)).toEqual([])
+  })
+
+  it('writes an index.html without a nonce attribute', () => {
+    expect(nonceAttributes(build.indexHtml)).toEqual([])
   })
 })

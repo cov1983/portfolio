@@ -35,7 +35,8 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); `src/` holds only
 - Build:   `make build`         # production build to dist/
 - Perf:    `make perf`          # make build, then the Lighthouse budget (perf/budget.json) against dist/; needs a Chrome:
                                 # CHROME_PATH where none is installed system-wide, CHROME_NO_SANDBOX=1 inside a container
-- Run:     `make dev`           # Vite dev server on every interface (VS Code forwarding dials 127.0.0.1); `make preview` serves dist/
+- Run:     `make dev`           # Vite dev server on every interface (VS Code forwarding dials 127.0.0.1), under the ADR 0012 headers
+                                # plus a dev-only CSP nonce for Vite's injected tags; `make preview` serves dist/ under the headers as shipped
 - Single steps: `make format`, `make format-check`, `make lint`, `make typecheck`, `make shellcheck`, `make test-shell`
 
 ## Repository map
@@ -62,7 +63,8 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); `src/` holds only
                             `build/` (seam 1's build half: the production build spawned, output checked as text), `model/` (headless Rapier, seam 2)
 - `.githooks/`              `pre-commit`: lint-staged (Prettier, ESLint) then gitleaks; wired by `make setup`
 - root configs              `vite.config.ts`, `vitest.config.ts`, `playwright.config.ts`, `eslint.config.js`, `tsconfig*.json`, `.prettierrc`
-- `vercel.json`             the whole hosting configuration (ADR 0006); owned by the Owner in CODEOWNERS
+- `vercel.json`             the whole hosting configuration (ADR 0006), response headers included (ADR 0012); owned by the Owner in
+                            CODEOWNERS. `vercel-headers.ts` reads its headers for `vite.config.ts` and the e2e fixture
 - `infra/`                  does not exist: no infrastructure beyond Vercel
 - `GLOSSARY.md`             shared vocabulary (called CONTEXT.md in docs/workflow-guide.md); produced by `/grill-with-docs` in Phase 1
 
