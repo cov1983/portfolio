@@ -1,10 +1,10 @@
 import { execFile } from 'node:child_process'
-import { mkdtemp, readFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { promisify } from 'node:util'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { inlineScripts, nonceAttributes, styleAttributes } from './html-checks'
 
@@ -18,7 +18,7 @@ const VITE_BIN = join(
   'bin/vite.js',
 )
 
-type BuildResult = { code: number; stderr: string; indexHtml: string }
+type BuildResult = { outDir: string; code: number; stderr: string; indexHtml: string }
 
 type SpawnFailure = { code?: number | string; stderr?: string }
 
@@ -43,7 +43,7 @@ async function runProductionBuild(): Promise<BuildResult> {
     stderr = error.stderr ?? ''
   }
   const indexHtml = code === 0 ? await readFile(join(outDir, 'index.html'), 'utf8') : ''
-  return { code, stderr, indexHtml }
+  return { outDir, code, stderr, indexHtml }
 }
 
 describe('the production build', () => {
@@ -51,6 +51,10 @@ describe('the production build', () => {
 
   beforeAll(async () => {
     build = await runProductionBuild()
+  })
+
+  afterAll(async () => {
+    await rm(build.outDir, { recursive: true, force: true })
   })
 
   it('exits 0', () => {
