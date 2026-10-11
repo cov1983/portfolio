@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  bannerPlace,
   DIMENSIONS,
   hubLayout,
   insideRect,
@@ -150,6 +151,18 @@ describe('worldLayout', () => {
   it('keeps the frame clear of the sensor', () => {
     const sensor = zone?.goal.sensor ?? layout.hub.rect
     expect(zone?.goal.posts.map((post) => insideRect(sensor, post.centre))).not.toContain(true)
+  })
+})
+
+describe('bannerPlace', () => {
+  const zone = worldLayout(PLACEHOLDER_EXHIBIT).zones[0]
+
+  it('stands the Banner on the ice against the end board, centred on the Goal', () => {
+    const place = zone === undefined ? undefined : bannerPlace(zone)
+    expect(place?.centre.x).toBe(0)
+    expect(place?.centre.y).toBeCloseTo((place?.height ?? 0) / 2, 9)
+    expect(place?.centre.z).toBeCloseTo(-65 + 0.02, 9)
+    expect(place?.width).toBe(8)
   })
 })
 

@@ -2,9 +2,9 @@
 // a translucent body filling the net from the goal line to its back so it reads as a net (the
 // sensor itself starts a Puck radius behind the line and is not drawn), the goal line painted
 // across the Zone as on a rink (the layout's `goal.line` is its part between the posts, the one
-// that counts), and the Banner hanging over the net. Nothing here senses anything; the model does
-// (ADR 0009).
-import type { Goal as GoalLayout, Rect } from '../model/layout'
+// that counts), and the Banner standing behind the net where the model places it. Nothing here
+// senses anything; the model does (ADR 0009).
+import { bannerPlace, type Goal as GoalLayout, type Rect, type Zone } from '../model/layout'
 import { BOARD, frameBoxes, rectBox } from '../model/world'
 import { Banner } from './Banner'
 import { IceLine, Solid } from './Solid'
@@ -12,8 +12,6 @@ import { IceLine, Solid } from './Solid'
 const FRAME_COLOUR = '#c8102e'
 const NET_COLOUR = '#ffffff'
 const NET_OPACITY = 0.35
-/** The Banner hangs this high above the ice, this far behind the goal line. */
-const BANNER = { height: 3, behindLine: 1 }
 
 /** The net's cavity: from the goal line to the back, as wide as the mouth. */
 function netCavity(goal: GoalLayout): Rect {
@@ -26,7 +24,8 @@ function netCavity(goal: GoalLayout): Rect {
   }
 }
 
-export function Goal({ goal, rink, banner }: { goal: GoalLayout; rink: Rect; banner: string }) {
+export function Goal({ zone }: { zone: Zone }) {
+  const { goal, rect } = zone
   return (
     <group>
       {frameBoxes(goal).map((box, i) => (
@@ -37,15 +36,8 @@ export function Goal({ goal, rink, banner }: { goal: GoalLayout; rink: Rect; ban
         colour={NET_COLOUR}
         opacity={NET_OPACITY}
       />
-      <IceLine x={rink.centre.x} z={goal.line.a.z} width={rink.width} colour={FRAME_COLOUR} />
-      <Banner
-        text={banner}
-        position={{
-          x: goal.sensor.centre.x,
-          y: BANNER.height,
-          z: goal.line.a.z - BANNER.behindLine,
-        }}
-      />
+      <IceLine x={rect.centre.x} z={goal.line.a.z} width={rect.width} colour={FRAME_COLOUR} />
+      <Banner text={zone.banner.text} place={bannerPlace(zone)} />
     </group>
   )
 }

@@ -225,7 +225,7 @@ function Scene({ layout, paused, reducedMotion, onEvent, onReady, onFailure }: W
       {layout.zones.map((zone) => (
         <group key={zone.exhibitId}>
           <Ice rect={zone.rect} markings />
-          <Goal goal={zone.goal} rink={zone.rect} banner={zone.banner.text} />
+          <Goal zone={zone} />
         </group>
       ))}
       {boards.map((box, i) => (

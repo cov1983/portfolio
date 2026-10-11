@@ -44,6 +44,27 @@ export type Dimensions = typeof DIMENSIONS
 /** The Puck's body, shared by the model (its collider), the scene (its mesh) and the Goal rule. Metres. */
 export const PUCK = { radius: 0.5, height: 0.2 }
 
+/**
+ * The Banner's sign: an upright plane standing on the ice against the Zone's end board, behind
+ * the net, facing the Hub; `gap` keeps it just in front of the board's face, where the Puck never
+ * passes through it. Metres. The Follow Camera's frame from the Zone's near end bounds the height
+ * (measured on #42: 1.65 m at the end board, 1.95 m right behind the net; the Owner's 2 m fits
+ * nowhere between); the framing proof in tests/model pins it.
+ */
+export const BANNER = { width: 8, height: 1.6, gap: 0.02 }
+
+export type BannerPlace = { centre: Vec3; width: number; height: number }
+
+/** Where a Zone's Banner stands: centred on the Goal, bottom on the ice, against the end board. */
+export function bannerPlace(zone: Zone, size = BANNER): BannerPlace {
+  const endBoard = zone.rect.centre.z - zone.rect.length / 2
+  return {
+    centre: { x: zone.goal.sensor.centre.x, y: size.height / 2, z: endBoard + size.gap },
+    width: size.width,
+    height: size.height,
+  }
+}
+
 /** What the layout needs of an Exhibit: T7's `layoutFromContent` derives it from the content. */
 export type ZoneExhibit = { id: ExhibitId; bannerText: string }
 

@@ -7,6 +7,7 @@ import {
   type CameraPose,
 } from '../../src/world/model/camera'
 import {
+  bannerPlace,
   PLACEHOLDER_EXHIBIT,
   rectEdges,
   worldLayout,
@@ -80,6 +81,27 @@ describe('The Puck is inside the frame anywhere in the World (AC-11.2)', () => {
         }
       }
       expect(unframed).toEqual([])
+    },
+  )
+})
+
+describe('The Banner is framed from the Zone', () => {
+  // The Puck at the Zone's near centre, just in from the Path: the camera's goal pose there must
+  // hold the whole sign standing behind the net (Owner finding on #42: a sign hung 3 m above the
+  // ice was above the frame's upper edge from here).
+  const nearCentre = { x: zone.rect.centre.x, z: zone.rect.centre.z + zone.rect.length / 2 }
+  const pose = cameraGoal(nearCentre)
+  const place = bannerPlace(zone)
+  const topEdge = [-1, 1].map((side) => ({
+    x: place.centre.x + (side * place.width) / 2,
+    y: place.centre.y + place.height / 2,
+    z: place.centre.z,
+  }))
+
+  it.each(ASPECTS)(
+    "holds the Banner's top edge from the Zone's near centre at aspect %f",
+    (aspect) => {
+      expect(topEdge.map((p) => framesPoint(pose, p, aspect))).toEqual([true, true])
     },
   )
 })
