@@ -2,9 +2,11 @@
 // Serves dist/ (built by the make target), launches headless Chrome with software WebGL so the
 // first frame renders and the world-playable mark exists, runs Lighthouse 13 with devtools
 // throttling from perf/budget.json, and evaluates the three budget lines (scripts/perf/budget.ts).
-// All three numbers are always printed. A run that breaches or errors is retried once; the exit
-// status follows the last run (Phase 0b plan, Owner decision 5). Each run's Lighthouse result is
-// written to .lighthouse/lhr-<run>.json (a CI artifact).
+// All three numbers are always printed; line 1 (Lighthouse TTI) is informational until T5a, lines
+// 2 and 3 gate. A run that breaches or errors is retried once; the exit status follows the last
+// run (Phase 0b plan, Owner decision 5). A run that fails or lacks a value also prints Lighthouse's
+// runtimeError, runWarnings and audit errors. Each run's Lighthouse result is written to
+// .lighthouse/lhr-<run>.json (a CI artifact).
 //
 // Chrome: chrome-launcher finds an installed Chrome or Chromium; where there is none (the
 // devcontainer), point CHROME_PATH at one, e.g. the Chromium that `make browsers` installs.
@@ -18,19 +20,23 @@ import lighthouse from 'lighthouse'
 import { preview, type PreviewServer } from 'vite'
 
 import {
+  diagnose,
   evaluateBudget,
   failedReport,
+  formatDiagnostics,
   formatReport,
-  isRecord,
   parseBudget,
   type Budget,
   type BudgetReport,
+  type Diagnostics,
 } from './perf/budget.ts'
 
 const BUDGET_FILE = 'perf/budget.json'
 const OUT_DIR = '.lighthouse'
 const PORT = 4173
-const URL_UNDER_TEST = `http://localhost:${String(PORT)}/`
+// `/?world` until T5b: the World ships behind that query on the root while production shows the
+// placeholder (plan §9 risk 10); T5b removes the guard and returns this run to `/`.
+const URL_UNDER_TEST = `http://localhost:${String(PORT)}/?world`
 const RUNS = 2
 const CHROME_FLAGS = [
   '--headless=new',
@@ -64,12 +70,7 @@ async function runLighthouse(budget: Budget): Promise<unknown> {
       },
     )
     if (result === undefined) throw new Error('Lighthouse returned no result')
-    const { lhr } = result
-    const runtimeError: unknown = isRecord(lhr) ? lhr['runtimeError'] : undefined
-    if (isRecord(runtimeError) && typeof runtimeError['message'] === 'string') {
-      throw new Error(`Lighthouse runtime error: ${runtimeError['message']}`)
-    }
-    return lhr
+    return result.lhr
   } finally {
     chrome.kill()
   }
@@ -77,9 +78,14 @@ async function runLighthouse(budget: Budget): Promise<unknown> {
 
 async function attempt(run: number, budget: Budget): Promise<BudgetReport> {
   let report: BudgetReport
+  let diagnostics: Diagnostics = diagnose(undefined)
   try {
     const lhr = await runLighthouse(budget)
     await writeFile(`${OUT_DIR}/lhr-${String(run)}.json`, JSON.stringify(lhr))
+    diagnostics = diagnose(lhr)
+    if (diagnostics.runtimeError !== null) {
+      throw new Error(`Lighthouse runtime error: ${diagnostics.runtimeError}`)
+    }
     report = evaluateBudget(lhr, budget)
   } catch (error) {
     console.error(error) // the stack, for the log; the lines below carry the message
@@ -89,6 +95,10 @@ async function attempt(run: number, budget: Budget): Promise<BudgetReport> {
     `perf budget, run ${String(run)} of ${String(RUNS)}: ${report.pass ? 'pass' : 'FAIL'}`,
     report,
   )
+  // A failed or incomplete run says why: without this, run 2 on #41 left only "audit missing".
+  if (!report.pass || report.lines.some((l) => l.measured === null)) {
+    for (const line of formatDiagnostics(diagnostics)) console.log(line)
+  }
   return report
 }
 

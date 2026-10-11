@@ -1,0 +1,6 @@
+/* The World fills the viewport; classes only, never a style attribute (ADR 0012). */
+.world {
+  position: fixed;
+  inset: 0;
+  background: #0b1a2a;
+}

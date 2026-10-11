@@ -43,6 +43,21 @@ export default defineConfig(({ command, isPreview }) => {
     build: {
       // No source maps in the delivered site (constitution 10: nothing beyond the site's own code).
       sourcemap: false,
+      rollupOptions: {
+        output: {
+          // ADR 0010: one `world` chunk holds three, React Three Fiber and Rapier; React stays in
+          // the entry chunk (no recursive dependencies). The World's own model and scene travel in
+          // the small chunk of the dynamic import that loads them (`World-*.js`): a group matching
+          // src/world does not move a dynamic-import entry out of its own chunk (measured in T1).
+          // The entry reaches both by dynamic import only; tests/build/chunks.test.ts proves it.
+          codeSplitting: {
+            includeDependenciesRecursively: false,
+            groups: [
+              { name: 'world', test: /node_modules[\\/](three|@react-three|@dimforge)[\\/]/ },
+            ],
+          },
+        },
+      },
     },
   }
 })

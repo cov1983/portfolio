@@ -1,0 +1,67 @@
+// Physical-key state (plan §5, Input): `KeyboardEvent.code` → DriveInput, so the W/A/S/D positions
+// steer on every layout (AC-7.2), plus the R, Escape, Enter and Space commands. No three, no Rapier.
+import { NO_INPUT, type DriveInput } from '../model/world'
+
+export const DRIVE_CODES = {
+  up: ['ArrowUp', 'KeyW'],
+  down: ['ArrowDown', 'KeyS'],
+  left: ['ArrowLeft', 'KeyA'],
+  right: ['ArrowRight', 'KeyD'],
+} as const
+
+export type Direction = keyof typeof DRIVE_CODES
+
+/** KeyR · Escape · Enter | Space, reported on keydown. */
+export type Command = 'reset' | 'escape' | 'enter'
+
+const COMMAND_CODES = new Map<string, Command>([
+  ['KeyR', 'reset'],
+  ['Escape', 'escape'],
+  ['Enter', 'enter'],
+  ['Space', 'enter'],
+])
+
+export type KeyEvent = { code: string; type: 'keydown' | 'keyup' }
+
+export type KeyState = {
+  /** The keys held right now; the same object for the state's lifetime, so a frame loop can keep it. */
+  readonly input: DriveInput
+  /** Feeds one event; returns the command it carries, if any. */
+  onKey(event: KeyEvent): Command | null
+  /** Releases every direction (the window lost focus). */
+  clear(): void
+}
+
+function directionOf(code: string): Direction | undefined {
+  return (Object.keys(DRIVE_CODES) as Direction[]).find((direction) =>
+    (DRIVE_CODES[direction] as readonly string[]).includes(code),
+  )
+}
+
+/** True for a steering code: the page keeps those from scrolling. */
+export function isDriveCode(code: string): boolean {
+  return directionOf(code) !== undefined
+}
+
+/** True for a code the World handles at all: a steering key or a command. */
+export function handlesCode(code: string): boolean {
+  return isDriveCode(code) || COMMAND_CODES.has(code)
+}
+
+export function createKeyState(): KeyState {
+  const input: DriveInput = { ...NO_INPUT }
+  return {
+    input,
+    onKey(event) {
+      const direction = directionOf(event.code)
+      if (direction !== undefined) {
+        input[direction] = event.type === 'keydown'
+        return null
+      }
+      return event.type === 'keydown' ? (COMMAND_CODES.get(event.code) ?? null) : null
+    },
+    clear() {
+      Object.assign(input, NO_INPUT)
+    },
+  }
+}

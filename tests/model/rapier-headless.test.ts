@@ -2,9 +2,9 @@ import RAPIER from '@dimforge/rapier3d-compat'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 
 // Spec seam 2 (docs/spec/increment-1.md, Testing decisions): the World's model stepped under Node
-// with Rapier, no renderer and no GPU. Phase 0b only proves the seam: Rapier initialises under
-// Node and a fixed number of fixed timesteps gives a deterministic result. increment-1 tickets
-// replace the ball with the Puck on its Rink.
+// with Rapier, no renderer and no GPU. This file is the seam's smallest proof: Rapier initialises under
+// Node and a fixed number of fixed timesteps gives a deterministic result. The Puck on its Rink
+// lives in puck.test.ts and hub-boards.test.ts (T1).
 const GROUND_HALF_EXTENTS = { x: 10, y: 0.1, z: 10 }
 const BALL_RADIUS = 0.5
 const DROP_HEIGHT = 3

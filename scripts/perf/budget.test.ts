@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { WORLD_PLAYABLE_MARK } from '../../src/perf/world-playable.ts'
+import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks.ts'
 import {
   BudgetFileError,
+  diagnose,
   evaluateBudget,
   failedReport,
+  formatDiagnostics,
   formatReport,
+  INFORMATIONAL_UNTIL,
   parseBudget,
   type Budget,
   type BudgetLineId,
@@ -27,7 +30,12 @@ const budget: Budget = {
   },
 }
 
-type Request = { transferSize: number; networkEndTime: number; resourceType?: string }
+type Request = {
+  transferSize: number
+  networkEndTime: number
+  url?: string
+  resourceType?: string
+}
 
 /** A Lighthouse result reduced to the three audits the budget reads. */
 function lhr(opts: { interactive?: number; markAt?: number; requests?: Request[] } = {}): unknown {
@@ -73,11 +81,35 @@ describe('evaluateBudget', () => {
     ).toBe(1234.5)
   })
 
-  it('fails Title Screen interactive above the limit', () => {
+  it('marks Title Screen interactive as over above the limit', () => {
     expect(
       lineById(evaluateBudget(lhr({ interactive: 2000.1 }), budget), 'title-screen-interactive')
         .pass,
     ).toBe(false)
+  })
+
+  it('does not fail the run on Title Screen interactive (informational until T5a)', () => {
+    const report = evaluateBudget(lhr({ interactive: 2695 }), budget)
+    expect(report.pass).toBe(true)
+    expect(lineById(report, 'title-screen-interactive').gated).toBe(false)
+  })
+
+  it('does not fail the run when Title Screen interactive has no value', () => {
+    const result = {
+      audits: {
+        'user-timings': {
+          details: { items: [{ name: WORLD_PLAYABLE_MARK, timingType: 'Mark', startTime: 1 }] },
+        },
+        'network-requests': { details: { items: [] } },
+      },
+    }
+    expect(evaluateBudget(result, budget).pass).toBe(true)
+  })
+
+  it('gates World playable and the download line', () => {
+    const report = evaluateBudget(lhr(), budget)
+    expect(lineById(report, 'world-playable').gated).toBe(true)
+    expect(lineById(report, 'download-until-playable').gated).toBe(true)
   })
 
   it('passes a line that sits exactly on its limit', () => {
@@ -141,15 +173,59 @@ describe('evaluateBudget', () => {
     ).toBe(1000)
   })
 
-  it('excludes Image and Media resources (Exhibit media is outside the budget)', () => {
+  it('excludes requests under /media/exhibits/<id>/ (Exhibit media is outside the budget)', () => {
     const requests = [
-      { transferSize: 1000, networkEndTime: 100, resourceType: 'Script' },
-      { transferSize: 2000, networkEndTime: 100, resourceType: 'Image' },
-      { transferSize: 4000, networkEndTime: 100, resourceType: 'Media' },
+      { transferSize: 1000, networkEndTime: 100, url: 'http://localhost:4173/assets/world-a1.js' },
+      {
+        transferSize: 2000,
+        networkEndTime: 100,
+        url: 'http://localhost:4173/media/exhibits/first/a-1440.jpg',
+      },
+      {
+        transferSize: 4000,
+        networkEndTime: 100,
+        url: 'http://localhost:4173/media/exhibits/first/clip.mp4',
+      },
     ]
     expect(
       lineById(evaluateBudget(lhr({ requests }), budget), 'download-until-playable').measured,
     ).toBe(1000)
+  })
+
+  it('counts images and media outside that prefix (World textures, icons, the preview image)', () => {
+    const requests = [
+      {
+        transferSize: 1000,
+        networkEndTime: 100,
+        url: 'http://localhost:4173/media/site/ice.png',
+        resourceType: 'Image',
+      },
+      {
+        transferSize: 2000,
+        networkEndTime: 100,
+        url: 'http://localhost:4173/assets/icon.svg',
+        resourceType: 'Image',
+      },
+      {
+        transferSize: 4000,
+        networkEndTime: 100,
+        url: 'http://localhost:4173/media/exhibits.mp4',
+        resourceType: 'Media',
+      },
+    ]
+    expect(
+      lineById(evaluateBudget(lhr({ requests }), budget), 'download-until-playable').measured,
+    ).toBe(7000)
+  })
+
+  it('counts a request without a usable URL rather than dropping it', () => {
+    const requests = [
+      { transferSize: 1000, networkEndTime: 100 },
+      { transferSize: 2000, networkEndTime: 100, url: 'not a url' },
+    ]
+    expect(
+      lineById(evaluateBudget(lhr({ requests }), budget), 'download-until-playable').measured,
+    ).toBe(3000)
   })
 
   it('fails the download line above the limit', () => {
@@ -181,8 +257,69 @@ describe('evaluateBudget', () => {
     })
   })
 
-  it('fails the report as a whole when one line fails', () => {
+  it('fails the run when World playable is over its limit', () => {
     expect(evaluateBudget(lhr({ markAt: 9000 }), budget).pass).toBe(false)
+  })
+
+  it('fails the run when the download line is over its limit', () => {
+    const requests = [{ transferSize: 4097, networkEndTime: 100 }]
+    expect(evaluateBudget(lhr({ requests }), budget).pass).toBe(false)
+  })
+})
+
+describe('diagnose', () => {
+  it('reports nothing for a result without errors or warnings', () => {
+    expect(diagnose(lhr())).toEqual({ runtimeError: null, warnings: [], auditErrors: [] })
+  })
+
+  it('reports the runtime error with its code', () => {
+    const result = { runtimeError: { code: 'NO_FCP', message: 'The page did not paint' } }
+    expect(diagnose(result).runtimeError).toBe('NO_FCP: The page did not paint')
+  })
+
+  it('reports a runtime error without a code by its message alone', () => {
+    expect(diagnose({ runtimeError: { message: 'hung' } }).runtimeError).toBe('hung')
+  })
+
+  it('reports the run warnings and the audit errors', () => {
+    const result = {
+      runWarnings: ['The page loaded too slowly', 7],
+      audits: {
+        interactive: { errorMessage: 'Required trace gatherer did not run' },
+        'user-timings': { numericValue: 1 },
+      },
+    }
+    expect(diagnose(result)).toEqual({
+      runtimeError: null,
+      warnings: ['The page loaded too slowly'],
+      auditErrors: ['audit "interactive": Required trace gatherer did not run'],
+    })
+  })
+
+  it('tolerates a result that is not an object', () => {
+    expect(diagnose(undefined)).toEqual({ runtimeError: null, warnings: [], auditErrors: [] })
+  })
+})
+
+describe('formatDiagnostics', () => {
+  it('prints one line per diagnostic', () => {
+    expect(
+      formatDiagnostics({
+        runtimeError: 'NO_FCP: no paint',
+        warnings: ['slow'],
+        auditErrors: ['audit "interactive": no trace'],
+      }),
+    ).toEqual([
+      '  runtimeError: NO_FCP: no paint',
+      '  runWarning: slow',
+      '  audit "interactive": no trace',
+    ])
+  })
+
+  it('says so when Lighthouse reported nothing', () => {
+    expect(formatDiagnostics(diagnose({}))).toEqual([
+      '  no runtimeError, no runWarnings, no audit error reported',
+    ])
   })
 })
 
@@ -198,9 +335,37 @@ describe('failedReport', () => {
 })
 
 describe('formatReport', () => {
-  it('prints measured, limit and verdict for a passing line', () => {
+  it('prints measured, limit and verdict for a passing gated line', () => {
+    const [, playable] = formatReport(evaluateBudget(lhr({ markAt: 1234.4 }), budget))
+    expect(playable).toMatch(/World playable\s+1234 ms\s+limit 5000 ms\s+pass$/)
+  })
+
+  it('prints FAIL for a gated line over its limit', () => {
+    const [, playable] = formatReport(evaluateBudget(lhr({ markAt: 5001 }), budget))
+    expect(playable).toMatch(/World playable\s+5001 ms\s+limit 5000 ms\s+FAIL$/)
+  })
+
+  it('tags the informational line and prints "over", never FAIL, above its limit', () => {
+    const [first] = formatReport(evaluateBudget(lhr({ interactive: 2695 }), budget))
+    expect(first).toMatch(
+      /Title Screen interactive\s+2695 ms\s+limit 2000 ms\s+over\s+informational/,
+    )
+    expect(first).toContain(INFORMATIONAL_UNTIL)
+    expect(first).not.toContain('FAIL')
+  })
+
+  it('tags the informational line under its limit as well', () => {
     const [first] = formatReport(evaluateBudget(lhr({ interactive: 1234.4 }), budget))
-    expect(first).toMatch(/Title Screen interactive\s+1234 ms\s+limit 2000 ms\s+pass$/)
+    expect(first).toMatch(
+      /Title Screen interactive\s+1234 ms\s+limit 2000 ms\s+pass\s+informational/,
+    )
+  })
+
+  it('prints n/a with the note for an informational line without a value', () => {
+    const [first] = formatReport(evaluateBudget({}, budget))
+    expect(first).toMatch(
+      /Title Screen interactive\s+n\/a\s+limit 2000 ms\s+n\/a\s+informational until T5a \(plan §7\) \(audit "interactive" has no numericValue\)$/,
+    )
   })
 
   it('prints n/a and the note for a line without a value', () => {

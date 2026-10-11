@@ -4,14 +4,17 @@
 Thomas's personal website: an immersive, interactive 3D portfolio in which visitors steer an ice-hockey
 puck through a playful virtual world to discover his projects and background. Physics, hockey-inspired
 challenges and light storytelling make exploring the portfolio an experience that itself demonstrates
-his development skills. Status: **Phase 0b done; the Owner runs the setup wizard (`scripts/setup-wizard.sh`)**.
-The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); `src/` holds only the Phase 0b skeleton until Phase 3.
+his development skills. Status: **Phase 3, increment-1 in progress** (plan `docs/plan/increment-1.md`;
+T1 #24 ships the Puck on the Hub behind `/?world`, the live root stays a placeholder until T4).
+The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the model owns Rapier, the scene mirrors it.
 
 ## Environment
 - Code: GitHub, public repository `cov1983/portfolio`. CI: GitHub Actions (`.github/workflows/ci.yml`).
 - Site: Vercel through its Git integration (ADR 0006). `vercel.json` is the only hosting config:
   a preview per PR, production from `main`, held by Deployment Checks until the CI gates pass.
   Dashboard settings (project, checks, domain, ruleset, secret) are stages of the setup wizard.
+- World guard (plan §9 risk 10): until T5b the World is reachable only at /?world; the perf run, the e2e canary
+  and the Owner's checks use that URL, the live root is a placeholder.
 - Team: solo. No required human approvals; the independent reviewer is the `ai-review` CI job
   (posts once the setup wizard stores `ANTHROPIC_API_KEY`; skipped with a notice before). The owner merges.
 - `main` is protected by a ruleset: PR required, no force-push, no deletion. Required status checks:
@@ -58,15 +61,20 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); `src/` holds only
 - `perf/budget.json`        the performance budget: throttling profile and the three limits; nowhere else
 - `renovate.json`           Renovate: grouped patch automerge, majors behind the Dependency Dashboard (ADR 0007)
 - `.devcontainer/`          Dockerfile + devcontainer.json: the reference toolchain
-- `src/`                    application code; today `main.tsx`, `App.tsx` (skeleton) and `perf/` (budget instrument)
+- `src/`                    application code: `main.tsx` (the `?world` guard, plan §9 risk 10), `world/` (`model/`: layout, Rapier
+                            model, pure camera; `input/`: keys by physical code; `scene/`: the R3F mirror; `World.tsx`: the entry
+                            the `?world` guard imports), `perf/` (the marks), `content/` and `app/` (types only until T3 and T5a)
 - `tests/`                  `e2e/` (Playwright, spec seam 1; `fixtures.ts` fails a test on pageerror, console.error, CSP violation),
-                            `build/` (seam 1's build half: the production build spawned, output checked as text), `model/` (headless Rapier, seam 2)
+                            `build/` (seam 1's build half: the production build spawned, output checked as text: CSP-safe HTML,
+                            the `world` chunk isolated from the entry), `model/` (headless Rapier, seam 2)
 - `.githooks/`              `pre-commit`: lint-staged (Prettier, ESLint) then gitleaks; wired by `make setup`
 - root configs              `vite.config.ts`, `vitest.config.ts`, `playwright.config.ts`, `eslint.config.js`, `tsconfig*.json`, `.prettierrc`
 - `vercel.json`             the whole hosting configuration (ADR 0006), response headers included (ADR 0012); owned by the Owner in
                             CODEOWNERS. `vercel-headers.ts` reads its headers for `vite.config.ts` and the e2e fixture
 - `infra/`                  does not exist: no infrastructure beyond Vercel
 - `GLOSSARY.md`             shared vocabulary (called CONTEXT.md in docs/workflow-guide.md); produced by `/grill-with-docs` in Phase 1
+- `AGENTS.md`               a byte-for-byte copy of this file for other agents; the `lint` job fails when they differ, so
+                            every CLAUDE.md edit is copied over in the same commit (`cp CLAUDE.md AGENTS.md`)
 
 ## Conventions
 - Formatter and linter are law; do not disable rules without an ADR. Prettier formats code and
