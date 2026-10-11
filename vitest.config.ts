@@ -1,10 +1,12 @@
 import { defineConfig } from 'vitest/config'
 
-// Two Node projects, no browser: `unit` for the instruments and model code in src/, `model` for the
+// Three Node projects, no browser: `unit` for the instruments and model code in src/, `model` for the
 // spec's second seam (docs/spec/increment-1.md, Testing decisions): the World stepped with Rapier
-// and no renderer. The first seam, the built site in a browser, is Playwright (playwright.config.ts,
-// tests/e2e). React rendering is proven there, so the coverage ratchet below measures only model
-// code and instruments (plus the perf budget evaluator under scripts/), never components.
+// and no renderer, and `build` for the first seam's build half (plan §6): the production build
+// spawned into the scratch dir and its output checked as text. The first seam proper, the built
+// site in a browser, is Playwright (playwright.config.ts, tests/e2e). React rendering is proven
+// there, so the coverage ratchet below measures only model code and instruments (plus the perf
+// budget evaluator under scripts/), never components.
 export default defineConfig({
   test: {
     projects: [
@@ -21,6 +23,14 @@ export default defineConfig({
           include: ['tests/model/**/*.test.ts'],
           environment: 'node',
           hookTimeout: 20_000, // Rapier's wasm initialises in beforeAll, once per file
+        },
+      },
+      {
+        test: {
+          name: 'build',
+          include: ['tests/build/**/*.test.ts'],
+          environment: 'node',
+          hookTimeout: 120_000, // the production build runs in beforeAll, once per file
         },
       },
     ],
