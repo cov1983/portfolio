@@ -2,7 +2,8 @@
 // requirements) against a Lighthouse result. No I/O: the runner (scripts/perf-budget.ts) reads the
 // budget file and runs Lighthouse, then prints what comes back from here. Every budget line is
 // always reported, also when its input is missing or the run failed, so a breach never hides
-// behind an error (Phase 0b plan, Owner decision 5).
+// behind an error (Phase 0b plan, Owner decision 5). A line is either gated (its breach fails the
+// run) or informational (printed, never failing): see LINE_SPECS.
 import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks.ts'
 
 export type Throttling = {
@@ -33,34 +34,73 @@ export type BudgetLine = {
   measured: number | null
   limit: number
   unit: Unit
+  /** measured ≤ limit. On an informational line this is printed, never a reason to fail the run. */
   pass: boolean
+  /** false: the line is informational until the ticket named in its note re-gates it. */
+  gated: boolean
   note?: string
 }
 
 export type BudgetReport = { pass: boolean; lines: BudgetLine[] }
+
+/** What a failed or incomplete run says about itself: Lighthouse's own error, warnings, audit errors. */
+export type Diagnostics = {
+  /** `code: message` of lhr.runtimeError, or null when Lighthouse reported none. */
+  runtimeError: string | null
+  /** lhr.runWarnings as they come. */
+  warnings: string[]
+  /** `audit "<id>": <errorMessage>` for each of the three audits that reports an error. */
+  auditErrors: string[]
+}
+
+/** The tag printed after an informational line's verdict (Owner decision on #41, 2026-10-11). */
+export const INFORMATIONAL_UNTIL = 'informational until T5a (plan §7)'
 
 /** The budget file is malformed: a typed error at the boundary, never a silent default. */
 export class BudgetFileError extends Error {
   override readonly name = 'BudgetFileError'
 }
 
-/** The three lines of the budget, in report order; the limit names the key in perf/budget.json. */
-const LINE_SPECS: readonly { id: BudgetLineId; label: string; unit: Unit; limit: keyof Limits }[] =
-  [
-    {
-      id: 'title-screen-interactive',
-      label: 'Title Screen interactive',
-      unit: 'ms',
-      limit: 'titleScreenInteractiveMs',
-    },
-    { id: 'world-playable', label: 'World playable', unit: 'ms', limit: 'worldPlayableMs' },
-    {
-      id: 'download-until-playable',
-      label: 'Download until playable',
-      unit: 'B',
-      limit: 'downloadUntilPlayableBytes',
-    },
-  ]
+/**
+ * The three lines of the budget, in report order; the limit names the key in perf/budget.json.
+ * Line 1 reads Lighthouse's TTI, the Phase 0b provisional instrument, which counts the World
+ * chunk's evaluation at `/?world` (plan §7: the artefact the mark exists to avoid). Owner decision
+ * on #41 (2026-10-11): from T1 the line is informational, printed with its limit and never failing
+ * the run; T5a switches it to the `title-screen-interactive` mark and sets `gated: true` again.
+ * Lines 2 and 3 stay gated.
+ */
+const LINE_SPECS: readonly {
+  id: BudgetLineId
+  label: string
+  unit: Unit
+  limit: keyof Limits
+  gated: boolean
+}[] = [
+  {
+    id: 'title-screen-interactive',
+    label: 'Title Screen interactive',
+    unit: 'ms',
+    limit: 'titleScreenInteractiveMs',
+    gated: false,
+  },
+  {
+    id: 'world-playable',
+    label: 'World playable',
+    unit: 'ms',
+    limit: 'worldPlayableMs',
+    gated: true,
+  },
+  {
+    id: 'download-until-playable',
+    label: 'Download until playable',
+    unit: 'B',
+    limit: 'downloadUntilPlayableBytes',
+    gated: true,
+  },
+]
+
+/** The audits the run asks Lighthouse for (`onlyAudits` in scripts/perf-budget.ts). */
+const AUDIT_IDS = ['interactive', 'user-timings', 'network-requests'] as const
 
 const THROTTLING_KEYS = [
   'rttMs',
@@ -134,8 +174,14 @@ function line(spec: (typeof LINE_SPECS)[number], limits: Limits, m: Measurement)
     limit,
     unit: spec.unit,
     pass: m.value !== null && m.value <= limit,
+    gated: spec.gated,
   }
   return m.note === undefined ? base : { ...base, note: m.note }
+}
+
+/** The run passes when every gated line passes; an informational line never decides. */
+function passes(lines: readonly BudgetLine[]): boolean {
+  return lines.every((l) => l.pass || !l.gated)
 }
 
 function auditOf(lhr: unknown, id: string): Record<string, unknown> | undefined {
@@ -206,7 +252,46 @@ export function evaluateBudget(lhr: unknown, budget: Budget): BudgetReport {
     'download-until-playable': downloadUntilPlayable(lhr, mark),
   }
   const lines = LINE_SPECS.map((spec) => line(spec, budget.limits, measurements[spec.id]))
-  return { pass: lines.every((l) => l.pass), lines }
+  return { pass: passes(lines), lines }
+}
+
+/**
+ * What the result says about a failed or incomplete run (`lhr` taken as untrusted): the runner
+ * prints it next to the lines so the next flake carries its cause (Owner decision on #41).
+ */
+export function diagnose(lhr: unknown): Diagnostics {
+  const result = isRecord(lhr) ? lhr : {}
+  const runtimeError = result['runtimeError']
+  const message = isRecord(runtimeError) ? runtimeError['message'] : undefined
+  const code = isRecord(runtimeError) ? runtimeError['code'] : undefined
+  const warnings = Array.isArray(result['runWarnings'])
+    ? result['runWarnings'].filter((w): w is string => typeof w === 'string')
+    : []
+  const auditErrors: string[] = []
+  for (const id of AUDIT_IDS) {
+    const error = auditOf(lhr, id)?.['errorMessage']
+    if (typeof error === 'string') auditErrors.push(`audit "${id}": ${error}`)
+  }
+  return {
+    runtimeError:
+      typeof message === 'string'
+        ? typeof code === 'string'
+          ? `${code}: ${message}`
+          : message
+        : null,
+    warnings,
+    auditErrors,
+  }
+}
+
+/** One text line per diagnostic; one line saying so when Lighthouse reported nothing. */
+export function formatDiagnostics(d: Diagnostics): string[] {
+  const lines = [
+    ...(d.runtimeError === null ? [] : [`  runtimeError: ${d.runtimeError}`]),
+    ...d.warnings.map((w) => `  runWarning: ${w}`),
+    ...d.auditErrors.map((e) => `  ${e}`),
+  ]
+  return lines.length === 0 ? ['  no runtimeError, no runWarnings, no audit error reported'] : lines
 }
 
 /** The report for a run that produced no result at all: every line fails with the same note. */
@@ -221,11 +306,19 @@ function amount(value: number, unit: Unit): string {
   return unit === 'ms' ? `${String(Math.round(value))} ms` : `${value.toLocaleString('en-US')} B`
 }
 
-/** One text line per budget line: label, measured, limit, verdict. Always all three. */
+/** pass / FAIL on a gated line; pass / over (or n/a without a value) on an informational one. */
+function verdictOf(l: BudgetLine): string {
+  if (l.pass) return 'pass'
+  if (l.gated) return 'FAIL'
+  return l.measured === null ? 'n/a' : 'over'
+}
+
+/** One text line per budget line: label, measured, limit, verdict, gating tag. Always all three. */
 export function formatReport(report: BudgetReport): string[] {
   return report.lines.map((l) => {
     const measured = l.measured === null ? 'n/a' : amount(l.measured, l.unit)
+    const tag = l.gated ? '' : `   ${INFORMATIONAL_UNTIL}`
     const note = l.note === undefined ? '' : ` (${l.note})`
-    return `  ${l.label.padEnd(26)} ${measured.padStart(14)}   limit ${amount(l.limit, l.unit)}   ${l.pass ? 'pass' : 'FAIL'}${note}`
+    return `  ${l.label.padEnd(26)} ${measured.padStart(14)}   limit ${amount(l.limit, l.unit)}   ${verdictOf(l)}${tag}${note}`
   })
 }
