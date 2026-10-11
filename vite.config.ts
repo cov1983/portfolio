@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
-import { vercelHeaders } from './vercel-headers'
+import { vercelHeaders } from './vercel-headers.ts'
 
 // Dev only: @vitejs/plugin-react injects the Fast Refresh preamble as an inline <script> and Vite's
 // client injects <style> elements (CSS, the error overlay), which `script-src 'self'` and
@@ -16,7 +16,11 @@ const NONCED_DIRECTIVES = ['script-src', 'style-src']
 
 function withDevNonce(headers: Record<string, string>): Record<string, string> {
   const csp = headers['Content-Security-Policy']
-  if (csp === undefined) return headers
+  if (csp === undefined) {
+    throw new Error(
+      'vercel.json has no Content-Security-Policy header: never a dev server without one',
+    )
+  }
   const directives = csp.split(';').map((directive) => {
     const name = directive.trim().split(/\s+/)[0]
     return name !== undefined && NONCED_DIRECTIVES.includes(name)

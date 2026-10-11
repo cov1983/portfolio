@@ -1,6 +1,6 @@
 import { expect, test as base } from '@playwright/test'
 
-import { vercelHeaders } from '../../vercel-headers'
+import { vercelHeaders } from '../../vercel-headers.ts'
 
 /** The `/(.*)` headers of vercel.json with names lower-cased, as a browser reports them. */
 export function expectedResponseHeaders(): Record<string, string> {
