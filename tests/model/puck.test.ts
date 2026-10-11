@@ -117,13 +117,26 @@ describe('Feel (AC-8.1 to 8.4)', () => {
   })
 
   it('never exceeds the top speed while a key is held (AC-8.3)', () => {
-    const samples = [...drive(create(), UP, 300), ...drive(model, UP_RIGHT, 300)]
+    // The direction changes at top speed (40 steps in), then the Puck rebounds off boards.
+    const samples = [...drive(create(), UP, 40), ...drive(model, UP_RIGHT, 560)]
+    expect(samples[39]?.speed).toBeGreaterThan(STANDARD.maxSpeed - 0.5)
     expect(Math.max(...samples.map((s) => s.speed))).toBeLessThanOrEqual(STANDARD.maxSpeed + 1e-6)
   })
 
-  it('never spins about its axis (AC-8.4)', () => {
-    const samples = [...drive(create(), UP, 300), ...drive(model, UP_RIGHT, 300)]
+  it('never spins about its axis while a key is held (AC-8.4)', () => {
+    const samples = [...drive(create(), UP, 40), ...drive(model, UP_RIGHT, 560)]
     expect(Math.max(...samples.map((s) => s.angularSpeed))).toBeLessThan(1e-9)
+  })
+
+  it('never spins or tips while nothing is pressed, through a rebound (AC-8.4)', () => {
+    // At top speed the glide of about 19 m reaches the far board, so the samples with nothing
+    // pressed include the rebound.
+    const [settled] = drive(create(), NONE, 30).slice(-1)
+    const height = settled?.height ?? 0
+    driveUntil(model, UP, (s) => s.speed >= STANDARD.maxSpeed - 0.5, 120)
+    const gliding = drive(model, NONE, 300)
+    expect(Math.max(...gliding.map((s) => s.angularSpeed))).toBeLessThan(1e-9)
+    expect(Math.max(...gliding.map((s) => Math.abs(s.height - height)))).toBeLessThan(2e-3)
   })
 
   it('never tips: its height stays constant through a rebound (AC-8.4)', () => {

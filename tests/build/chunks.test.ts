@@ -50,7 +50,7 @@ describe('the built chunks', () => {
   })
 
   it('does not reference the world chunk from index.html', () => {
-    expect(build.indexHtml).not.toMatch(/world-/)
+    expect(build.indexHtml).not.toMatch(/world-/i)
   })
 
   it('emits exactly one world chunk', () => {

@@ -34,9 +34,11 @@ export type WorldCanvasProps = {
   onFailure: (f: WorldFailure) => void
 }
 
-/** A frame longer than this (a tab in the background) counts as this: no catch-up burst. */
+// Plan §5: a frame longer than 0.1 s (a tab in the background) counts as 0.1 s, and one frame runs
+// at most four steps (0.067 s), after which the remainder is dropped so a stall never spirals.
+// Below 15 fps the World therefore runs slower than real time, by design: the Visitor sees a
+// slower Puck, never a jump.
 const MAX_FRAME_DT = 0.1
-/** Steps one frame may run; past that the remainder is dropped so a stall never spirals. */
 const MAX_STEPS_PER_FRAME = 4
 const ICE_COLOUR = '#eef4f8'
 const LINE_WIDTH = 0.3
@@ -68,6 +70,7 @@ function Scene({ layout, paused, reducedMotion, onEvent, onReady, onFailure }: W
   const [keys] = useState(createKeyState)
   const model = useRef<WorldModel | null>(null)
   const pose = useRef<CameraPose | null>(null)
+  const pausedRef = useRef(paused)
   const accumulator = useRef(0)
   const skipFrame = useRef(false)
   const firstFrameRendered = useRef(false)
@@ -105,6 +108,11 @@ function Scene({ layout, paused, reducedMotion, onEvent, onReady, onFailure }: W
   useEffect(() => {
     const handle = (type: 'keydown' | 'keyup') => (event: KeyboardEvent) => {
       if (!handlesCode(event.code)) return
+      // A shortcut (Ctrl+R, Alt+Left, Cmd+A) belongs to the browser; a keyup is always taken so a
+      // held direction is released. While paused nothing is forwarded (AC-6.1: the Puck keeps
+      // its state); T5a's key router takes this decision over.
+      if (type === 'keydown' && (event.ctrlKey || event.metaKey || event.altKey)) return
+      if (type === 'keydown' && pausedRef.current) return
       // Steering keys would scroll the page; Enter, Space and Escape keep their default so the
       // Title Screen's links and controls work once T4 adds them (T5a's key router decides then).
       if (isDriveCode(event.code)) event.preventDefault()
@@ -133,6 +141,7 @@ function Scene({ layout, paused, reducedMotion, onEvent, onReady, onFailure }: W
 
   // On resume the accumulator is cleared and the resume frame's long delta is skipped.
   useEffect(() => {
+    pausedRef.current = paused
     if (!paused) {
       accumulator.current = 0
       skipFrame.current = true

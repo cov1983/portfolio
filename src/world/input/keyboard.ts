@@ -14,12 +14,12 @@ export type Direction = keyof typeof DRIVE_CODES
 /** KeyR · Escape · Enter | Space, reported on keydown. */
 export type Command = 'reset' | 'escape' | 'enter'
 
-const COMMAND_CODES: Record<string, Command> = {
-  KeyR: 'reset',
-  Escape: 'escape',
-  Enter: 'enter',
-  Space: 'enter',
-}
+const COMMAND_CODES = new Map<string, Command>([
+  ['KeyR', 'reset'],
+  ['Escape', 'escape'],
+  ['Enter', 'enter'],
+  ['Space', 'enter'],
+])
 
 export type KeyEvent = { code: string; type: 'keydown' | 'keyup' }
 
@@ -45,7 +45,7 @@ export function isDriveCode(code: string): boolean {
 
 /** True for a code the World handles at all: a steering key or a command. */
 export function handlesCode(code: string): boolean {
-  return isDriveCode(code) || code in COMMAND_CODES
+  return isDriveCode(code) || COMMAND_CODES.has(code)
 }
 
 export function createKeyState(): KeyState {
@@ -58,7 +58,7 @@ export function createKeyState(): KeyState {
         input[direction] = event.type === 'keydown'
         return null
       }
-      return event.type === 'keydown' ? (COMMAND_CODES[event.code] ?? null) : null
+      return event.type === 'keydown' ? (COMMAND_CODES.get(event.code) ?? null) : null
     },
     clear() {
       Object.assign(input, NO_INPUT)
