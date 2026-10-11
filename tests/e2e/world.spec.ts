@@ -38,3 +38,39 @@ test('the World requests only same-origin files and no Exhibit media', async ({ 
   expect(urls.filter((url) => !url.startsWith(origin))).toEqual([])
   expect(urls.filter((url) => new URL(url).pathname.startsWith('/media/exhibits/'))).toEqual([])
 })
+
+// AC-10.1, seam 1 half: Hub → Path → Zone → Goal is one continuous run. The Goal's placeholder
+// status line (T2; T7 opens the Exhibit Panel instead) is the observable end of the run; "no
+// loading" is no script fetched after the World was playable and no busy or progress element.
+// CI renders in software and the scene steps the model at most four times per frame, so the run
+// takes longer than its 6 s of model time; the wait is generous rather than the check weakened.
+test('driving up from the Hub reaches the Goal without any loading', async ({ page }) => {
+  test.setTimeout(120_000)
+  const scriptsAfterPlayable: string[] = []
+  let playable = false
+  page.on('request', (request) => {
+    if (playable && request.resourceType() === 'script') scriptsAfterPlayable.push(request.url())
+  })
+  await page.goto('/?world')
+  await expect
+    .poll(() =>
+      page.evaluate(
+        (name) => performance.getEntriesByName(name, 'mark').length,
+        WORLD_PLAYABLE_MARK,
+      ),
+    )
+    .toBe(1)
+  playable = true
+  const busy = page.locator('[aria-busy="true"], [role="progressbar"]')
+  await page.keyboard.down('ArrowUp')
+  // Polled through the drive: a loading element seen on the way fails the run, not only at the end.
+  await expect
+    .poll(
+      async () =>
+        (await busy.count()) > 0 ? 'a loading element' : page.getByRole('status').textContent(),
+      { timeout: 90_000 },
+    )
+    .toBe('Goal')
+  await page.keyboard.up('ArrowUp')
+  expect(scriptsAfterPlayable).toEqual([])
+})

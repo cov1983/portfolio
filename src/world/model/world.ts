@@ -7,11 +7,14 @@ import type RAPIER from '@dimforge/rapier3d-compat'
 import type { ExhibitId } from '../../content/types'
 import {
   insideRect,
+  PUCK,
+  type Goal,
   type Rect,
   type Segment,
   type Vec2,
   type Vec3,
   type WorldLayout,
+  type Zone,
 } from './layout'
 
 export type DriveInput = { up: boolean; down: boolean; left: boolean; right: boolean }
@@ -40,8 +43,7 @@ export const STANDARD: PuckFeel = {
 
 export const FIXED_DT = 1 / 60
 
-/** The Puck's body, shared with the scene so the mesh matches the collider. Metres. */
-export const PUCK = { radius: 0.5, height: 0.2 }
+export { PUCK } from './layout'
 
 /** A board's cross-section, shared with the scene. Metres. */
 export const BOARD = { thickness: 0.4, height: 1.2 }
@@ -112,12 +114,17 @@ export type Box = {
   size: Vec3
 }
 
+/** Which ends of a board run a thickness past the segment. */
+export type BoardEnds = { a: boolean; b: boolean }
+
+const BOTH_ENDS: BoardEnds = { a: true, b: true }
+
 /**
  * The box of a board: along its segment, just outside the rect it belongs to, standing on the ice.
- * Each board runs a thickness past its ends, so two boards meeting at a corner leave no gap. The
- * collider and the mesh are built from the same box.
+ * An extended end runs a thickness past the segment, so two boards meeting at a corner leave no
+ * gap; by default both ends do (the closed Hub). The collider and the mesh are built from the same box.
  */
-export function boardBox(segment: Segment, rect: Rect): Box {
+export function boardBox(segment: Segment, rect: Rect, ends: BoardEnds = BOTH_ENDS): Box {
   const { a, b } = segment
   const half = BOARD.thickness / 2
   const alongZ = a.x === b.x
@@ -125,27 +132,74 @@ export function boardBox(segment: Segment, rect: Rect): Box {
     throw new Error(`boards must be axis-aligned: ${JSON.stringify(segment)}`)
   }
   const outward = alongZ ? Math.sign(a.x - rect.centre.x) : Math.sign(a.z - rect.centre.z)
+  const from = alongZ ? a.z : a.x
+  const to = alongZ ? b.z : b.x
+  const aFirst = from <= to
+  const low = Math.min(from, to) - ((aFirst ? ends.a : ends.b) ? BOARD.thickness : 0)
+  const high = Math.max(from, to) + ((aFirst ? ends.b : ends.a) ? BOARD.thickness : 0)
+  const middle = (low + high) / 2
   return {
     centre: {
-      x: (a.x + b.x) / 2 + (alongZ ? outward * half : 0),
+      x: alongZ ? a.x + outward * half : middle,
       y: BOARD.height / 2,
-      z: (a.z + b.z) / 2 + (alongZ ? 0 : outward * half),
+      z: alongZ ? middle : a.z + outward * half,
     },
     size: {
-      x: alongZ ? BOARD.thickness : Math.abs(b.x - a.x) + 2 * BOARD.thickness,
+      x: alongZ ? BOARD.thickness : high - low,
       y: BOARD.height,
-      z: alongZ ? Math.abs(b.z - a.z) + 2 * BOARD.thickness : BOARD.thickness,
+      z: alongZ ? high - low : BOARD.thickness,
     },
   }
 }
 
-function boardCollider(
-  rapier: typeof RAPIER,
-  segment: Segment,
-  rect: Rect,
-  feel: PuckFeel,
-): RAPIER.ColliderDesc {
-  const { centre, size } = boardBox(segment, rect)
+/** Within a nanometre: the layout's corners come from the same arithmetic, inexact dimensions must not drop an extension. */
+const CORNER_EPSILON = 1e-9
+
+function isCorner(rect: Rect, point: Vec2): boolean {
+  return (
+    Math.abs(Math.abs(point.x - rect.centre.x) - rect.width / 2) < CORNER_EPSILON &&
+    Math.abs(Math.abs(point.z - rect.centre.z) - rect.length / 2) < CORNER_EPSILON
+  )
+}
+
+/**
+ * Every board of the layout as a box. A board end runs past its corner only where that corner is
+ * a corner of its own rect that no other rect touches: at an opening the neighbouring piece's box
+ * already covers the joint, and an extension there would leave a lip in the mouth or a stub on
+ * the ice (plan comment on #25, Q5).
+ */
+export function boardBoxes(layout: WorldLayout): Box[] {
+  const parts = [
+    { rect: layout.hub.rect, boards: layout.hub.boards },
+    { rect: layout.path.rect, boards: layout.path.boards },
+    ...layout.zones.map((zone) => ({ rect: zone.rect, boards: zone.boards })),
+  ]
+  const rects = parts.map((part) => part.rect)
+  const extendsAt = (rect: Rect, point: Vec2): boolean =>
+    isCorner(rect, point) && !rects.some((other) => other !== rect && insideRect(other, point))
+  return parts.flatMap(({ rect, boards }) =>
+    boards.map((segment) =>
+      boardBox(segment, rect, { a: extendsAt(rect, segment.a), b: extendsAt(rect, segment.b) }),
+    ),
+  )
+}
+
+/** A rect of the layout standing on the ice as a box of `height`: the net's frame, shared with the scene. */
+export function rectBox(rect: Rect, height: number): Box {
+  return {
+    centre: { x: rect.centre.x, y: height / 2, z: rect.centre.z },
+    size: { x: rect.width, y: height, z: rect.length },
+  }
+}
+
+/** The net's solid frame, board-high: the model's colliders and the scene's meshes are the same boxes. */
+export function frameBoxes(goal: Goal): Box[] {
+  return goal.posts.map((post) => rectBox(post, BOARD.height))
+}
+
+/** A solid the Puck rebounds off: boards and the net's frame share the board restitution and no friction. */
+function solidCollider(rapier: typeof RAPIER, box: Box, feel: PuckFeel): RAPIER.ColliderDesc {
+  const { centre, size } = box
   return rapier.ColliderDesc.cuboid(size.x / 2, size.y / 2, size.z / 2)
     .setTranslation(centre.x, centre.y, centre.z)
     .setFriction(0)
@@ -168,15 +222,13 @@ export function createWorldModel(
       .setRestitution(0),
   )
 
-  const boards = world.createRigidBody(rapier.RigidBodyDesc.fixed())
-  const rinks = [
-    layout.hub,
-    { rect: layout.path.rect, boards: layout.path.boards },
-    ...layout.zones,
-  ]
-  for (const rink of rinks) {
-    for (const segment of rink.boards) {
-      world.createCollider(boardCollider(rapier, segment, rink.rect, feel), boards)
+  const solids = world.createRigidBody(rapier.RigidBodyDesc.fixed())
+  for (const box of boardBoxes(layout)) {
+    world.createCollider(solidCollider(rapier, box, feel), solids)
+  }
+  for (const zone of layout.zones) {
+    for (const box of frameBoxes(zone.goal)) {
+      world.createCollider(solidCollider(rapier, box, feel), solids)
     }
   }
 
@@ -199,6 +251,55 @@ export function createWorldModel(
 
   const force = feel.acceleration * feel.mass
 
+  // The events' state (plan §5): a Zone reports its first entry once per page load, which is the
+  // model's lifetime; each Goal is armed until the Puck's position enters its sensor volume and
+  // armed again once it has left (AC-14.2), so a Panel closed over a Puck still in the net does not
+  // reopen. Reset emits nothing itself: the next step sees the Puck outside and re-arms.
+  const entered = new Set<ExhibitId>()
+  const goals = layout.zones.map((zone) => ({ zone, armed: true }))
+
+  function readPuck(): PuckState {
+    const t = body.translation()
+    const v = body.linvel()
+    const w = body.angvel()
+    return {
+      position: { x: t.x, z: t.z },
+      velocity: { x: v.x, z: v.z },
+      speed: Math.hypot(v.x, v.z),
+      height: t.y,
+      angularSpeed: Math.hypot(w.x, w.y, w.z),
+    }
+  }
+
+  function zoneAt(position: Vec2): Zone | undefined {
+    return layout.zones.find((zone) => insideRect(zone.rect, position))
+  }
+
+  function placeOf(position: Vec2): Place {
+    if (insideRect(layout.hub.rect, position)) return 'hub'
+    return zoneAt(position)?.exhibitId ?? 'path'
+  }
+
+  function eventsAt(position: Vec2): WorldEvent[] {
+    const events: WorldEvent[] = []
+    const zone = zoneAt(position)
+    if (zone !== undefined && !entered.has(zone.exhibitId)) {
+      entered.add(zone.exhibitId)
+      events.push({ type: 'zone-entered', zoneId: zone.exhibitId })
+    }
+    for (const goal of goals) {
+      const inside = insideRect(goal.zone.goal.sensor, position)
+      if (inside && goal.armed) {
+        goal.armed = false
+        events.push({ type: 'goal', zoneId: goal.zone.exhibitId })
+      } else if (!inside && !goal.armed) {
+        goal.armed = true
+        events.push({ type: 'goal-left', zoneId: goal.zone.exhibitId })
+      }
+    }
+    return events
+  }
+
   return {
     layout,
 
@@ -214,7 +315,7 @@ export function createWorldModel(
         const scale = feel.maxSpeed / speed
         body.setLinvel({ x: v.x * scale, y: v.y, z: v.z * scale }, true)
       }
-      return []
+      return eventsAt(readPuck().position)
     },
 
     reset() {
@@ -225,23 +326,11 @@ export function createWorldModel(
     },
 
     puck() {
-      const t = body.translation()
-      const v = body.linvel()
-      const w = body.angvel()
-      return {
-        position: { x: t.x, z: t.z },
-        velocity: { x: v.x, z: v.z },
-        speed: Math.hypot(v.x, v.z),
-        height: t.y,
-        angularSpeed: Math.hypot(w.x, w.y, w.z),
-      }
+      return readPuck()
     },
 
     place() {
-      const position = this.puck().position
-      if (insideRect(layout.hub.rect, position)) return 'hub'
-      const zone = layout.zones.find((z) => insideRect(z.rect, position))
-      return zone === undefined ? 'path' : zone.exhibitId
+      return placeOf(readPuck().position)
     },
 
     dispose() {
