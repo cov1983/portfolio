@@ -378,6 +378,20 @@ describe('check 4: references on disk', () => {
     )
   })
 
+  it('rejects two references whose base names collide in the built media', () => {
+    const tree: Tree = {
+      ...VALID,
+      [INDEX]: exhibitFile({
+        images: 'images:\n  - src: photo.png\n    alt: A.\n  - src: photo.jpg\n    alt: B.',
+      }),
+      [`${DIR}/exhibits/portfolio/photo.jpg`]: { width: 100, height: 50 },
+    }
+    expectFailure(
+      tree,
+      `${INDEX}: images[1].src: photo.jpg collides with photo.png in the built media`,
+    )
+  })
+
   it('names file and reference for a missing video source', () => {
     const tree: Tree = {
       ...VALID,

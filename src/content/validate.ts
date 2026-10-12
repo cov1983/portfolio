@@ -12,16 +12,16 @@ import {
   planVariants,
   sourceFormat,
   type VariantPlan,
-} from './images'
-import { encodeMailto } from './mailto'
+} from './images.ts'
+import { encodeMailto } from './mailto.ts'
 import {
   exhibitFrontMatterSchema,
   exhibitIdSchema,
   siteFileSchema,
   type ExhibitFrontMatter,
   type SiteFile,
-} from './schema'
-import type { Content, ContentFs, Exhibit, ExhibitId, ImageSet } from './types'
+} from './schema.ts'
+import type { Content, ContentFs, Exhibit, ExhibitId, ImageSet } from './types.ts'
 
 /** A content file the build rejects: `file` as the plugin prints it, `path` the field or '' for the whole file. */
 export class ContentError extends Error {
@@ -205,7 +205,7 @@ function imageOf(
   reference: string,
   alt: string,
   fs: ContentFs,
-): { set: ImageSet; job: MediaJob } {
+): { set: ImageSet; job: MediaJob; name: string } {
   if (isFileName(reference) && sourceFormat(reference) === undefined) {
     throw new ContentError(parsed.file, path, `${reference} must be a PNG or JPEG`)
   }
@@ -219,7 +219,11 @@ function imageOf(
   )
   const plan = planVariants(reference, size)
   const targetDir = `${distDir(EXHIBIT_MEDIA_PREFIX)}${parsed.id}`
-  return { set: imageSet(parsed.id, plan, alt), job: { kind: 'image', source, plan, targetDir } }
+  return {
+    set: imageSet(parsed.id, plan, alt),
+    job: { kind: 'image', source, plan, targetDir },
+    name: plan.name,
+  }
 }
 
 /** Check 4: every image, the video and its poster exist (AC-26.3). */
@@ -228,11 +232,26 @@ function resolveMedia(
   fs: ContentFs,
 ): { images: ImageSet[]; video?: Exhibit['video']; jobs: MediaJob[] } {
   const jobs: MediaJob[] = []
-  const images = parsed.frontMatter.images.map((image, i) => {
-    const { set, job } = imageOf(parsed, `images[${String(i)}].src`, image.src, image.alt, fs)
+  // Variants are named <base>-<w>.<ext>, so two images whose base names agree (photo.png and
+  // photo.jpg, a poster named like an image) would overwrite each other in the built media.
+  const bases = new Map<string, string>()
+  const addImage = (path: string, reference: string, alt: string): ImageSet => {
+    const { set, job, name } = imageOf(parsed, path, reference, alt, fs)
+    const previous = bases.get(name)
+    if (previous !== undefined) {
+      throw new ContentError(
+        parsed.file,
+        path,
+        `${reference} collides with ${previous} in the built media`,
+      )
+    }
+    bases.set(name, reference)
     jobs.push(job)
     return set
-  })
+  }
+  const images = parsed.frontMatter.images.map((image, i) =>
+    addImage(`images[${String(i)}].src`, image.src, image.alt),
+  )
   const { video } = parsed.frontMatter
   if (video === undefined) return { images, jobs }
   if (isFileName(video.src) && !video.src.toLowerCase().endsWith('.mp4')) {
@@ -247,14 +266,10 @@ function resolveMedia(
     (s) => (fs.exists(s) ? true : undefined),
   )
   // A poster is the video's still (schema: no alt of its own); <video poster> takes the URL only.
-  const poster = imageOf(parsed, 'video.poster', video.poster, '', fs)
+  const poster = addImage('video.poster', video.poster, '')
   const fileName = `${distDir(EXHIBIT_MEDIA_PREFIX)}${parsed.id}/${video.src}`
-  jobs.push(poster.job, { kind: 'copy', source, fileName })
-  return {
-    images,
-    video: { src: `/${fileName}`, type: 'video/mp4', poster: poster.set },
-    jobs,
-  }
+  jobs.push({ kind: 'copy', source, fileName })
+  return { images, video: { src: `/${fileName}`, type: 'video/mp4', poster }, jobs }
 }
 
 /** Check 5: an internal link points at a built route or a listed Exhibit; an external one is syntax-checked. */

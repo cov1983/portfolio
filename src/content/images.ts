@@ -1,7 +1,7 @@
 // The image variant planner (plan §4, AC-27.1), pure: which files the build writes for one source
 // image and the ImageSet the site renders from them. The encoder (build/images.ts) writes exactly
 // this plan with sharp; the original file is never referenced and never copied.
-import type { ExhibitId, ImageSet } from './types'
+import type { ExhibitId, ImageSet } from './types.ts'
 
 /** Target widths; each is capped at the source width, duplicates collapse. */
 export const VARIANT_WIDTHS = [480, 960, 1440] as const
