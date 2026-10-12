@@ -21,12 +21,12 @@ test.describe('the root fetched without script', () => {
     await expect(og('type')).toHaveAttribute('content', 'website')
     await expect(og('title')).toHaveAttribute('content', content.owner.name)
     await expect(og('description')).toHaveAttribute('content', content.oneLine)
-    await expect(og('image')).toHaveAttribute('content', /.+/)
+    await expect(og('image')).toHaveAttribute('content', new RegExp(`${content.preview.url}$`))
     const twitter = (name: string) => page.locator(`meta[name="twitter:${name}"]`)
     await expect(twitter('card')).toHaveAttribute('content', 'summary_large_image')
     await expect(twitter('title')).toHaveAttribute('content', content.owner.name)
     await expect(twitter('description')).toHaveAttribute('content', content.oneLine)
-    await expect(twitter('image')).toHaveAttribute('content', /.+/)
+    await expect(twitter('image')).toHaveAttribute('content', new RegExp(`${content.preview.url}$`))
   })
 
   test('serves the preview image from its own origin', async ({ page, request }) => {

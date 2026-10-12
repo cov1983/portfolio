@@ -34,6 +34,17 @@ test('the Title Screen has no WCAG 2.2 AA violations', async ({ page }) => {
   expect(results.violations).toEqual([])
 })
 
+// Plan §9 risk 10: `?world` mounts the World on top and never replaces the Title Screen, which
+// renders there exactly as without the flag (T5a's perf run reads both marks at `/?world`).
+test('the Title Screen renders at /?world as without the flag', async ({ page, content }) => {
+  await page.goto('/?world')
+  await expect(page.locator('canvas')).toBeVisible()
+  const main = page.getByRole('main')
+  await expect(main.getByRole('heading', { level: 1 })).toHaveText(content.owner.name)
+  await expect(main.getByRole('button', { name: 'Enter the World' })).toHaveCount(1)
+  await expect(main.getByRole('link', { name: /plain page/ })).toHaveCount(1)
+})
+
 // AC-1.1's HTML half and AC-1.2, AC-2.3: everything the Title Screen holds is in the pre-rendered
 // document and its links work without script.
 test.describe('without script', () => {

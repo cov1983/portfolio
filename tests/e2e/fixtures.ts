@@ -52,7 +52,10 @@ const VIOLATION_BINDING = '__portfolioReportSecurityPolicyViolation'
 export const test = base.extend<Fixtures, WorkerFixtures>({
   content: [
     async ({}, provide) => {
-      await provide(await loadContentFromDisk())
+      const content = await loadContentFromDisk()
+      // Loops over the Exhibits would pass vacuously on an empty list (AC-26.1: Exhibit-1 is in).
+      expect(content.exhibits.length, 'the content has at least one Exhibit').toBeGreaterThan(0)
+      await provide(content)
     },
     { scope: 'worker' },
   ],

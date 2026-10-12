@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures'
+import { expect, test, textOf } from './fixtures'
 
 // US-20 (spec: Fallback Page): the Contact on both pre-rendered documents, the e-mail address
 // obfuscated against scraping, the GitHub profile in a new tab, the Bio on the Fallback Page only.
@@ -48,10 +48,7 @@ test.describe('without script', () => {
     page,
     content,
   }) => {
-    const bio = content.bioHtml
-      .replace(/<[^>]+>/g, '')
-      .trim()
-      .slice(0, 40)
+    const bio = textOf(content.bioHtml).slice(0, 40)
     await page.goto('/')
     await expect(page.getByRole('link', { name: 'E-mail' })).toHaveCount(1)
     await expect(page.getByText(content.oneLine)).toBeVisible()
