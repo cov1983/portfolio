@@ -2,23 +2,23 @@
 // dir, never into the worktree (ADR 0008). Seam 1's build half (plan §6) checks its output as text.
 import { execFile } from 'node:child_process'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
-import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 
-// The bin is not an exported subpath, so it is located from the package's exported package.json.
-const VITE_BIN = join(
-  dirname(createRequire(import.meta.url).resolve('vite/package.json')),
-  'bin/vite.js',
-)
+// The orchestrator of ADR 0010, the command `make build` and vercel.json run.
+const BUILD_SCRIPT = fileURLToPath(new URL('../../build/build.ts', import.meta.url))
 
 export type BuildResult = {
   outDir: string
   code: number
   stdout: string
   stderr: string
+  /** dist/index.html, the pre-rendered Title Screen; '' when the build failed. */
   indexHtml: string
+  /** dist/exhibits/index.html, the pre-rendered Fallback Page; '' when the build failed. */
+  exhibitsHtml: string
 }
 
 /** Extra environment for the spawned build, e.g. CONTENT_DIR for a content fixture (plan §6). */
@@ -39,8 +39,10 @@ export async function runProductionBuild(options: BuildOptions = {}): Promise<Bu
   try {
     ;({ stdout, stderr } = await promisify(execFile)(
       process.execPath,
-      [VITE_BIN, 'build', '--outDir', outDir, '--emptyOutDir'],
-      { env: { ...process.env, NO_COLOR: '1', ...options.env } },
+      [BUILD_SCRIPT, '--outDir', outDir, '--emptyOutDir'],
+      // Vitest sets NODE_ENV=test, which Vite would inherit and keep: a development-mode bundle
+      // (React's dev build, import.meta.env.DEV true). The seam is the production build.
+      { env: { ...process.env, NODE_ENV: 'production', NO_COLOR: '1', ...options.env } },
     ))
   } catch (error) {
     if (!isSpawnFailure(error)) throw error
@@ -48,8 +50,13 @@ export async function runProductionBuild(options: BuildOptions = {}): Promise<Bu
     stdout = error.stdout ?? ''
     stderr = error.stderr ?? ''
   }
-  const indexHtml = code === 0 ? await readFile(join(outDir, 'index.html'), 'utf8') : ''
-  return { outDir, code, stdout, stderr, indexHtml }
+  const read = (file: string): Promise<string> =>
+    code === 0 ? readFile(join(outDir, file), 'utf8') : Promise.resolve('')
+  const [indexHtml, exhibitsHtml] = await Promise.all([
+    read('index.html'),
+    read('exhibits/index.html'),
+  ])
+  return { outDir, code, stdout, stderr, indexHtml, exhibitsHtml }
 }
 
 export async function removeBuild(build: BuildResult): Promise<void> {

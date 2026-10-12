@@ -11,6 +11,7 @@ import {
   imageSet,
   planVariants,
   sourceFormat,
+  type Variant,
   type VariantPlan,
 } from './images.ts'
 import { encodeMailto } from './mailto.ts'
@@ -43,6 +44,29 @@ export type MediaJob =
 
 /** Where the site-level preview image goes; never under the Exhibit prefix (plan §4). */
 export const SITE_MEDIA_PREFIX = '/media/site/'
+
+/** One file the built site serves: the variant to encode from its source, or the source's bytes. */
+export type MediaFile =
+  { kind: 'image'; source: string; variant: Variant } | { kind: 'copy'; source: string }
+
+/** Every file of the jobs by its URL path, for a server that produces them on request (the dev server, Owner on #26 Q12). */
+export function mediaFiles(jobs: readonly MediaJob[]): Map<string, MediaFile> {
+  const files = new Map<string, MediaFile>()
+  for (const job of jobs) {
+    if (job.kind === 'image') {
+      for (const variant of job.plan.variants) {
+        files.set(`/${job.targetDir}/${variant.file}`, {
+          kind: 'image',
+          source: job.source,
+          variant,
+        })
+      }
+    } else {
+      files.set(`/${job.fileName}`, { kind: 'copy', source: job.source })
+    }
+  }
+  return files
+}
 
 const markdown = new MarkdownIt()
 

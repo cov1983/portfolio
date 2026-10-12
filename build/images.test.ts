@@ -5,7 +5,7 @@ import sharp from 'sharp'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { planVariants } from '../src/content/images.ts'
-import { encodeVariants, imageDimensions, type EmittedFile } from './images.ts'
+import { encodeVariant, encodeVariants, imageDimensions, type EmittedFile } from './images.ts'
 
 // AC-27.1, the encode half: the files planVariants names exist with the planned width and format.
 // A generated 1000 × 500 PNG in the scratch dir (never the worktree, ADR 0008); sharp decodes the
@@ -64,6 +64,13 @@ describe('encodeVariants', () => {
         METADATA_FORMAT[planned.format],
       ])
     }
+  })
+
+  it('encodes one planned variant on its own', async () => {
+    const variant = plan.variants.find((v) => v.file === 'photo-480.webp')
+    if (variant === undefined) throw new Error('no such variant')
+    const metadata = await sharp(await encodeVariant(source, variant)).metadata()
+    expect([metadata.format, metadata.width, metadata.height]).toEqual(['webp', 480, 240])
   })
 
   it('writes a JPEG fallback for a jpg source', async () => {

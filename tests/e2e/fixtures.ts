@@ -1,5 +1,7 @@
 import { expect, test as base } from '@playwright/test'
 
+import { loadContentFromDisk } from '../../build/content-plugin.ts'
+import type { Content } from '../../src/content/types.ts'
 import { vercelHeaders } from '../../vercel-headers.ts'
 
 /** The `/(.*)` headers of vercel.json with names lower-cased, as a browser reports them. */
@@ -9,6 +11,19 @@ export function expectedResponseHeaders(): Record<string, string> {
   )
 }
 
+/** The text a Visitor reads from HTML the build rendered: tags gone, the entities markdown-it writes decoded. */
+export function textOf(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 export type ProblemKind = 'pageerror' | 'console.error' | 'securitypolicyviolation'
 
 export type Problem = { kind: ProblemKind; detail: string }
@@ -16,6 +31,11 @@ export type Problem = { kind: ProblemKind; detail: string }
 type Fixtures = {
   /** What the page reported during the test; the `page` fixture expects it empty at the end. */
   problems: Problem[]
+}
+
+type WorkerFixtures = {
+  /** The Content the site was built from (plan §6: expected values come from loadContent, never literals). */
+  content: Content
 }
 
 type ReportViolation = (detail: string) => void
@@ -29,7 +49,16 @@ const VIOLATION_BINDING = '__portfolioReportSecurityPolicyViolation'
 // init script forwards it through a binding before any page script runs. The binding is the only
 // window global in the suite and belongs to this fixture: plan §6's rule (tests read no window
 // globals and no component state) is about the site, and no test reads the binding.
-export const test = base.extend<Fixtures>({
+export const test = base.extend<Fixtures, WorkerFixtures>({
+  content: [
+    async ({}, provide) => {
+      const content = await loadContentFromDisk()
+      // Loops over the Exhibits would pass vacuously on an empty list (AC-26.1: Exhibit-1 is in).
+      expect(content.exhibits.length, 'the content has at least one Exhibit').toBeGreaterThan(0)
+      await provide(content)
+    },
+    { scope: 'worker' },
+  ],
   problems: async ({}, provide) => {
     await provide([])
   },
