@@ -66,6 +66,18 @@ describe('encodeVariants', () => {
     }
   })
 
+  it('writes a JPEG fallback for a jpg source', async () => {
+    const jpg = join(dir, 'photo.jpg')
+    await writeFile(jpg, await sharp(source).jpeg().toBuffer())
+    const outputs = await encodeVariants(
+      jpg,
+      planVariants('photo.jpg', { width: 60, height: 30 }),
+      TARGET,
+    )
+    const fallback = outputs.find((f) => f.fileName.endsWith('/photo-60.jpg'))
+    expect((await sharp(fallback?.source).metadata()).format).toBe('jpeg')
+  })
+
   it('reads the dimensions of a source', async () => {
     await expect(imageDimensions(source)).resolves.toEqual({ width: 1000, height: 500 })
   })

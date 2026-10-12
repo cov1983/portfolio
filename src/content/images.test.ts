@@ -72,6 +72,12 @@ describe('planVariants', () => {
     })
   })
 
+  it('refuses a source that is not a PNG or JPEG (the loader checks first)', () => {
+    expect(() => planVariants('photo.gif', { width: 10, height: 10 })).toThrow(
+      'photo.gif: not a PNG or JPEG source',
+    )
+  })
+
   it('exposes the three target widths', () => {
     expect(VARIANT_WIDTHS).toEqual([480, 960, 1440])
   })
