@@ -2,7 +2,6 @@ import { readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { loadContentFromDisk } from '../../build/content-plugin.ts'
 import { removeBuild, runProductionBuild, type BuildResult } from './production-build.ts'
 
 // Seam 1's build half for the content pipeline (plan §6, AC-26.1/26.2/26.3/27.1): the production
@@ -98,12 +97,38 @@ describe('fixture html-in-summary', () => {
     expect(build.code, build.stderr).toBe(0)
   })
 
-  // Nothing renders content before T4, so the proof reads the fixture through the plugin's own
-  // disk facade (Owner, #26 Q7); T4 turns it into a check on dist/exhibits/index.html.
-  it('renders the script tag of the summary as text', async () => {
-    const { exhibits } = await loadContentFromDisk(`${FIXTURES}/content-html-in-summary`)
-    expect(exhibits[0]?.summaryHtml).toContain('&lt;script&gt;alert(1)&lt;/script&gt;')
-    expect(exhibits[0]?.summaryHtml).not.toContain('<script')
+  // The Fallback Page renders the summary (T4): the script tag is text on the built page, and
+  // the page carries no script element at all.
+  it('renders the script tag of the summary as text on the Fallback Page', () => {
+    expect(build.exhibitsHtml).toContain('&lt;script&gt;alert(1)&lt;/script&gt;')
+    expect(build.exhibitsHtml).not.toContain('<script')
+  })
+})
+
+// AC-17.2's markup on the Fallback Page: the real content has no video, so the proof is a fixture.
+describe('fixture video', () => {
+  let build: BuildResult
+  let video: string
+
+  beforeAll(async () => {
+    build = await fixtureBuild('video')
+    video = /<video\b[^>]*>[\s\S]*?<\/video>/.exec(build.exhibitsHtml)?.[0] ?? ''
+  })
+
+  afterAll(async () => {
+    await removeBuild(build)
+  })
+
+  it('builds', () => {
+    expect(build.code, build.stderr).toBe(0)
+  })
+
+  it('renders the video with its poster, controls and no autoplay', () => {
+    expect(video).toContain('controls')
+    expect(video).toMatch(/poster="\/media\/exhibits\/sample\/poster-\d+\.png"/)
+    expect(video).toContain('preload="none"')
+    expect(video).not.toContain('autoplay')
+    expect(video).toContain('<source src="/media/exhibits/sample/clip.mp4" type="video/mp4"')
   })
 })
 

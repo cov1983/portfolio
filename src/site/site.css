@@ -96,3 +96,70 @@ a:focus-visible {
 .fallback {
   margin: 2.5rem 0 0;
 }
+
+/* The Fallback Page */
+.fallback-page nav ul {
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fallback-page nav li {
+  display: inline;
+  margin-right: 1rem;
+}
+
+.exhibit {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--muted);
+}
+
+.exhibit .hook {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  color: var(--muted);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 1.5rem 0;
+}
+
+.facts dt {
+  font-weight: 600;
+}
+
+.facts dd,
+.facts ul {
+  margin: 0;
+  padding: 0;
+}
+
+.facts li {
+  display: inline;
+}
+
+.facts li + li::before {
+  content: ' · ';
+}
+
+.exhibit picture,
+.exhibit img,
+.exhibit video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.5rem 0;
+}
+
+h3 {
+  margin: 2rem 0 0.5rem;
+  font-size: 1.25rem;
+}
+
+#contact .contact {
+  margin: 0;
+}

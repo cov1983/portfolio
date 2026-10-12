@@ -11,6 +11,19 @@ export function expectedResponseHeaders(): Record<string, string> {
   )
 }
 
+/** The text a Visitor reads from HTML the build rendered: tags gone, the entities markdown-it writes decoded. */
+export function textOf(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 export type ProblemKind = 'pageerror' | 'console.error' | 'securitypolicyviolation'
 
 export type Problem = { kind: ProblemKind; detail: string }
