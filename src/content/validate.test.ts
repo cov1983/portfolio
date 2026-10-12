@@ -100,6 +100,11 @@ function expectFailure(tree: Tree, message: string): void {
   expect(failure(tree).message).toBe(message)
 }
 
+/** For a message whose detail is zod's own wording: file and field are ours, the rest may move with a zod patch. */
+function expectFailureAt(tree: Tree, fileAndField: string): void {
+  expect(failure(tree).message).toMatch(new RegExp(`^${fileAndField.replace(/[.[\]]/g, '\\$&')}: `))
+}
+
 const INDEX = `${DIR}/exhibits/portfolio/index.md`
 const SITE_FILE = `${DIR}/site.yaml`
 
@@ -218,6 +223,16 @@ describe('loadContent on a valid tree', () => {
     expect(load(tree).preview).toEqual({ url: '/media/site/preview.png', width: 1200, height: 630 })
   })
 
+  it('copies a preview of another name as preview.<ext> (Owner, #26 Q10)', () => {
+    const tree: Tree = {
+      ...VALID,
+      [SITE_FILE]: `${SITE}preview: social.jpg\n`,
+      [`${DIR}/preview.png`]: { width: 1200, height: 630 },
+      [`${DIR}/social.jpg`]: { width: 1200, height: 600 },
+    }
+    expect(load(tree).preview.url).toBe('/media/site/preview.jpg')
+  })
+
   it('falls back to the first image of the first Exhibit for the preview', () => {
     expect(content.preview).toEqual({
       url: '/media/exhibits/portfolio/photo-1440.png',
@@ -267,7 +282,7 @@ describe('check 1: site.yaml', () => {
 
   it('names the path of a site.yaml field (contact.email)', () => {
     const tree = { ...VALID, [SITE_FILE]: SITE.replace('hello@example.com', 'nobody') }
-    expectFailure(tree, `${SITE_FILE}: contact.email: Invalid email address`)
+    expectFailureAt(tree, `${SITE_FILE}: contact.email`)
   })
 
   it('reports a missing site.yaml field as required', () => {
@@ -302,10 +317,7 @@ describe('check 3: each Exhibit file', () => {
 
   it('names the visibility field for an unknown value', () => {
     const tree = { ...VALID, [INDEX]: exhibitFile({ visibility: 'visibility: public' }) }
-    expectFailure(
-      tree,
-      `${INDEX}: visibility: Invalid option: expected one of "personal"|"employer-generic"`,
-    )
+    expectFailureAt(tree, `${INDEX}: visibility`)
   })
 
   it('names an unknown field instead of dropping it', () => {
@@ -495,6 +507,14 @@ describe('check 7: bio.md', () => {
 })
 
 describe('the preview image', () => {
+  it('rejects a preview that is not a file name in the content directory', () => {
+    const tree = { ...VALID, [SITE_FILE]: `${SITE}preview: ../preview.png\n` }
+    expectFailure(
+      tree,
+      `${SITE_FILE}: preview: ../preview.png must be a file in the content directory`,
+    )
+  })
+
   it('fails without a preview when there is no Exhibit to fall back on', () => {
     const tree: Tree = {
       [SITE_FILE]: SITE.replace('    portfolio: Found it.\n', '    {}\n'),
@@ -516,7 +536,7 @@ describe('order: first failure wins', () => {
       [SITE_FILE]: SITE.replace('hello@example.com', 'nobody'),
       [INDEX]: exhibitFile({ images: 'images:\n  - src: photo.png' }),
     }
-    expectFailure(tree, `${SITE_FILE}: contact.email: Invalid email address`)
+    expectFailureAt(tree, `${SITE_FILE}: contact.email`)
   })
 
   it("reports the Exhibit's front matter before its references", () => {

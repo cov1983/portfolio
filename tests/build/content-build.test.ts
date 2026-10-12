@@ -69,6 +69,9 @@ describe('the real content', () => {
 
   it('does not emit the original file name', () => {
     expect(media).not.toContain('workflow-one-page.png')
+  })
+
+  it('emits exactly the seven planned files', () => {
     expect(media).toHaveLength(7)
   })
 
@@ -78,7 +81,7 @@ describe('the real content', () => {
 })
 
 failingFixture('missing-field', 'images[0].alt: required')
-failingFixture('bad-visibility', 'visibility: Invalid option')
+failingFixture('bad-visibility', 'visibility:')
 
 describe('fixture html-in-summary', () => {
   let build: BuildResult

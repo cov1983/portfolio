@@ -46,16 +46,23 @@ export const SITE_MEDIA_PREFIX = '/media/site/'
 
 const markdown = new MarkdownIt()
 
-type Parsed = { id: ExhibitId; dir: string; file: string; frontMatter: ExhibitFrontMatter }
+/** An Exhibit directory with its index.md, before the file is read. */
+type ExhibitEntry = { id: ExhibitId; dir: string; file: string }
+type Parsed = ExhibitEntry & { frontMatter: ExhibitFrontMatter }
+
+/** The dist/ directory a URL prefix maps onto. */
+function distDir(prefix: string): string {
+  return prefix.slice(1)
+}
 
 // --- helpers ---------------------------------------------------------------------------------
 
-function parseYamlOrThrow(file: string, text: string, what = ''): unknown {
+function parseYamlOrThrow(file: string, text: string, label = ''): unknown {
   try {
     return parseYaml(text)
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error)
-    throw new ContentError(file, '', `${what}does not parse (${reason.split('\n')[0] ?? ''})`)
+    throw new ContentError(file, '', `${label}does not parse (${reason.split('\n')[0] ?? ''})`)
   }
 }
 
@@ -111,6 +118,29 @@ function isFileName(reference: string): boolean {
   )
 }
 
+/**
+ * Check 4's shape for one reference: a bare file name inside `dir` (Owner, #26 Q4) that exists;
+ * `found` answers existence (the probe's size for an image, the facade for anything else).
+ */
+function referencedFile<T>(
+  file: string,
+  path: string,
+  reference: string,
+  dir: string,
+  where: string,
+  found: (source: string) => T | undefined,
+): { source: string; value: T } {
+  if (!isFileName(reference)) {
+    throw new ContentError(file, path, `${reference} must be a file in ${where}`)
+  }
+  const source = `${dir}/${reference}`
+  const value = found(source)
+  if (value === undefined) throw new ContentError(file, path, `${reference} not found`)
+  return { source, value }
+}
+
+const IN_EXHIBIT = "the Exhibit's directory"
+
 const INTERNAL_ROUTES = ['/', '/exhibits']
 const LINK_RULE = 'must be an internal route (/, /exhibits, /exhibits#<id>) or an http(s) URL'
 
@@ -134,7 +164,7 @@ function readSite(dir: string, fs: ContentFs): { file: string; site: SiteFile } 
 }
 
 /** Check 2: every directory under exhibits/ has a valid id and an index.md. */
-function listExhibits(dir: string, fs: ContentFs): { id: ExhibitId; dir: string; file: string }[] {
+function listExhibits(dir: string, fs: ContentFs): ExhibitEntry[] {
   const root = `${dir}/exhibits`
   return fs.listDirectories(root).map((name) => {
     const id = exhibitIdSchema.safeParse(name)
@@ -152,7 +182,7 @@ function listExhibits(dir: string, fs: ContentFs): { id: ExhibitId; dir: string;
 }
 
 /** Check 3: the front matter matches the schema and the body is empty. */
-function parseExhibit(entry: { id: ExhibitId; dir: string; file: string }, fs: ContentFs): Parsed {
+function parseExhibit(entry: ExhibitEntry, fs: ContentFs): Parsed {
   const text = fs.readText(entry.file)
   if (text === undefined) throw new ContentError(entry.file, '', 'not found')
   const { yaml, body } = splitFrontMatter(entry.file, text)
@@ -176,21 +206,19 @@ function imageOf(
   alt: string,
   fs: ContentFs,
 ): { set: ImageSet; job: MediaJob } {
-  if (!isFileName(reference)) {
-    throw new ContentError(
-      parsed.file,
-      path,
-      `${reference} must be a file in the Exhibit's directory`,
-    )
-  }
-  if (sourceFormat(reference) === undefined) {
+  if (isFileName(reference) && sourceFormat(reference) === undefined) {
     throw new ContentError(parsed.file, path, `${reference} must be a PNG or JPEG`)
   }
-  const source = `${parsed.dir}/${reference}`
-  const size = fs.imageSize(source)
-  if (size === undefined) throw new ContentError(parsed.file, path, `${reference} not found`)
+  const { source, value: size } = referencedFile(
+    parsed.file,
+    path,
+    reference,
+    parsed.dir,
+    IN_EXHIBIT,
+    (s) => fs.imageSize(s),
+  )
   const plan = planVariants(reference, size)
-  const targetDir = `${EXHIBIT_MEDIA_PREFIX.slice(1)}${parsed.id}`
+  const targetDir = `${distDir(EXHIBIT_MEDIA_PREFIX)}${parsed.id}`
   return { set: imageSet(parsed.id, plan, alt), job: { kind: 'image', source, plan, targetDir } }
 }
 
@@ -207,20 +235,20 @@ function resolveMedia(
   })
   const { video } = parsed.frontMatter
   if (video === undefined) return { images, jobs }
-  if (!isFileName(video.src)) {
-    throw new ContentError(
-      parsed.file,
-      'video.src',
-      `${video.src} must be a file in the Exhibit's directory`,
-    )
-  }
-  if (!video.src.toLowerCase().endsWith('.mp4')) {
+  if (isFileName(video.src) && !video.src.toLowerCase().endsWith('.mp4')) {
     throw new ContentError(parsed.file, 'video.src', `${video.src} must be an MP4`)
   }
-  const source = `${parsed.dir}/${video.src}`
-  if (!fs.exists(source)) throw new ContentError(parsed.file, 'video.src', `${video.src} not found`)
+  const { source } = referencedFile(
+    parsed.file,
+    'video.src',
+    video.src,
+    parsed.dir,
+    IN_EXHIBIT,
+    (s) => (fs.exists(s) ? true : undefined),
+  )
+  // A poster is the video's still (schema: no alt of its own); <video poster> takes the URL only.
   const poster = imageOf(parsed, 'video.poster', video.poster, '', fs)
-  const fileName = `${EXHIBIT_MEDIA_PREFIX.slice(1)}${parsed.id}/${video.src}`
+  const fileName = `${distDir(EXHIBIT_MEDIA_PREFIX)}${parsed.id}/${video.src}`
   jobs.push(poster.job, { kind: 'copy', source, fileName })
   return {
     images,
@@ -296,12 +324,16 @@ function resolvePreview(
   fs: ContentFs,
 ): { preview: Content['preview']; job?: MediaJob } {
   if (site.preview !== undefined) {
-    const source = `${dir}/${site.preview}`
-    const size = isFileName(site.preview) ? fs.imageSize(source) : undefined
-    if (size === undefined) {
-      throw new ContentError(siteFile, 'preview', `${site.preview} not found`)
-    }
-    const fileName = `${SITE_MEDIA_PREFIX.slice(1)}${site.preview}`
+    const { source, value: size } = referencedFile(
+      siteFile,
+      'preview',
+      site.preview,
+      dir,
+      'the content directory',
+      (s) => fs.imageSize(s),
+    )
+    // Copied as is under one stable name, preview.<ext> (Owner, #26 Q10).
+    const fileName = `${distDir(SITE_MEDIA_PREFIX)}preview.${site.preview.slice(site.preview.lastIndexOf('.') + 1)}`
     return { preview: { url: `/${fileName}`, ...size }, job: { kind: 'copy', source, fileName } }
   }
   const image = exhibits[0]?.images[0]

@@ -85,11 +85,8 @@ async function loadFromDisk(root: string, dir: string): Promise<Loaded> {
 }
 
 /** The content directory read as the build reads it; for tests and tooling. Throws ContentError. */
-export async function loadContentFromDisk(
-  dir = DEFAULT_CONTENT_DIR,
-  root = process.cwd(),
-): Promise<Content> {
-  return (await loadFromDisk(root, dir)).content
+export async function loadContentFromDisk(dir = DEFAULT_CONTENT_DIR): Promise<Content> {
+  return (await loadFromDisk(process.cwd(), dir)).content
 }
 
 async function renderMedia(root: string, jobs: MediaJob[]): Promise<EmittedFile[]> {
@@ -104,6 +101,11 @@ async function renderMedia(root: string, jobs: MediaJob[]): Promise<EmittedFile[
   return files
 }
 
+/** How many files under dist/ one job produces. */
+function fileCount(job: MediaJob): number {
+  return job.kind === 'image' ? job.plan.variants.length : 1
+}
+
 function plural(count: number, noun: string): string {
   return `${String(count)} ${noun}${count === 1 ? '' : 's'}`
 }
@@ -112,10 +114,7 @@ function plural(count: number, noun: string): string {
 function summaryOf({ content, media }: Loaded): string {
   const ids = content.exhibits.map((e) => e.id).join(', ')
   const images = media.filter((job) => job.kind === 'image').length
-  const files = media.reduce(
-    (sum, job) => sum + (job.kind === 'image' ? job.plan.variants.length : 1),
-    0,
-  )
+  const files = media.reduce((sum, job) => sum + fileCount(job), 0)
   return `content: ${plural(content.exhibits.length, 'Exhibit')} (${ids}) · ${plural(images, 'image')} → ${plural(files, 'media file')} · bio ok`
 }
 
