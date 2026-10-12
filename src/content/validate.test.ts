@@ -102,7 +102,8 @@ function expectFailure(tree: Tree, message: string): void {
 
 /** For a message whose detail is zod's own wording: file and field are ours, the rest may move with a zod patch. */
 function expectFailureAt(tree: Tree, fileAndField: string): void {
-  expect(failure(tree).message).toMatch(new RegExp(`^${fileAndField.replace(/[.[\]]/g, '\\$&')}: `))
+  const prefix = `${fileAndField}: `
+  expect(failure(tree).message.slice(0, prefix.length)).toBe(prefix)
 }
 
 const INDEX = `${DIR}/exhibits/portfolio/index.md`
