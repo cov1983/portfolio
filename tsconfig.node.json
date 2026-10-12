@@ -13,6 +13,7 @@
     "playwright.config.ts",
     "eslint.config.js",
     "tests/**/*.ts",
-    "scripts/**/*.ts"
+    "scripts/**/*.ts",
+    "build/**/*.ts"
   ]
 }

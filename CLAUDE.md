@@ -5,7 +5,8 @@ Thomas's personal website: an immersive, interactive 3D portfolio in which visit
 puck through a playful virtual world to discover his projects and background. Physics, hockey-inspired
 challenges and light storytelling make exploring the portfolio an experience that itself demonstrates
 his development skills. Status: **Phase 3, increment-1 in progress** (plan `docs/plan/increment-1.md`;
-T2 #25 adds the Path, the Zone and the Goal to T1's Puck behind `/?world`, the live root stays a placeholder until T4).
+T3 #26 adds the content pipeline: `content/` validated at build, `virtual:content`, media variants; the World stays behind
+`/?world` and the live root stays a placeholder until T4).
 The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the model owns Rapier, the scene mirrors it.
 
 ## Environment
@@ -63,10 +64,17 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
 - `.devcontainer/`          Dockerfile + devcontainer.json: the reference toolchain
 - `src/`                    application code: `main.tsx` (the `?world` guard, plan §9 risk 10), `world/` (`model/`: layout, Rapier
                             model, pure camera; `input/`: keys by physical code; `scene/`: the R3F mirror; `World.tsx`: the entry
-                            the `?world` guard imports), `perf/` (the marks), `content/` and `app/` (types only until T3 and T5a)
+                            the `?world` guard imports), `perf/` (the marks), `content/` (ADR 0011: `schema.ts` zod, `types.ts`,
+                            `validate.ts` the pure `loadContent` behind an fs facade, `images.ts` the variant planner, `mailto.ts`;
+                            no React, three, Rapier or DOM), `app/` (types only until T5a)
+- `build/`                  the build's I/O (plan §2): `content-plugin.ts` (Vite plugin: validates `content/`, serves `virtual:content`,
+                            emits `dist/media/`; `CONTENT_DIR` selects the directory), `images.ts` (sharp encoder); `build.ts` arrives with T4
+- `content/`                the Owner's content (CODEOWNERS): `site.yaml`, `bio.md`, `exhibits/<id>/index.md` + media at original size;
+                            the directory name is the Exhibit id; the build is the validator (plan §4), publishing is a commit
 - `tests/`                  `e2e/` (Playwright, spec seam 1; `fixtures.ts` fails a test on pageerror, console.error, CSP violation),
                             `build/` (seam 1's build half: the production build spawned, output checked as text: CSP-safe HTML,
-                            the `world` chunk isolated from the entry), `model/` (headless Rapier, seam 2)
+                            the `world` chunk isolated from the entry, the content fixtures under `fixtures/content-<case>/`
+                            failing with file and field), `model/` (headless Rapier, seam 2)
 - `.githooks/`              `pre-commit`: lint-staged (Prettier, ESLint) then gitleaks; wired by `make setup`
 - root configs              `vite.config.ts`, `vitest.config.ts`, `playwright.config.ts`, `eslint.config.js`, `tsconfig*.json`, `.prettierrc`
 - `vercel.json`             the whole hosting configuration (ADR 0006), response headers included (ADR 0012); owned by the Owner in
