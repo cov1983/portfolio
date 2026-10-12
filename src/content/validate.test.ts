@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ImageSize } from './images'
 import type { ContentFs } from './types'
-import { ContentError, loadContent, loadContentWithMedia } from './validate'
+import { ContentError, loadContent, loadContentWithMedia, mediaFiles } from './validate'
 
 // Plan §4 "Validation at build": the seven checks in order, first failure wins, through an
 // in-memory facade (no Node types in src/). A text value is a file's content; an ImageSize is an
@@ -267,6 +267,46 @@ describe('loadContent on a valid tree', () => {
       'copy content/exhibits/portfolio/clip.mp4 → media/exhibits/portfolio/clip.mp4',
       'copy content/preview.png → media/site/preview.png',
     ])
+  })
+
+  it('maps every planned file to the URL the site serves it at (the dev server, Owner #26 Q12)', () => {
+    const tree: Tree = {
+      ...VALID,
+      [SITE_FILE]: `${SITE}preview: preview.png\n`,
+      [`${DIR}/preview.png`]: { width: 1200, height: 630 },
+      [INDEX]: exhibitFile({
+        images:
+          'images:\n  - src: photo.png\n    alt: A flowchart.\nvideo:\n  src: clip.mp4\n  poster: still.jpg',
+      }),
+      [`${DIR}/exhibits/portfolio/clip.mp4`]: 'bytes',
+      [`${DIR}/exhibits/portfolio/still.jpg`]: { width: 640, height: 360 },
+    }
+    const files = mediaFiles(loadContentWithMedia(DIR, memoryFs(tree)).media)
+    expect([...files.keys()].sort()).toEqual([
+      '/media/exhibits/portfolio/clip.mp4',
+      '/media/exhibits/portfolio/photo-1440.avif',
+      '/media/exhibits/portfolio/photo-1440.png',
+      '/media/exhibits/portfolio/photo-1440.webp',
+      '/media/exhibits/portfolio/photo-480.avif',
+      '/media/exhibits/portfolio/photo-480.webp',
+      '/media/exhibits/portfolio/photo-960.avif',
+      '/media/exhibits/portfolio/photo-960.webp',
+      '/media/exhibits/portfolio/still-480.avif',
+      '/media/exhibits/portfolio/still-480.webp',
+      '/media/exhibits/portfolio/still-640.avif',
+      '/media/exhibits/portfolio/still-640.jpg',
+      '/media/exhibits/portfolio/still-640.webp',
+      '/media/site/preview.png',
+    ])
+    expect(files.get('/media/exhibits/portfolio/still-480.webp')).toEqual({
+      kind: 'image',
+      source: 'content/exhibits/portfolio/still.jpg',
+      variant: { file: 'still-480.webp', format: 'webp', width: 480, height: 270 },
+    })
+    expect(files.get('/media/site/preview.png')).toEqual({
+      kind: 'copy',
+      source: 'content/preview.png',
+    })
   })
 })
 

@@ -4,19 +4,28 @@
 // `vite build` exits 1 naming file and field (AC-26.2, AC-26.3). The typed Content is served as
 // `virtual:content`; the planned media files are emitted under dist/media/ at build (AC-27.1).
 // Under `vite` (dev) the content is validated and served too, but media are written by the build
-// only; serving /media/exhibits/ in dev is T4's, the Fallback Page's, concern (Owner, #26 Q12).
-// The content directory is CONTENT_DIR relative to the Vite root, `content` by default; the build
+// only; under the dev server every planned media file is encoded or read on first request and
+// kept in memory, so /media/exhibits/ and /media/site/ answer as the built site would (Owner,
+// #26 Q12 and #27 Q12). The content directory is CONTENT_DIR relative to the Vite root, `content` by default; the build
 // seam points it at a fixture (tests/build/content-build.test.ts). The SSR pass of build/build.ts
 // validates and serves `virtual:content` like any build but encodes no media and prints no
 // summary: the client pass did both. Outside the coverage ratchet (Vite glue, plan §6).
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Logger, Plugin } from 'vite'
 
-import { sourceFormat, type ImageSize } from '../src/content/images.ts'
+import { EXHIBIT_MEDIA_PREFIX, sourceFormat, type ImageSize } from '../src/content/images.ts'
 import type { Content, ContentFs } from '../src/content/types.ts'
-import { ContentError, loadContentWithMedia, type MediaJob } from '../src/content/validate.ts'
-import { encodeVariants, imageDimensions, type EmittedFile } from './images.ts'
+import {
+  ContentError,
+  SITE_MEDIA_PREFIX,
+  loadContentWithMedia,
+  mediaFiles,
+  type MediaFile,
+  type MediaJob,
+} from '../src/content/validate.ts'
+import { encodeVariant, encodeVariants, imageDimensions, type EmittedFile } from './images.ts'
 
 export const DEFAULT_CONTENT_DIR = 'content'
 const VIRTUAL_ID = 'virtual:content'
@@ -102,6 +111,31 @@ async function renderMedia(root: string, jobs: MediaJob[]): Promise<EmittedFile[
   return files
 }
 
+const MEDIA_TYPES: Record<string, string> = {
+  avif: 'image/avif',
+  webp: 'image/webp',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  mp4: 'video/mp4',
+}
+
+type Served = { body: Buffer; type: string }
+
+/** The bytes of one media file as the build would write them, with their content type. */
+async function serveMedia(root: string, pathname: string, file: MediaFile): Promise<Served> {
+  const extension = pathname.slice(pathname.lastIndexOf('.') + 1).toLowerCase()
+  const type = MEDIA_TYPES[extension] ?? 'application/octet-stream'
+  const body =
+    file.kind === 'image'
+      ? await encodeVariant(join(root, file.source), file.variant)
+      : await readFile(join(root, file.source))
+  return { body, type }
+}
+
+function isMediaPath(pathname: string): boolean {
+  return pathname.startsWith(EXHIBIT_MEDIA_PREFIX) || pathname.startsWith(SITE_MEDIA_PREFIX)
+}
+
 /** How many files under dist/ one job produces. */
 function fileCount(job: MediaJob): number {
   return job.kind === 'image' ? job.plan.variants.length : 1
@@ -126,6 +160,9 @@ export function contentPlugin(): Plugin {
   let logger: Logger | undefined
   let loaded: Loaded | undefined
   let files: EmittedFile[] = []
+  /** Dev server: the planned files by URL and what was produced so far. */
+  let index: Map<string, MediaFile> | undefined
+  const served = new Map<string, Promise<Served>>()
 
   return {
     name: 'portfolio:content',
@@ -142,10 +179,43 @@ export function contentPlugin(): Plugin {
       try {
         loaded = await loadFromDisk(root, dir)
         files = isBuild && !isSsr ? await renderMedia(root, loaded.media) : []
+        index = undefined
+        served.clear()
       } catch (error) {
         if (error instanceof ContentError) this.error(error.message)
         throw error
       }
+    },
+
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const pathname = req.url === undefined ? '' : new URL(req.url, 'http://localhost').pathname
+        if (!isMediaPath(pathname) || loaded === undefined) {
+          next()
+          return
+        }
+        index ??= mediaFiles(loaded.media)
+        const file = index.get(pathname)
+        if (file === undefined) {
+          res.statusCode = 404
+          res.end()
+          return
+        }
+        let pending = served.get(pathname)
+        if (pending === undefined) {
+          pending = serveMedia(root, pathname, file)
+          served.set(pathname, pending)
+        }
+        pending.then(
+          ({ body, type }) => {
+            res.setHeader('Content-Type', type)
+            res.end(body)
+          },
+          (error: unknown) => {
+            next(error)
+          },
+        )
+      })
     },
 
     resolveId(id) {
