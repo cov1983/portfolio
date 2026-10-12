@@ -13,32 +13,43 @@ const VITE_BIN = join(
   'bin/vite.js',
 )
 
-export type BuildResult = { outDir: string; code: number; stderr: string; indexHtml: string }
+export type BuildResult = {
+  outDir: string
+  code: number
+  stdout: string
+  stderr: string
+  indexHtml: string
+}
 
-type SpawnFailure = { code?: number | string; stderr?: string }
+/** Extra environment for the spawned build, e.g. CONTENT_DIR for a content fixture (plan §6). */
+export type BuildOptions = { env?: Record<string, string> }
+
+type SpawnFailure = { code?: number | string; stdout?: string; stderr?: string }
 
 /** The boundary to the child process: execFile rejects with an Error carrying code and stderr. */
 function isSpawnFailure(error: unknown): error is SpawnFailure {
   return typeof error === 'object' && error !== null && 'stderr' in error
 }
 
-export async function runProductionBuild(): Promise<BuildResult> {
+export async function runProductionBuild(options: BuildOptions = {}): Promise<BuildResult> {
   const outDir = await mkdtemp(join(tmpdir(), 'portfolio-build-'))
   let code = 0
+  let stdout = ''
   let stderr = ''
   try {
-    ;({ stderr } = await promisify(execFile)(
+    ;({ stdout, stderr } = await promisify(execFile)(
       process.execPath,
       [VITE_BIN, 'build', '--outDir', outDir, '--emptyOutDir'],
-      { env: { ...process.env, NO_COLOR: '1' } },
+      { env: { ...process.env, NO_COLOR: '1', ...options.env } },
     ))
   } catch (error) {
     if (!isSpawnFailure(error)) throw error
     code = typeof error.code === 'number' ? error.code : 1
+    stdout = error.stdout ?? ''
     stderr = error.stderr ?? ''
   }
   const indexHtml = code === 0 ? await readFile(join(outDir, 'index.html'), 'utf8') : ''
-  return { outDir, code, stderr, indexHtml }
+  return { outDir, code, stdout, stderr, indexHtml }
 }
 
 export async function removeBuild(build: BuildResult): Promise<void> {

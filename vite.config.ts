@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
+import { contentPlugin } from './build/content-plugin.ts'
 import { vercelHeaders } from './vercel-headers.ts'
 
 // Dev only: @vitejs/plugin-react injects the Fast Refresh preamble as an inline <script> and Vite's
@@ -36,7 +37,8 @@ export default defineConfig(({ command, isPreview }) => {
   const headers = vercelHeaders()
   const isDev = command === 'serve' && isPreview !== true
   return {
-    plugins: [react()],
+    // ADR 0011: the content is validated, typed as virtual:content and its media emitted by the plugin.
+    plugins: [react(), contentPlugin()],
     html: isDev ? { cspNonce: DEV_NONCE } : {},
     server: { headers: isDev ? withDevNonce(headers) : headers },
     preview: { headers },
