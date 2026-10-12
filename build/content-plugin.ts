@@ -6,8 +6,9 @@
 // Under `vite` (dev) the content is validated and served too, but media are written by the build
 // only; serving /media/exhibits/ in dev is T4's, the Fallback Page's, concern (Owner, #26 Q12).
 // The content directory is CONTENT_DIR relative to the Vite root, `content` by default; the build
-// seam points it at a fixture (tests/build/content-build.test.ts). Outside the coverage ratchet
-// (Vite glue, plan §6).
+// seam points it at a fixture (tests/build/content-build.test.ts). The SSR pass of build/build.ts
+// validates and serves `virtual:content` like any build but encodes no media and prints no
+// summary: the client pass did both. Outside the coverage ratchet (Vite glue, plan §6).
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Logger, Plugin } from 'vite'
@@ -121,6 +122,7 @@ function summaryOf({ content, media }: Loaded): string {
 export function contentPlugin(): Plugin {
   let root = process.cwd()
   let isBuild = false
+  let isSsr = false
   let logger: Logger | undefined
   let loaded: Loaded | undefined
   let files: EmittedFile[] = []
@@ -131,6 +133,7 @@ export function contentPlugin(): Plugin {
     configResolved(config) {
       root = config.root
       isBuild = config.command === 'build'
+      isSsr = Boolean(config.build.ssr)
       logger = config.logger
     },
 
@@ -138,7 +141,7 @@ export function contentPlugin(): Plugin {
       const dir = process.env['CONTENT_DIR'] ?? DEFAULT_CONTENT_DIR
       try {
         loaded = await loadFromDisk(root, dir)
-        files = isBuild ? await renderMedia(root, loaded.media) : []
+        files = isBuild && !isSsr ? await renderMedia(root, loaded.media) : []
       } catch (error) {
         if (error instanceof ContentError) this.error(error.message)
         throw error
@@ -163,7 +166,7 @@ export function contentPlugin(): Plugin {
     },
 
     closeBundle() {
-      if (loaded !== undefined) logger?.info(summaryOf(loaded))
+      if (loaded !== undefined && !isSsr) logger?.info(summaryOf(loaded))
     },
   }
 }

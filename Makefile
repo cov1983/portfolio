@@ -25,7 +25,7 @@ help:
 	@echo "  make coverage-ratchet  make test with COVERAGE_RATCHET=1: raises the thresholds to the measured coverage"
 	@echo "  make test-e2e      build, then Playwright in Chromium, Firefox and WebKit against dist/"
 	@echo "  make perf          build, then the Lighthouse performance budget (perf/budget.json) against dist/"
-	@echo "  make build         production build to dist/"
+	@echo "  make build         production build to dist/ (node build/build.ts: client build, SSR build, the two pre-rendered documents)"
 	@echo "  make dev           Vite dev server on every interface, so VS Code port forwarding reaches it"
 	@echo "  make preview       serve dist/ as production would"
 
@@ -75,8 +75,9 @@ perf: build
 
 verify: format-check lint typecheck shellcheck test-shell test
 
+# ADR 0010: the client build, the SSR build and both pre-rendered documents; vercel.json runs the same.
 build:
-	$(PNPM) exec vite build
+	node build/build.ts
 
 # --host: Vite alone binds ::1 only and VS Code port forwarding dials 127.0.0.1, so the forwarded port is dead.
 dev:
