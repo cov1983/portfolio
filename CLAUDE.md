@@ -5,8 +5,7 @@ Thomas's personal website: an immersive, interactive 3D portfolio in which visit
 puck through a playful virtual world to discover his projects and background. Physics, hockey-inspired
 challenges and light storytelling make exploring the portfolio an experience that itself demonstrates
 his development skills. Status: **Phase 3, increment-1 in progress** (plan `docs/plan/increment-1.md`;
-T3 #26 adds the content pipeline: `content/` validated at build, `virtual:content`, media variants; the World stays behind
-`/?world` and the live root stays a placeholder until T4).
+T4 #27 pre-renders `/` and `/exhibits` by `node build/build.ts`; the World stays behind `/?world` until T5b).
 The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the model owns Rapier, the scene mirrors it.
 
 ## Environment
@@ -15,7 +14,7 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
   a preview per PR, production from `main`, held by Deployment Checks until the CI gates pass.
   Dashboard settings (project, checks, domain, ruleset, secret) are stages of the setup wizard.
 - World guard (plan §9 risk 10): until T5b the World is reachable only at /?world; the perf run, the e2e canary
-  and the Owner's checks use that URL, the live root is a placeholder.
+  and the Owner's checks use that URL, the live root is the pre-rendered Title Screen (T4).
 - Team: solo. No required human approvals; the independent reviewer is the `ai-review` CI job
   (posts once the setup wizard stores `ANTHROPIC_API_KEY`; skipped with a notice before). The owner merges.
 - `main` is protected by a ruleset: PR required, no force-push, no deletion. Required status checks:
@@ -62,13 +61,14 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
 - `perf/budget.json`        the performance budget: throttling profile and the three limits; nowhere else
 - `renovate.json`           Renovate: grouped patch automerge, majors behind the Dependency Dashboard (ADR 0007)
 - `.devcontainer/`          Dockerfile + devcontainer.json: the reference toolchain
-- `src/`                    application code: `main.tsx` (the `?world` guard, plan §9 risk 10), `world/` (`model/`: layout, Rapier
-                            model, pure camera; `input/`: keys by physical code; `scene/`: the R3F mirror; `World.tsx`: the entry
-                            the `?world` guard imports), `perf/` (the marks), `content/` (ADR 0011: `schema.ts` zod, `types.ts`,
-                            `validate.ts` the pure `loadContent` behind an fs facade, `images.ts` the variant planner, `mailto.ts`;
-                            no React, three, Rapier or DOM), `app/` (types only until T5a)
-- `build/`                  the build's I/O (plan §2): `content-plugin.ts` (Vite plugin: validates `content/`, serves `virtual:content`,
-                            emits `dist/media/`; `CONTENT_DIR` selects the directory), `images.ts` (sharp encoder); `build.ts` arrives with T4
+- `src/`                    application code: `main.tsx` (the `?world` guard, plan §9 risk 10; hydrates in T5a), `entry-prerender.tsx`
+                            (both documents as strings for `build/build.ts`), `site/` (the HTML surfaces: TitleScreen, FallbackPage,
+                            Exhibit, Picture, Contact, Meta, `site.css`; no three, Rapier or World model), `world/` (`model/`: layout, Rapier
+                            model, pure camera; `input/`: keys by physical code; `scene/`: the R3F mirror; `World.tsx`), `perf/` (the marks),
+                            `content/` (ADR 0011: schema, types, the pure `loadContent`, the variant planner, `mailto.ts`), `app/` (types until T5a)
+- `build/`                  the build's I/O (plan §2, ADR 0010): `build.ts` (`make build`: client build, SSR build, both documents),
+                            `prerender.ts` (pure: routes, shell fill, preview `cleanUrl`, `siteOrigin`), `content-plugin.ts` (validates
+                            `content/`, serves `virtual:content`, emits `dist/media/`, dev media; `CONTENT_DIR`), `images.ts` (sharp)
 - `content/`                the Owner's content (CODEOWNERS): `site.yaml`, `bio.md`, `exhibits/<id>/index.md` + media at original size;
                             the directory name is the Exhibit id; the build is the validator (plan §4), publishing is a commit
 - `tests/`                  `e2e/` (Playwright, spec seam 1; `fixtures.ts` fails a test on pageerror, console.error, CSP violation),
