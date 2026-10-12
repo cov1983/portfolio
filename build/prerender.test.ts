@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { ROUTES, cleanUrl, fillShell, withoutScripts } from './prerender.ts'
+import { ROUTES, cleanUrl, fillShell, siteOrigin, withoutScripts } from './prerender.ts'
 
 const SHELL =
   '<!doctype html><html><head><meta charset="UTF-8" /><!--app-head--></head>' +
@@ -60,5 +60,33 @@ describe('cleanUrl', () => {
     expect(cleanUrl('/assets/x.js', exists)).toBe('/assets/x.js')
     expect(cleanUrl('/nothing', exists)).toBe('/nothing')
     expect(cleanUrl('/exhibits/', exists)).toBe('/exhibits/')
+  })
+})
+
+describe('siteOrigin', () => {
+  const vercel = {
+    VERCEL_URL: 'portfolio-abc.vercel.app',
+    VERCEL_PROJECT_PRODUCTION_URL: 'thomascova.dev',
+  }
+
+  it('is SITE_ORIGIN first, without a trailing slash', () => {
+    expect(siteOrigin({ SITE_ORIGIN: 'https://example.test/', ...vercel })).toBe(
+      'https://example.test',
+    )
+  })
+
+  it('is the production domain of a Vercel production build', () => {
+    expect(siteOrigin({ VERCEL_ENV: 'production', ...vercel })).toBe('https://thomascova.dev')
+  })
+
+  it('is the deployment host of a Vercel preview build', () => {
+    expect(siteOrigin({ VERCEL_ENV: 'preview', ...vercel })).toBe(
+      'https://portfolio-abc.vercel.app',
+    )
+  })
+
+  it('is empty elsewhere, so URLs stay relative', () => {
+    expect(siteOrigin({})).toBe('')
+    expect(siteOrigin({ SITE_ORIGIN: '', VERCEL_URL: '' })).toBe('')
   })
 })

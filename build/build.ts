@@ -16,11 +16,11 @@ import { parseArgs } from 'node:util'
 
 import { build, resolveConfig } from 'vite'
 
-import { ROUTES, fillShell, withoutScripts, type Fragments } from './prerender.ts'
+import { ROUTES, fillShell, siteOrigin, withoutScripts, type Fragments } from './prerender.ts'
 
 const PRERENDER_ENTRY = 'src/entry-prerender.tsx'
 
-type PrerenderModule = { prerender: (route: string) => Fragments }
+type PrerenderModule = { prerender: (route: string, origin: string) => Fragments }
 
 function isPrerenderModule(value: unknown): value is PrerenderModule {
   return (
@@ -80,13 +80,12 @@ async function main(): Promise<void> {
   const ssr = await buildPrerenderModule(cacheDir)
   try {
     const { prerender } = await ssr.load()
+    const origin = siteOrigin(process.env)
     const shell = await readFile(join(outDir, 'index.html'), 'utf8')
     for (const route of ROUTES) {
       const file = join(outDir, route.file)
-      const document = fillShell(
-        route.script ? shell : withoutScripts(shell),
-        prerender(route.path),
-      )
+      const fragments = prerender(route.path, origin)
+      const document = fillShell(route.script ? shell : withoutScripts(shell), fragments)
       await mkdir(dirname(file), { recursive: true })
       await writeFile(file, document)
       console.log(`prerendered ${route.path} → ${route.file}`)

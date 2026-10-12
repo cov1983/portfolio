@@ -40,7 +40,9 @@ export async function runProductionBuild(options: BuildOptions = {}): Promise<Bu
     ;({ stdout, stderr } = await promisify(execFile)(
       process.execPath,
       [BUILD_SCRIPT, '--outDir', outDir, '--emptyOutDir'],
-      { env: { ...process.env, NO_COLOR: '1', ...options.env } },
+      // Vitest sets NODE_ENV=test, which Vite would inherit and keep: a development-mode bundle
+      // (React's dev build, import.meta.env.DEV true). The seam is the production build.
+      { env: { ...process.env, NODE_ENV: 'production', NO_COLOR: '1', ...options.env } },
     ))
   } catch (error) {
     if (!isSpawnFailure(error)) throw error

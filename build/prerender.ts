@@ -44,3 +44,20 @@ export function cleanUrl(pathname: string, exists: (relative: string) => boolean
   const index = `${pathname.slice(1)}/index.html`
   return exists(index) ? `/${index}` : pathname
 }
+
+/**
+ * The site's origin for absolute Open Graph URLs (Owner on #27 Q3): SITE_ORIGIN when set; on
+ * Vercel the production domain for a production build, else the deployment's own host (previews
+ * point at themselves); '' elsewhere, so the URLs stay relative (local builds, CI).
+ */
+export function siteOrigin(env: Record<string, string | undefined>): string {
+  const explicit = env['SITE_ORIGIN']
+  if (explicit !== undefined && explicit !== '') return explicit.replace(/\/+$/, '')
+  const production = env['VERCEL_PROJECT_PRODUCTION_URL']
+  if (env['VERCEL_ENV'] === 'production' && production !== undefined && production !== '') {
+    return `https://${production}`
+  }
+  const deployment = env['VERCEL_URL']
+  if (deployment !== undefined && deployment !== '') return `https://${deployment}`
+  return ''
+}

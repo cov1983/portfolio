@@ -13,6 +13,8 @@ const WORLD_CHUNK = /^world-.*\.js$/
 /** The library chunk or the World's own code (`World-*.js`, the dynamic import's module). */
 const ANY_WORLD_CHUNK = /^world-.*\.js$/i
 const MARKERS = { three: '__THREE__', rapier: 'WebAssembly' }
+/** A key only the content JSON of virtual:content holds (src/content/types.ts). */
+const CONTENT_MARKER = 'emailHrefEntities'
 
 /** Every file reachable from `entry` through static imports, `entry` included; absolute paths. */
 async function staticImportClosure(entry: string): Promise<Map<string, string>> {
@@ -69,6 +71,15 @@ describe('the built chunks', () => {
       ANY_WORLD_CHUNK.test(f.split('/').pop() ?? ''),
     )
     expect(reached).toEqual([])
+  })
+
+  // Owner on #27 Q4: the dev-only client render of the Title Screen imports the content inside a
+  // branch the production build drops; T5a's hydration is what brings the content JSON in.
+  it('keeps the content JSON out of the entry chunk and its static imports', async () => {
+    const closure = await staticImportClosure(entryFile)
+    for (const [file, source] of closure) {
+      expect(source, file).not.toContain(CONTENT_MARKER)
+    }
   })
 
   it('keeps three and Rapier out of the entry chunk and its static imports', async () => {
