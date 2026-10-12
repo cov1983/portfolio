@@ -1,7 +1,8 @@
 // `node build/build.ts`: the single build command of `make build` and vercel.json (ADR 0010).
 // Vite's client build into the output directory, then an SSR build of src/entry-prerender.tsx,
-// then both documents of build/prerender.ts assembled from the client build's index.html and
-// written under the output directory. I/O glue, outside the coverage ratchet (plan §6); the pure
+// then both documents of build/prerender.ts written under the output directory: the Title Screen
+// into the client build's index.html, the Fallback Page into a script-free shell that links the
+// same stylesheets. I/O glue, outside the coverage ratchet (plan §6); the pure
 // parts live in build/prerender.ts. Runs under plain Node 24 (type stripping), so relative imports
 // carry the .ts extension. Flags mirror `vite build`: --outDir <dir> and --emptyOutDir.
 //
@@ -16,7 +17,7 @@ import { parseArgs } from 'node:util'
 
 import { build, resolveConfig } from 'vite'
 
-import { ROUTES, fillShell, siteOrigin, withoutScripts, type Fragments } from './prerender.ts'
+import { ROUTES, fallbackShell, fillShell, siteOrigin, type Fragments } from './prerender.ts'
 
 const PRERENDER_ENTRY = 'src/entry-prerender.tsx'
 
@@ -31,16 +32,29 @@ function isPrerenderModule(value: unknown): value is PrerenderModule {
   )
 }
 
-/** The entry chunk's file name from what `build()` returns, or an error naming what was returned. */
-function entryFileName(result: Awaited<ReturnType<typeof build>>): string {
+type BuildResult = Awaited<ReturnType<typeof build>>
+
+/** The entry chunk of what `build()` returns, or an error. */
+function entryChunk(result: BuildResult) {
   const outputs = Array.isArray(result) ? result : [result]
   for (const output of outputs) {
     if (!('output' in output)) continue
     for (const chunk of output.output) {
-      if (chunk.type === 'chunk' && chunk.isEntry) return chunk.fileName
+      if (chunk.type === 'chunk' && chunk.isEntry) return chunk
     }
   }
-  throw new Error('the SSR build produced no entry chunk')
+  throw new Error('the build produced no entry chunk')
+}
+
+/** The stylesheets index.html links: the CSS assets the entry chunk imports, as site paths. */
+function entryStylesheets(result: BuildResult): string[] {
+  const imported = entryChunk(result).viteMetadata?.importedCss ?? new Set<string>()
+  const outputs = Array.isArray(result) ? result : [result]
+  return outputs
+    .flatMap((output) => ('output' in output ? output.output : []))
+    .filter((entry) => entry.type === 'asset' && entry.fileName.endsWith('.css'))
+    .filter((asset) => imported.has(asset.fileName))
+    .map((asset) => `/${asset.fileName}`)
 }
 
 async function buildPrerenderModule(
@@ -52,7 +66,7 @@ async function buildPrerenderModule(
     logLevel: 'warn',
     build: { ssr: PRERENDER_ENTRY, outDir: dir, emptyOutDir: true, copyPublicDir: false },
   })
-  const file = join(dir, entryFileName(result))
+  const file = join(dir, entryChunk(result).fileName)
   return {
     dir,
     load: async () => {
@@ -74,18 +88,19 @@ async function main(): Promise<void> {
   // Only an explicit flag overrides Vite's default (empty when outDir is inside the project root).
   const emptyOutDir = values.emptyOutDir ? { emptyOutDir: true } : {}
 
-  await build({ build: { outDir, ...emptyOutDir } })
+  const client = await build({ build: { outDir, ...emptyOutDir } })
+  const stylesheets = entryStylesheets(client)
 
   const { cacheDir } = await resolveConfig({ logLevel: 'warn' }, 'build')
   const ssr = await buildPrerenderModule(cacheDir)
   try {
     const { prerender } = await ssr.load()
     const origin = siteOrigin(process.env)
-    const shell = await readFile(join(outDir, 'index.html'), 'utf8')
+    const indexShell = await readFile(join(outDir, 'index.html'), 'utf8')
     for (const route of ROUTES) {
       const file = join(outDir, route.file)
-      const fragments = prerender(route.path, origin)
-      const document = fillShell(route.script ? shell : withoutScripts(shell), fragments)
+      const shell = route.script ? indexShell : fallbackShell(stylesheets)
+      const document = fillShell(shell, prerender(route.path, origin))
       await mkdir(dirname(file), { recursive: true })
       await writeFile(file, document)
       console.log(`prerendered ${route.path} → ${route.file}`)

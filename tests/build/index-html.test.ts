@@ -53,9 +53,12 @@ describe('the production build', () => {
     expect(build.exhibitsHtml).not.toMatch(/modulepreload/i)
   })
 
-  it('keeps the stylesheet of the Title Screen on the Fallback Page', () => {
+  it('references the stylesheets of the Title Screen on the Fallback Page', () => {
     const stylesheets = (html: string): string[] =>
-      [...html.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*>/g)].map((m) => m[0])
+      [...html.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*\bhref="([^"]+)"/g)].map(
+        (m) => m[1] ?? '',
+      )
+    expect(stylesheets(build.indexHtml)).not.toEqual([])
     expect(stylesheets(build.exhibitsHtml)).toEqual(stylesheets(build.indexHtml))
   })
 })

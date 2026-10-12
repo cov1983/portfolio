@@ -1,6 +1,6 @@
 // The pure half of pre-rendering (ADR 0010): the route table and the document assembly that
-// build/build.ts (I/O) applies to the client build's index.html. Text operations on Vite's own
-// markup, no DOM. A third route is a third entry in ROUTES here and a third case in
+// build/build.ts (I/O) applies to the client build's index.html or to the script-free shell.
+// Text operations, no DOM. A third route is a third entry in ROUTES here and a third case in
 // src/entry-prerender.tsx, which decides what that route renders.
 
 /** One pre-rendered document: its path on the site, its file under dist/, whether it keeps the script. */
@@ -28,27 +28,31 @@ export function fillShell(shell: string, { head, body }: Fragments): string {
   return shell.replace(HEAD_PLACEHOLDER, () => head).replace(HTML_PLACEHOLDER, () => body)
 }
 
-const SCRIPT_ELEMENT = /\s*<script\b[^>]*>[\s\S]*?<\/script\s*>/gi
-/** A script open tag left without its element (never in Vite's shell; the fixed point below needs it). */
-const SCRIPT_OPEN_TAG = /\s*<script\b[^>]*>/gi
-const MODULEPRELOAD_LINK = /\s*<link\b[^>]*\brel\s*=\s*["']modulepreload["'][^>]*>/gi
+/** What index.html's head opens with; the Fallback shell repeats the same values. */
+const CHARSET = '<meta charset="UTF-8" />'
+const VIEWPORT = '<meta name="viewport" content="width=device-width, initial-scale=1.0" />'
 
 /**
- * The shell without its scripts and module preloads; stylesheets stay. The input is Vite's own
- * index.html, not untrusted markup, but the replacements run to a fixed point so that no input
- * (a spaced end tag, an open tag that another removal exposes) leaves a `<script` behind.
+ * The shell of a document that ships no script (the Fallback Page, plan §2): a complete minimal
+ * document with the client build's stylesheets and the two placeholders, written from nothing
+ * rather than filtered out of index.html, so no script is ever in it to remove.
  */
-export function withoutScripts(html: string): string {
-  let previous: string
-  let current = html
-  do {
-    previous = current
-    current = current
-      .replace(SCRIPT_ELEMENT, '')
-      .replace(SCRIPT_OPEN_TAG, '')
-      .replace(MODULEPRELOAD_LINK, '')
-  } while (current !== previous)
-  return current
+export function fallbackShell(stylesheets: readonly string[]): string {
+  const links = stylesheets.map((href) => `    <link rel="stylesheet" href="${href}">\n`).join('')
+  return (
+    '<!doctype html>\n' +
+    '<html lang="en">\n' +
+    '  <head>\n' +
+    `    ${CHARSET}\n` +
+    `    ${VIEWPORT}\n` +
+    links +
+    `    ${HEAD_PLACEHOLDER}\n` +
+    '  </head>\n' +
+    '  <body>\n' +
+    `    <div id="root">${HTML_PLACEHOLDER}</div>\n` +
+    '  </body>\n' +
+    '</html>\n'
+  )
 }
 
 /**

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { ROUTES, cleanUrl, fillShell, siteOrigin, withoutScripts } from './prerender.ts'
+import { ROUTES, cleanUrl, fallbackShell, fillShell, siteOrigin } from './prerender.ts'
 
 const SHELL =
   '<!doctype html><html><head><meta charset="UTF-8" /><!--app-head--></head>' +
@@ -36,25 +36,34 @@ describe('fillShell', () => {
   })
 })
 
-describe('withoutScripts', () => {
-  it('removes script elements and module preloads and keeps stylesheets', () => {
-    const html =
-      '<head>\n    <link rel="modulepreload" crossorigin href="/assets/a.js">\n' +
-      '    <link rel="stylesheet" crossorigin href="/assets/a.css"></head>' +
-      '<body>\n    <script type="module" crossorigin src="/assets/i.js"></script></body>'
-    expect(withoutScripts(html)).toBe(
-      '<head>\n    <link rel="stylesheet" crossorigin href="/assets/a.css"></head><body></body>',
+describe('fallbackShell', () => {
+  const shell = fallbackShell(['/assets/index-abc.css', '/assets/site-def.css'])
+
+  it('is a complete document with both placeholders', () => {
+    expect(shell).toMatch(/^<!doctype html>\n<html lang="en">/)
+    expect(shell).toContain('<meta charset="UTF-8" />')
+    expect(shell).toContain(
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0" />',
+    )
+    expect(shell).toContain('<!--app-head-->\n  </head>')
+    expect(shell).toContain('<div id="root"><!--app-html--></div>')
+  })
+
+  it('links every stylesheet by its href, in order', () => {
+    expect([...shell.matchAll(/<link rel="stylesheet" href="([^"]+)">/g)].map((m) => m[1])).toEqual(
+      ['/assets/index-abc.css', '/assets/site-def.css'],
     )
   })
 
-  it('removes a script element whose end tag carries whitespace', () => {
-    expect(withoutScripts('<body><script src="/a.js"></script ></body>')).toBe('<body></body>')
+  it('holds no script', () => {
+    expect(shell).not.toMatch(/<script/i)
+    expect(fallbackShell([])).not.toMatch(/<script/i)
   })
 
-  it('leaves no <script behind for an overlapping input', () => {
-    const html = withoutScripts('<p><scr<script>ipt>x</p>')
-    expect(html).not.toMatch(/<script/i)
-    expect(html).toBe('<p>x</p>')
+  it('is filled like index.html', () => {
+    const html = fillShell(shell, { head: '<title>T</title>', body: '<main>M</main>' })
+    expect(html).toContain('<title>T</title>\n  </head>')
+    expect(html).toContain('<div id="root"><main>M</main></div>')
   })
 })
 
