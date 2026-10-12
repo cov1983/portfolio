@@ -133,8 +133,9 @@ the perf gate can measure "World playable" from a plain navigation (§7).
 
 **Routing.** None in the browser. Two documents, anchors on the Fallback Page, the Panel is state
 (no deep link, per spec). `vercel.json` already has `cleanUrls: true, trailingSlash: false`;
-`vite preview` (used by e2e and perf) serves `exhibits/index.html` at `/exhibits` as well; the first
-ticket that emits it verifies both.
+`vite preview` (used by e2e and perf) does **not** serve `exhibits/index.html` at `/exhibits` on its
+own (its SPA fallback answers with `index.html`; verified by T4, #27): a preview-only plugin in
+`vite.config.ts` mirrors `cleanUrls` the way ADR 0012 mirrors the headers.
 
 ## 3. Stack decisions
 

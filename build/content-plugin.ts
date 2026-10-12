@@ -111,25 +111,22 @@ async function renderMedia(root: string, jobs: MediaJob[]): Promise<EmittedFile[
   return files
 }
 
-const MEDIA_TYPES: Record<string, string> = {
-  avif: 'image/avif',
-  webp: 'image/webp',
-  png: 'image/png',
-  jpg: 'image/jpeg',
-  mp4: 'video/mp4',
-}
-
 type Served = { body: Buffer; type: string }
 
+/** The content type the built site would serve: the variant's format, or the copied file's (video or preview image). */
+function contentType(file: MediaFile): string {
+  if (file.kind === 'image') return `image/${file.variant.format}`
+  const format = sourceFormat(file.source)
+  return format === undefined ? 'video/mp4' : `image/${format}`
+}
+
 /** The bytes of one media file as the build would write them, with their content type. */
-async function serveMedia(root: string, pathname: string, file: MediaFile): Promise<Served> {
-  const extension = pathname.slice(pathname.lastIndexOf('.') + 1).toLowerCase()
-  const type = MEDIA_TYPES[extension] ?? 'application/octet-stream'
+async function serveMedia(root: string, file: MediaFile): Promise<Served> {
   const body =
     file.kind === 'image'
       ? await encodeVariant(join(root, file.source), file.variant)
       : await readFile(join(root, file.source))
-  return { body, type }
+  return { body, type: contentType(file) }
 }
 
 function isMediaPath(pathname: string): boolean {
@@ -203,7 +200,7 @@ export function contentPlugin(): Plugin {
         }
         let pending = served.get(pathname)
         if (pending === undefined) {
-          pending = serveMedia(root, pathname, file)
+          pending = serveMedia(root, file)
           served.set(pathname, pending)
         }
         pending.then(

@@ -1,6 +1,7 @@
 // The pure half of pre-rendering (ADR 0010): the route table and the document assembly that
 // build/build.ts (I/O) applies to the client build's index.html. Text operations on Vite's own
-// markup, no DOM. A third route is a third entry in ROUTES, nothing else.
+// markup, no DOM. A third route is a third entry in ROUTES here and a third case in
+// src/entry-prerender.tsx, which decides what that route renders.
 
 /** One pre-rendered document: its path on the site, its file under dist/, whether it keeps the script. */
 export type Route = { path: string; file: string; script: boolean }
