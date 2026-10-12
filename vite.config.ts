@@ -1,9 +1,12 @@
 import { randomBytes } from 'node:crypto'
+import { existsSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 
 import { contentPlugin } from './build/content-plugin.ts'
+import { cleanUrl } from './build/prerender.ts'
 import { vercelHeaders } from './vercel-headers.ts'
 
 // Dev only: @vitejs/plugin-react injects the Fast Refresh preamble as an inline <script> and Vite's
@@ -31,6 +34,28 @@ function withDevNonce(headers: Record<string, string>): Record<string, string> {
   return { ...headers, 'Content-Security-Policy': directives.join(';') }
 }
 
+// The preview mirror of vercel.json's `cleanUrls` (plan §2, Owner on #27 Q1): Vite's preview
+// serves exact files and falls back to index.html, so without this `/exhibits` would show the
+// Title Screen; Vercel serves exhibits/index.html there. The rewrite runs before Vite's own
+// middlewares; the pure rule is in build/prerender.ts. (`/exhibits/` is served here and
+// redirected by Vercel, `trailingSlash: false`; the e2e suite uses the clean URL.)
+function cleanUrlsPlugin(): Plugin {
+  return {
+    name: 'portfolio:clean-urls',
+    configurePreviewServer(server) {
+      const dist = resolve(server.config.root, server.config.build.outDir)
+      server.middlewares.use((req, _res, next) => {
+        if (req.url !== undefined) {
+          const url = new URL(req.url, 'http://localhost')
+          const pathname = cleanUrl(url.pathname, (file) => existsSync(join(dist, file)))
+          if (pathname !== url.pathname) req.url = pathname + url.search
+        }
+        next()
+      })
+    },
+  }
+}
+
 export default defineConfig(({ command, isPreview }) => {
   // ADR 0012: `vite preview` (e2e, perf) and the dev server send the headers of vercel.json, so
   // every run is under the policy the site ships with.
@@ -38,7 +63,7 @@ export default defineConfig(({ command, isPreview }) => {
   const isDev = command === 'serve' && isPreview !== true
   return {
     // ADR 0011: the content is validated, typed as virtual:content and its media emitted by the plugin.
-    plugins: [react(), contentPlugin()],
+    plugins: [react(), contentPlugin(), cleanUrlsPlugin()],
     html: isDev ? { cspNonce: DEV_NONCE } : {},
     server: { headers: isDev ? withDevNonce(headers) : headers },
     preview: { headers },

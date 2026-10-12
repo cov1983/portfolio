@@ -1,5 +1,7 @@
 import { expect, test as base } from '@playwright/test'
 
+import { loadContentFromDisk } from '../../build/content-plugin.ts'
+import type { Content } from '../../src/content/types.ts'
 import { vercelHeaders } from '../../vercel-headers.ts'
 
 /** The `/(.*)` headers of vercel.json with names lower-cased, as a browser reports them. */
@@ -18,6 +20,11 @@ type Fixtures = {
   problems: Problem[]
 }
 
+type WorkerFixtures = {
+  /** The Content the site was built from (plan §6: expected values come from loadContent, never literals). */
+  content: Content
+}
+
 type ReportViolation = (detail: string) => void
 
 /** Name of the binding `page.exposeFunction` installs on `window`. */
@@ -29,7 +36,13 @@ const VIOLATION_BINDING = '__portfolioReportSecurityPolicyViolation'
 // init script forwards it through a binding before any page script runs. The binding is the only
 // window global in the suite and belongs to this fixture: plan §6's rule (tests read no window
 // globals and no component state) is about the site, and no test reads the binding.
-export const test = base.extend<Fixtures>({
+export const test = base.extend<Fixtures, WorkerFixtures>({
+  content: [
+    async ({}, provide) => {
+      await provide(await loadContentFromDisk())
+    },
+    { scope: 'worker' },
+  ],
   problems: async ({}, provide) => {
     await provide([])
   },
