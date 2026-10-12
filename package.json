@@ -12,9 +12,18 @@
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.19.2",
     "@react-three/fiber": "9.8.1",
+    "markdown-it": "15.0.2",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "three": "0.186.1"
+    "sharp": "0.35.5",
+    "three": "0.186.1",
+    "yaml": "2.9.1",
+    "zod": "4.6.6"
+  },
+  "pnpm": {
+    "ignoredBuiltDependencies": [
+      "sharp"
+    ]
   },
   "lint-staged": {
     "*": "prettier --write --ignore-unknown",
