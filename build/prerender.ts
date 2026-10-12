@@ -28,12 +28,27 @@ export function fillShell(shell: string, { head, body }: Fragments): string {
   return shell.replace(HEAD_PLACEHOLDER, () => head).replace(HTML_PLACEHOLDER, () => body)
 }
 
-const SCRIPT_ELEMENT = /\s*<script\b[^>]*>[\s\S]*?<\/script>/gi
+const SCRIPT_ELEMENT = /\s*<script\b[^>]*>[\s\S]*?<\/script\s*>/gi
+/** A script open tag left without its element (never in Vite's shell; the fixed point below needs it). */
+const SCRIPT_OPEN_TAG = /\s*<script\b[^>]*>/gi
 const MODULEPRELOAD_LINK = /\s*<link\b[^>]*\brel\s*=\s*["']modulepreload["'][^>]*>/gi
 
-/** The shell without its scripts and module preloads; stylesheets stay. */
+/**
+ * The shell without its scripts and module preloads; stylesheets stay. The input is Vite's own
+ * index.html, not untrusted markup, but the replacements run to a fixed point so that no input
+ * (a spaced end tag, an open tag that another removal exposes) leaves a `<script` behind.
+ */
 export function withoutScripts(html: string): string {
-  return html.replace(SCRIPT_ELEMENT, '').replace(MODULEPRELOAD_LINK, '')
+  let previous: string
+  let current = html
+  do {
+    previous = current
+    current = current
+      .replace(SCRIPT_ELEMENT, '')
+      .replace(SCRIPT_OPEN_TAG, '')
+      .replace(MODULEPRELOAD_LINK, '')
+  } while (current !== previous)
+  return current
 }
 
 /**

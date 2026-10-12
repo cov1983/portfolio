@@ -46,6 +46,16 @@ describe('withoutScripts', () => {
       '<head>\n    <link rel="stylesheet" crossorigin href="/assets/a.css"></head><body></body>',
     )
   })
+
+  it('removes a script element whose end tag carries whitespace', () => {
+    expect(withoutScripts('<body><script src="/a.js"></script ></body>')).toBe('<body></body>')
+  })
+
+  it('leaves no <script behind for an overlapping input', () => {
+    const html = withoutScripts('<p><scr<script>ipt>x</p>')
+    expect(html).not.toMatch(/<script/i)
+    expect(html).toBe('<p>x</p>')
+  })
 })
 
 describe('cleanUrl', () => {
