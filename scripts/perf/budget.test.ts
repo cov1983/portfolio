@@ -3,11 +3,13 @@ import { describe, expect, it } from 'vitest'
 import { TITLE_SCREEN_INTERACTIVE_MARK, WORLD_PLAYABLE_MARK } from '../../src/perf/marks.ts'
 import {
   BudgetFileError,
+  combineRuns,
   diagnose,
   evaluateBudget,
   failedReport,
   formatDiagnostics,
   formatReport,
+  medianOf,
   parseBudget,
   type Budget,
   type BudgetLineId,
@@ -507,20 +509,107 @@ describe('failedReport', () => {
   })
 })
 
+describe('medianOf', () => {
+  it('returns the single reading of one run', () => {
+    expect(medianOf([99])).toBe(99)
+  })
+
+  it('returns the upper of two readings, never their mean', () => {
+    expect(medianOf([99, 73])).toBe(99)
+  })
+
+  it('returns the middle of three readings, whatever their order', () => {
+    expect(medianOf([268, 73, 99])).toBe(99)
+  })
+
+  it('sorts a missing reading above every number', () => {
+    expect(medianOf([null, 73, 99])).toBe(99)
+    expect(medianOf([null, 73, null])).toBeNull()
+  })
+
+  it('has no median without a reading', () => {
+    expect(medianOf([])).toBeNull()
+  })
+})
+
+describe('combineRuns', () => {
+  const lenient: Budget = { ...budget, limits: { ...budget.limits, longTaskBetweenMarksMs: 150 } }
+  const run = (duration: number) =>
+    evaluateBudget(
+      lhr({ interactiveAt: 300, markAt: 3000, tasks: [{ startTime: 1000, duration }] }),
+      lenient,
+    )
+  const longTask = (report: ReturnType<typeof combineRuns>) =>
+    lineById(report, 'long-task-between-marks')
+
+  it("carries every run's reading in run order", () => {
+    expect(longTask(combineRuns([run(268), run(73), run(99)], lenient)).readings).toEqual([
+      268, 73, 99,
+    ])
+  })
+
+  it('measures each line as the median of the runs', () => {
+    expect(longTask(combineRuns([run(268), run(73), run(99)], lenient)).measured).toBe(99)
+  })
+
+  it('judges a line on its median: one busy run does not fail the gate', () => {
+    expect(combineRuns([run(268), run(73), run(99)], lenient).pass).toBe(true)
+  })
+
+  it('fails a line whose median breaches', () => {
+    const report = combineRuns([run(268), run(73), run(151)], lenient)
+    expect(longTask(report)).toMatchObject({ measured: 151, pass: false })
+    expect(report.pass).toBe(false)
+  })
+
+  it('counts a run without a result as a missing reading', () => {
+    const failed = failedReport(lenient, 'error: NO_NAVSTART')
+    expect(longTask(combineRuns([run(73), failed, run(99)], lenient)).readings).toEqual([
+      73,
+      null,
+      99,
+    ])
+  })
+
+  it("fails with the first missing run's note when the median has no value", () => {
+    const report = combineRuns(
+      [failedReport(lenient, 'error: NO_NAVSTART'), run(73), failedReport(lenient, 'error: hung')],
+      lenient,
+    )
+    expect(longTask(report)).toMatchObject({
+      measured: null,
+      pass: false,
+      note: 'error: NO_NAVSTART',
+    })
+  })
+
+  it('reports the informational lines as the median of the runs, with every reading', () => {
+    const tbt = (value: number) => evaluateBudget(lhr({ tbt: value }), lenient)
+    const report = combineRuns([tbt(12), tbt(40), tbt(3)], lenient)
+    expect(infoById(report, 'tbt')).toMatchObject({ measured: 12, readings: [12, 40, 3] })
+  })
+
+  it('fails every line without a run', () => {
+    expect(combineRuns([], lenient).pass).toBe(false)
+  })
+})
+
 describe('formatReport', () => {
   it('prints measured, limit and verdict for a passing gated line', () => {
     const [, playable] = formatReport(evaluateBudget(lhr({ markAt: 1234.4 }), budget))
-    expect(playable).toMatch(/World playable\s+1234 ms\s+limit 5000 ms\s+pass$/)
+    expect(playable).toMatch(/World playable\s+1234 ms\s+limit 5000 ms\s+pass\s+\(runs: 1234 ms\)$/)
   })
 
   it('prints FAIL for a gated line over its limit', () => {
     const [, playable] = formatReport(evaluateBudget(lhr({ markAt: 5001 }), budget))
-    expect(playable).toMatch(/World playable\s+5001 ms\s+limit 5000 ms\s+FAIL$/)
+    expect(playable).toMatch(/World playable\s+5001 ms\s+limit 5000 ms\s+FAIL\s+\(runs: 5001 ms\)$/)
   })
 
   it('prints FAIL, never "over" or an informational tag, for Title Screen interactive over its limit', () => {
     const [first] = formatReport(evaluateBudget(lhr({ interactiveAt: 2695 }), budget))
-    expect(first).toMatch(/Title Screen interactive\s+2695 ms\s+limit 2000 ms\s+FAIL$/)
+    expect(first).toMatch(
+      /Title Screen interactive\s+2695 ms\s+limit 2000 ms\s+FAIL\s+\(runs: 2695 ms\)$/,
+    )
     expect(first).not.toContain('informational')
   })
 
@@ -530,20 +619,40 @@ describe('formatReport', () => {
     if (first === undefined) throw new Error('no line')
     const over = formatReport({ ...report, lines: [{ ...first, gated: false }] })
     expect(over[0]).toMatch(
-      /Title Screen interactive\s+2695 ms\s+limit 2000 ms\s+over\s+informational$/,
+      /Title Screen interactive\s+2695 ms\s+limit 2000 ms\s+over\s+informational\s+\(runs: 2695 ms\)$/,
     )
     const none = formatReport({
       ...report,
       lines: [{ ...first, gated: false, measured: null, pass: false }],
     })
-    expect(none[0]).toMatch(/limit 2000 ms\s+n\/a\s+informational$/)
+    expect(none[0]).toMatch(/limit 2000 ms\s+n\/a\s+informational\s+\(runs: 2695 ms\)$/)
   })
 
   it('prints n/a and the note for a line without a value', () => {
     const [, playable] = formatReport(evaluateBudget({}, budget))
     expect(playable).toMatch(
-      /World playable\s+n\/a\s+limit 5000 ms\s+FAIL \(audit "user-timings" is missing\)$/,
+      /World playable\s+n\/a\s+limit 5000 ms\s+FAIL \(audit "user-timings" is missing\)\s+\(runs: n\/a\)$/,
     )
+  })
+
+  it("prints the median, then every run's reading in run order", () => {
+    const run = (duration: number) =>
+      evaluateBudget(lhr({ tasks: [{ startTime: 1000, duration }] }), budget)
+    const [, , , longTask] = formatReport(combineRuns([run(268), run(73), run(99)], budget))
+    expect(longTask).toMatch(
+      /Longest task between marks\s+99 ms\s+limit < 100 ms\s+pass\s+\(runs: 268 · 73 · 99 ms\)$/,
+    )
+  })
+
+  it('prints n/a for a run without a reading and keeps the thousands separators', () => {
+    const run = evaluateBudget(
+      lhr({ requests: [{ transferSize: 1234567, networkEndTime: 1 }] }),
+      budget,
+    )
+    const [, , download] = formatReport(
+      combineRuns([run, failedReport(budget, 'error: hung'), run], budget),
+    )
+    expect(download).toContain('(runs: 1,234,567 · n/a · 1,234,567 B)')
   })
 
   it('prints bytes with thousands separators', () => {
@@ -557,11 +666,15 @@ describe('formatReport', () => {
     const [, , , longTask] = formatReport(
       evaluateBudget(lhr({ tasks: [{ startTime: 1000, duration: 65.3 }] }), budget),
     )
-    expect(longTask).toMatch(/Longest task between marks\s+65 ms\s+limit < 100 ms\s+pass$/)
+    expect(longTask).toMatch(
+      /Longest task between marks\s+65 ms\s+limit < 100 ms\s+pass\s+\(runs: 65 ms\)$/,
+    )
     const [, , , breached] = formatReport(
       evaluateBudget(lhr({ tasks: [{ startTime: 1000, duration: 100 }] }), budget),
     )
-    expect(breached).toMatch(/Longest task between marks\s+100 ms\s+limit < 100 ms\s+FAIL$/)
+    expect(breached).toMatch(
+      /Longest task between marks\s+100 ms\s+limit < 100 ms\s+FAIL\s+\(runs: 100 ms\)$/,
+    )
   })
 
   it('prints the informational lines after the four budget lines, with no limit and no verdict', () => {
@@ -569,16 +682,16 @@ describe('formatReport', () => {
       evaluateBudget(lhr({ interactive: 2695.4, lcp: 812.6, cls: 0.0012, tbt: 12.4 }), budget),
     )
     expect(lines).toHaveLength(8)
-    expect(lines[4]).toMatch(/^ {2}TTI \(informational\)\s+2695 ms$/)
-    expect(lines[5]).toMatch(/^ {2}LCP \(informational\)\s+813 ms$/)
-    expect(lines[6]).toMatch(/^ {2}CLS \(informational\)\s+0\.001$/)
-    expect(lines[7]).toMatch(/^ {2}TBT \(informational\)\s+12 ms$/)
+    expect(lines[4]).toMatch(/^ {2}TTI \(informational\)\s+2695 ms\s+\(runs: 2695 ms\)$/)
+    expect(lines[5]).toMatch(/^ {2}LCP \(informational\)\s+813 ms\s+\(runs: 813 ms\)$/)
+    expect(lines[6]).toMatch(/^ {2}CLS \(informational\)\s+0\.001\s+\(runs: 0\.001\)$/)
+    expect(lines[7]).toMatch(/^ {2}TBT \(informational\)\s+12 ms\s+\(runs: 12 ms\)$/)
   })
 
   it('prints n/a with the note for an informational line without a value', () => {
     const lines = formatReport(evaluateBudget({}, budget))
     expect(lines[4]).toMatch(
-      /TTI \(informational\)\s+n\/a \(audit "interactive" has no numericValue\)$/,
+      /TTI \(informational\)\s+n\/a \(audit "interactive" has no numericValue\)\s+\(runs: n\/a\)$/,
     )
   })
 })
