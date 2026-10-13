@@ -1,7 +1,8 @@
-import { expect, test as base, type Page } from '@playwright/test'
+import { expect, test as base, type Locator, type Page } from '@playwright/test'
 
 import { loadContentFromDisk } from '../../build/content-plugin.ts'
 import type { Content } from '../../src/content/types.ts'
+import { TITLE_SCREEN_INTERACTIVE_MARK } from '../../src/perf/marks.ts'
 import { vercelHeaders } from '../../vercel-headers.ts'
 
 /** The `/(.*)` headers of vercel.json with names lower-cased, as a browser reports them. */
@@ -98,6 +99,31 @@ export async function expectRecorded(
 /** How many times the page recorded the user-timing mark `name` (the perf gate's instruments). */
 export function recorded(page: Page, name: string): Promise<number> {
   return page.evaluate((n) => performance.getEntriesByName(n, 'mark').length, name)
+}
+
+/** The World's chunks: the library chunk `world-*.js` and the World's own `World-*.js`, which imports it. */
+export const WORLD_CHUNK = /\/assets\/world-.*\.js$/i
+
+/** The way-in control, whatever its label (loading or not). */
+export const wayIn = (page: Page): Locator =>
+  page.getByRole('button', { name: /Enter the World|Loading the World/ })
+
+/** The World container: a section named World, focusable, inert and invisible while hidden. */
+export const worldContainer = (page: Page): Locator => page.locator('section[aria-label="World"]')
+
+export const titleScreen = (page: Page): Locator => page.locator('main.title-screen')
+
+/** `/` with the Title Screen hydrated (the mark recorded): the handlers exist. */
+export async function hydrated(page: Page): Promise<void> {
+  await page.goto('/')
+  await expect.poll(() => recorded(page, TITLE_SCREEN_INTERACTIVE_MARK)).toBe(1)
+}
+
+/** `/`, hydrated, then Enter: the World container is visible. */
+export async function entered(page: Page): Promise<void> {
+  await hydrated(page)
+  await page.keyboard.press('Enter')
+  await expect(worldContainer(page)).toBeVisible()
 }
 
 export { expect }

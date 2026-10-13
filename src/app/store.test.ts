@@ -56,6 +56,18 @@ describe('reduce', () => {
     expect(next).toMatchObject({ screen: 'title', worldStatus: 'ready' })
   })
 
+  it('sets the Hub caption when the World becomes ready, entering or not (AC-5.1 caption state)', () => {
+    const ready = { type: 'world-status', status: 'ready' } as const
+    expect(reduce(state({ worldStatus: 'loading' }), ready).caption).toEqual({ place: 'hub' })
+    expect(reduce(state({ worldStatus: 'loading', entering: true }), ready).caption).toEqual({
+      place: 'hub',
+    })
+  })
+
+  it('sets no caption on the other status changes', () => {
+    expect(reduce(state(), { type: 'world-status', status: 'loading' }).caption).toBeNull()
+  })
+
   it('enters the World at once when it is ready', () => {
     const next = reduce(state({ worldStatus: 'ready' }), { type: 'enter' })
     expect(next).toMatchObject({ screen: 'world', entering: false })
@@ -103,6 +115,16 @@ describe('reduce', () => {
     // No reset exists in Action: the model is untouched, selectWorldPaused pauses it.
     const next = reduce(state({ screen: 'world', worldStatus: 'ready' }), { type: 'escape' })
     expect(next).toMatchObject({ screen: 'title', worldStatus: 'ready' })
+  })
+
+  it('leaves the caption alone on escape and on the resuming enter (AC-6.2: no Reset, nothing replayed)', () => {
+    const inWorld = state({ screen: 'world', worldStatus: 'ready', caption: { place: 'hub' } })
+    const onTitle = reduce(inWorld, { type: 'escape' })
+    expect(onTitle.caption).toEqual({ place: 'hub' })
+    expect(reduce(onTitle, { type: 'enter' })).toMatchObject({
+      screen: 'world',
+      caption: { place: 'hub' },
+    })
   })
 
   it('returns from the failure screen to the Title Screen on escape (AC-22.2)', () => {

@@ -1,11 +1,10 @@
 import AxeBuilder from '@axe-core/playwright'
-import type { Page } from '@playwright/test'
 
-import { TITLE_SCREEN_INTERACTIVE_MARK, WORLD_PLAYABLE_MARK } from '../../src/perf/marks'
-import { expect, expectRecorded, recorded, test } from './fixtures'
+import { TITLE_SCREEN_INTERACTIVE_MARK } from '../../src/perf/marks'
+import { expect, expectRecorded, recorded, test, wayIn, WORLD_CHUNK } from './fixtures'
 
-// Seam 1 at `/`: the pre-rendered Title Screen (ADR 0010). The `?world` guard keeps the World and
-// its chunk away from the root (plan §9 risk 10: production never shows work in progress).
+// Seam 1 at `/`: the pre-rendered Title Screen (ADR 0010). The World preloads behind it after
+// hydration (world.spec.ts); without script nothing of it is requested or mounted.
 test('the Title Screen shows the Owner’s name as its level-1 heading', async ({
   page,
   content,
@@ -14,37 +13,12 @@ test('the Title Screen shows the Owner’s name as its level-1 heading', async (
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(content.owner.name)
 })
 
-test('the Title Screen mounts no canvas', async ({ page }) => {
-  await page.goto('/')
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  await expect(page.locator('canvas')).toHaveCount(0)
-})
-
-test('the Title Screen never requests the world chunk', async ({ page }) => {
-  const urls: string[] = []
-  page.on('request', (request) => urls.push(request.url()))
-  await page.goto('/')
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  expect(urls.filter((url) => /\/assets\/world-/i.test(url))).toEqual([])
-})
-
 test('the Title Screen has no WCAG 2.2 AA violations', async ({ page }) => {
   await page.goto('/')
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
     .analyze()
   expect(results.violations).toEqual([])
-})
-
-// Plan §9 risk 10: `?world` mounts the World on top and never replaces the Title Screen, which
-// renders there exactly as without the flag (T5a's perf run reads both marks at `/?world`).
-test('the Title Screen renders at /?world as without the flag', async ({ page, content }) => {
-  await page.goto('/?world')
-  await expect(page.locator('canvas')).toBeVisible()
-  const main = page.getByRole('main')
-  await expect(main.getByRole('heading', { level: 1 })).toHaveText(content.owner.name)
-  await expect(main.getByRole('button', { name: 'Enter the World' })).toHaveCount(1)
-  await expect(main.getByRole('link', { name: /plain page/ })).toHaveCount(1)
 })
 
 // AC-1.1's HTML half and AC-1.2, AC-2.3: everything the Title Screen holds is in the pre-rendered
@@ -67,6 +41,20 @@ test.describe('without script', () => {
       await expect(entries.nth(i)).toContainText(exhibit.hook)
     }
     await expect(main.getByRole('link', { name: /plain page/ })).toBeVisible()
+  })
+
+  test('mounts no canvas', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(page.locator('canvas')).toHaveCount(0)
+  })
+
+  test('requests no world chunk', async ({ page }) => {
+    const urls: string[] = []
+    page.on('request', (request) => urls.push(request.url()))
+    await page.goto('/')
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    expect(urls.filter((url) => WORLD_CHUNK.test(url))).toEqual([])
   })
 
   test('the Fallback Page link navigates (AC-1.2)', async ({ page }) => {
@@ -96,9 +84,6 @@ test.describe('without script', () => {
 // reaches the page as an uncaught error (never console.error, which is the dev build's channel),
 // and the fixture fails the test on it; the negative case below shows it in each browser.
 test.describe('hydration', () => {
-  const wayIn = (page: Page) =>
-    page.getByRole('button', { name: /Enter the World|Loading the World/ })
-
   test('hydrates the pre-rendered Title Screen and records the title-screen-interactive mark (AC-1.1)', async ({
     page,
   }) => {
@@ -132,19 +117,8 @@ test.describe('hydration', () => {
     await expect(wayIn(page)).not.toHaveAttribute('aria-busy')
   })
 
-  test('activating the way-in shows the loading state', async ({ page }) => {
-    await page.goto('/')
-    await expect.poll(() => recorded(page, TITLE_SCREEN_INTERACTIVE_MARK)).toBe(1)
-    await wayIn(page).click()
-    await expect(wayIn(page)).toHaveAttribute('aria-busy', 'true')
-  })
-
-  test('Enter on the Title Screen reaches the store through the key router', async ({ page }) => {
-    await page.goto('/')
-    await expect.poll(() => recorded(page, TITLE_SCREEN_INTERACTIVE_MARK)).toBe(1)
-    await page.keyboard.press('Enter')
-    await expect(wayIn(page)).toHaveAttribute('aria-busy', 'true')
-  })
+  // The way-in's loading state and Enter through the key router are world-entry.spec.ts's
+  // AC-1.3 and AC-4.2 cases: once the World preloads, "loading" alone is a race with the chunk.
 
   test('Enter with a list entry focused follows the link instead', async ({ page, content }) => {
     const [exhibit] = content.exhibits
@@ -157,16 +131,5 @@ test.describe('hydration', () => {
       .focus()
     await page.keyboard.press('Enter')
     await expect(page).toHaveURL(new RegExp(`/exhibits#${exhibit.id}$`))
-  })
-
-  // Plan §9 risk 10: the perf run reads both marks at /?world until T5b.
-  test('records both marks at /?world', async ({ page }) => {
-    await page.goto('/?world')
-    await expect
-      .poll(async () => [
-        await recorded(page, TITLE_SCREEN_INTERACTIVE_MARK),
-        await recorded(page, WORLD_PLAYABLE_MARK),
-      ])
-      .toEqual([1, 1])
   })
 })

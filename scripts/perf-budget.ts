@@ -1,10 +1,10 @@
 // `make perf`: the CI performance budget (docs/spec/increment-1.md, Non-functional requirements).
 // Serves dist/ (built by the make target), launches headless Chrome with software WebGL so the
 // first frame renders and the world-playable mark exists, runs Lighthouse 13 with devtools
-// throttling from perf/budget.json, and evaluates the three budget lines (scripts/perf/budget.ts):
-// the title-screen-interactive mark, the world-playable mark and the download until that mark, all
-// gated (plan §7; line 1 reads the mark since T5a). All three numbers are always printed, followed by
-// TTI, LCP, CLS and TBT as informational lines. A run that breaches or errors is retried once; the
+// throttling from perf/budget.json, and evaluates the four budget lines (scripts/perf/budget.ts):
+// the title-screen-interactive mark, the world-playable mark, the download until that mark and the
+// longest task between the marks (line 1's condition (b), plan §7), all gated. All four numbers are
+// always printed, followed by TTI, LCP, CLS and TBT as informational lines. A run that breaches or errors is retried once; the
 // exit status follows the last run (Phase 0b plan, Owner decision 5). A run that fails or lacks a value also prints Lighthouse's
 // runtimeError, runWarnings and audit errors. Each run's Lighthouse result is written to
 // .lighthouse/lhr-<run>.json (a CI artifact).
@@ -36,9 +36,9 @@ import {
 const BUDGET_FILE = 'perf/budget.json'
 const OUT_DIR = '.lighthouse'
 const PORT = 4173
-// `/?world` until T5b: the World ships behind that query on the root while production shows the
-// placeholder (plan §9 risk 10); T5b removes the guard and returns this run to `/`.
-const URL_UNDER_TEST = `http://localhost:${String(PORT)}/?world`
+// A plain navigation to `/`: the World preloads behind the Title Screen and records world-playable
+// there (plan §2, §7 line 2), so every line is measured as a Visitor would see it.
+const URL_UNDER_TEST = `http://localhost:${String(PORT)}/`
 const RUNS = 2
 const CHROME_FLAGS = [
   '--headless=new',
@@ -117,7 +117,7 @@ async function main(): Promise<number> {
   try {
     server = await preview({ preview: { port: PORT, strictPort: true }, logLevel: 'error' })
   } catch (error) {
-    // No run possible (the port is taken, dist/ unreadable): still all three lines, then exit 1.
+    // No run possible (the port is taken, dist/ unreadable): still all four lines, then exit 1.
     console.error(error)
     printReport('perf budget: no run', failedReport(budget, `error: ${messageOf(error)}`))
     return 1

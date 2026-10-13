@@ -1,5 +1,5 @@
 {
-  "$comment": "CI performance budget (docs/spec/increment-1.md, Non-functional requirements). The only place these numbers live; scripts/perf-budget.ts reads them. Throttling is Lighthouse's devtools profile: a 10 Mbit/s link, 40 ms latency, no CPU slowdown.",
+  "$comment": "CI performance budget (docs/spec/increment-1.md, Non-functional requirements). The only place these numbers live; scripts/perf-budget.ts reads them. Throttling is Lighthouse's devtools profile: a 10 Mbit/s link, 40 ms latency, no CPU slowdown. The three limits of the spec, plus the long-task bound of plan §7 line 1 (b): no main-thread task of that length or more may start between the title-screen-interactive and world-playable marks (ADR 0010: 100 ms, measured).",
   "throttling": {
     "rttMs": 40,
     "throughputKbps": 10240,
@@ -11,6 +11,7 @@
   "limits": {
     "titleScreenInteractiveMs": 2000,
     "worldPlayableMs": 5000,
-    "downloadUntilPlayableBytes": 4000000
+    "downloadUntilPlayableBytes": 4000000,
+    "longTaskBetweenMarksMs": 100
   }
 }

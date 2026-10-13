@@ -379,8 +379,26 @@ export function framesPoint(pose: CameraPose, point: Vec3, aspect: number, rig?:
 // then mirror model.puck() into the mesh, camera = cameraFollow(camera, cameraGoal(puck), dt, reducedMotion),
 // dispatch events to the store. On resume the accumulator is cleared (no catch-up burst).
 export type WorldCanvasProps = { layout: WorldLayout; paused: boolean; reducedMotion: boolean;
-  onEvent(e: WorldEvent): void; onReady(): void; onFailure(f: WorldFailure): void }
+  onEvent(e: WorldEvent): void; onReady(): void; onFailure(f: WorldFailure): void;
+  handle: RefObject<WorldHandle | null> }                         // added by T5b (#29), see below
+export type WorldHandle = { reset(): void }                        // the overlay's Reset control reaches the same Reset as R
 ```
+
+**Corrected by T5b (#29, 2026-10-13; Owner's answers to Q2–Q4)**: `WorldCanvas` takes a
+`handle` through which the overlay's Reset control (AC-12.2) runs the same Reset as R; Reset stays
+the model's and never becomes an app action. `src/world/World.tsx` wraps the scene and the overlay
+in the World container (`section`, `tabIndex={-1}`, `inert` plus `visibility: hidden` while the
+Title Screen is shown: the canvas keeps its size, so the paused demand frame renders and the mark
+fires; `display: none` would leave React Three Fiber without a root) and takes
+`{ paused, hidden, containerRef, onReady, onEvent, onFailure }`; until T7 the World keeps the Goal
+events to itself (the reducer's `goal` branch would open the Panel's state with no Panel to show)
+and forwards `zone-entered` for the caption's place. Escape to the Title Screen moves focus nowhere:
+the spec's Focus handling names no target for World → Title Screen (Owner on #29, addition 1), the
+inert World drops focus to the body, where Enter and Space reach the key router. The reducer sets the Hub caption's
+place on `world-status: 'ready'`, readiness being the once-per-load trigger the way the model's
+single `zone-entered` is the Zone's. The World loader and the idle preload policy live in
+`src/app/preload.ts` (`createWorldLoader`, `idleScheduler` with a timeout fallback for WebKit, which
+has no `requestIdleCallback`, `shouldLoadOnEntry`).
 
 ### Input (`src/world/input/keyboard.ts`)
 
@@ -430,7 +448,8 @@ takes no key code (the route depends on the state and the target, the code decid
 ```ts
 export type Focusable = 'world' | 'panel' | 'list-entry'
 export function focusAfter(transition: { from: AppState; to: AppState }): { target: Focusable; exhibitId?: ExhibitId } | null
-//   panel opened → 'panel'; panel closed → opener ('list-entry' with id | 'world'); entered World → 'world'; overlay control activated → 'world'
+//   panel opened → 'panel'; panel closed → opener ('list-entry' with id | 'world'); entered World → 'world'
+//   overlay control activated → 'world' is not a state transition: the overlay's handler returns focus itself (corrected by T5b, #29)
 ```
 
 ### Instruments (`src/perf/`)
@@ -464,7 +483,7 @@ cases use a context with `javaScriptEnabled: false`; reduced motion uses
 
 | AC | level | test (seam · file · what it proves) | ticket |
 |---|---|---|---|
-| 1.1 | perf + e2e | perf: `title-screen-interactive` ≤ 2000 ms **and** no long task ≥ the `longTaskBetweenMarksMs` limit between that mark and `world-playable` (Lighthouse `long-tasks` audit; threshold from Q1, start value 200 ms, written to `perf/budget.json` in T5b) · e2e `title-screen.spec`: the six pieces are in the HTML of a no-script context | T4, T5a (mark), T5b (long-task line) |
+| 1.1 | perf + e2e | perf: `title-screen-interactive` ≤ 2000 ms **and** no long task ≥ the `longTaskBetweenMarksMs` limit between that mark and `world-playable` (Lighthouse `long-tasks` audit; threshold from Q1, start value 200 ms, written to `perf/budget.json` in T5b; corrected by T5b, #29: 100 ms, ADR 0010's measured value, §7) · e2e `title-screen.spec`: the six pieces are in the HTML of a no-script context | T4, T5a (mark), T5b (long-task line) |
 | 1.2 | e2e | no-script: Fallback link, two Contact links, each list entry navigate | T4 |
 | 1.3 | e2e | Enter, Space, pointer on the way-in → the way-in shows loading or the World container becomes visible | T5b |
 | 2.1 | e2e | `exhibit-panel.spec`: world chunk delayed via route; pick entry → Panel with full content | T6 |
@@ -679,7 +698,7 @@ Riskiest first. Each names the ticket that retires it early (tracer-bullet order
 | 7 | **Keyboard focus and routing across three owners** (Title Screen, World, Panel): Enter on a focused list link must open the Panel, not enter the World; R inside the Panel; focus restoration | the pure `routeKey` and `focusAfter` are unit-tested before the components exist; e2e checks `activeElement` after every transition | T5a, T6, T7 |
 | 8 | **Determinism of the model**: Rapier results differ across versions or step counts, so model tolerances flake | fixed timestep, fixed Rapier version (lockfile), tolerances from ADR 0005's spread, seeded pseudo-random input for AC-9.2 | T1 |
 | 9 | **Budget of time**: twelve tickets at ~4–5 h each is the whole 12 weeks | tickets ≤ ~400 lines, one PR each; the scope guard order is written; T11 touch is optional and last | all |
-| 10 | **Production shows work in progress** from T1 on (production deploys on every merge; the domain is live) | T1 and T2 ship the World behind a `?world` query on the root (one line in `main.tsx`). The guard: `?world` mounts the World at once regardless of the preload policy; it never replaces the Title Screen: from T4 on the Title Screen renders and hydrates exactly as without the flag, so at `/?world` both marks fire (T5a's perf run depends on that); before T4 there is no Title Screen and `/?world` shows the World alone. The live domain keeps the skeleton root, the preview URL with `?world` is enough for the Owner's sign-off and the perf run navigates to `/?world`; T5b removes the guard and returns the perf run to `/` together with the long-task line | T1 (guard), T5b (removal) |
+| 10 | **Production shows work in progress** from T1 on (production deploys on every merge; the domain is live) | T1 and T2 ship the World behind a `?world` query on the root (one line in `main.tsx`). The guard: `?world` mounts the World at once regardless of the preload policy; it never replaces the Title Screen: from T4 on the Title Screen renders and hydrates exactly as without the flag, so at `/?world` both marks fire (T5a's perf run depends on that); before T4 there is no Title Screen and `/?world` shows the World alone. The live domain keeps the skeleton root, the preview URL with `?world` is enough for the Owner's sign-off and the perf run navigates to `/?world`; T5b removes the guard and returns the perf run to `/` together with the long-task line. Retired by T5b (#29, 2026-10-13) | T1 (guard), T5b (removal) |
 
 ## 10. Rollout
 
