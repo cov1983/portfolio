@@ -1,6 +1,11 @@
+import { createElement } from 'react'
+import { renderToString } from 'react-dom/server'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { inlineScripts, nonceAttributes, styleAttributes } from './html-checks'
+import { loadContentFromDisk } from '../../build/content-plugin.ts'
+import { App } from '../../src/app/App.tsx'
+import { createStore } from '../../src/app/store.ts'
+import { inlineScripts, nonceAttributes, rootMarkup, styleAttributes } from './html-checks'
 import { removeBuild, runProductionBuild, type BuildResult } from './production-build'
 
 // Seam 1's build half (plan §6). T0's check on index.html, extended by T4 to both pre-rendered
@@ -24,6 +29,15 @@ describe('the production build', () => {
   it('writes the Title Screen to index.html and the Fallback Page to exhibits/index.html', () => {
     expect(build.indexHtml).toContain('<div id="root"><main class="title-screen">')
     expect(build.exhibitsHtml).toContain('<div id="root"><div class="fallback-page">')
+  })
+
+  // T5a (ADR 0010): the markup hydrateRoot adopts is renderToString of the tree the client renders,
+  // with the same Content and the same initial state. Production hydration never compares
+  // attributes (only text and structure, as React error #418), so this is the attribute half.
+  it('holds exactly the markup hydrateRoot renders: renderToString of the same tree with the same Content', async () => {
+    const content = await loadContentFromDisk()
+    const expected = renderToString(createElement(App, { content, store: createStore() }))
+    expect(rootMarkup(build.indexHtml)).toBe(expected)
   })
 
   it('reports both documents', () => {

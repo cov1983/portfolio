@@ -2,9 +2,9 @@
 // requirements) against a Lighthouse result. No I/O: the runner (scripts/perf-budget.ts) reads the
 // budget file and runs Lighthouse, then prints what comes back from here. Every budget line is
 // always reported, also when its input is missing or the run failed, so a breach never hides
-// behind an error (Phase 0b plan, Owner decision 5). A line is either gated (its breach fails the
-// run) or informational (printed, never failing): see LINE_SPECS.
-import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks.ts'
+// behind an error (Phase 0b plan, Owner decision 5). All three lines are gated (their breach fails
+// the run); TTI, LCP, CLS and TBT follow as informational lines that never decide (plan §7).
+import { TITLE_SCREEN_INTERACTIVE_MARK, WORLD_PLAYABLE_MARK } from '../../src/perf/marks.ts'
 
 export type Throttling = {
   rttMs: number
@@ -34,14 +34,28 @@ export type BudgetLine = {
   measured: number | null
   limit: number
   unit: Unit
-  /** measured ≤ limit. On an informational line this is printed, never a reason to fail the run. */
+  /** measured ≤ limit. */
   pass: boolean
-  /** false: the line is informational until the ticket named in its note re-gates it. */
+  /** A gated line's breach fails the run; every line is gated since T5a (plan §7). */
   gated: boolean
   note?: string
 }
 
-export type BudgetReport = { pass: boolean; lines: BudgetLine[] }
+export type InfoLineId = 'tti' | 'lcp' | 'cls' | 'tbt'
+
+/** `score` is a unitless Lighthouse value (CLS). */
+export type InfoUnit = 'ms' | 'score'
+
+/** A reading printed next to the budget, with no limit and no verdict: a regression is read across runs. */
+export type InfoLine = {
+  id: InfoLineId
+  label: string
+  measured: number | null
+  unit: InfoUnit
+  note?: string
+}
+
+export type BudgetReport = { pass: boolean; lines: BudgetLine[]; info: InfoLine[] }
 
 /** What a failed or incomplete run says about itself: Lighthouse's own error, warnings, audit errors. */
 export type Diagnostics = {
@@ -49,12 +63,9 @@ export type Diagnostics = {
   runtimeError: string | null
   /** lhr.runWarnings as they come. */
   warnings: string[]
-  /** `audit "<id>": <errorMessage>` for each of the three audits that reports an error. */
+  /** `audit "<id>": <errorMessage>` for each audit of AUDIT_IDS that reports an error. */
   auditErrors: string[]
 }
-
-/** The tag printed after an informational line's verdict (Owner decision on #41, 2026-10-11). */
-export const INFORMATIONAL_UNTIL = 'informational until T5a (plan §7)'
 
 /** The budget file is malformed: a typed error at the boundary, never a silent default. */
 export class BudgetFileError extends Error {
@@ -63,11 +74,9 @@ export class BudgetFileError extends Error {
 
 /**
  * The three lines of the budget, in report order; the limit names the key in perf/budget.json.
- * Line 1 reads Lighthouse's TTI, the Phase 0b provisional instrument, which counts the World
- * chunk's evaluation at `/?world` (plan §7: the artefact the mark exists to avoid). Owner decision
- * on #41 (2026-10-11): from T1 the line is informational, printed with its limit and never failing
- * the run; T5a switches it to the `title-screen-interactive` mark and sets `gated: true` again.
- * Lines 2 and 3 stay gated.
+ * Line 1 reads the `title-screen-interactive` mark (recorded after hydrateRoot committed and the
+ * handlers exist) since T5a: Lighthouse's TTI, the Phase 0b provisional instrument, counts the
+ * World chunk's evaluation at `/?world` (plan §7) and stays printed below as information.
  */
 const LINE_SPECS: readonly {
   id: BudgetLineId
@@ -81,7 +90,7 @@ const LINE_SPECS: readonly {
     label: 'Title Screen interactive',
     unit: 'ms',
     limit: 'titleScreenInteractiveMs',
-    gated: false,
+    gated: true,
   },
   {
     id: 'world-playable',
@@ -100,7 +109,24 @@ const LINE_SPECS: readonly {
 ]
 
 /** The audits the run asks Lighthouse for (`onlyAudits` in scripts/perf-budget.ts). */
-const AUDIT_IDS = ['interactive', 'user-timings', 'network-requests'] as const
+export const AUDIT_IDS = [
+  'interactive',
+  'user-timings',
+  'network-requests',
+  'largest-contentful-paint',
+  'cumulative-layout-shift',
+  'total-blocking-time',
+] as const
+
+type AuditId = (typeof AUDIT_IDS)[number]
+
+/** The informational readings, in report order, each from one requested audit's numericValue. */
+const INFO_SPECS: readonly { id: InfoLineId; label: string; audit: AuditId; unit: InfoUnit }[] = [
+  { id: 'tti', label: 'TTI (informational)', audit: 'interactive', unit: 'ms' },
+  { id: 'lcp', label: 'LCP (informational)', audit: 'largest-contentful-paint', unit: 'ms' },
+  { id: 'cls', label: 'CLS (informational)', audit: 'cumulative-layout-shift', unit: 'score' },
+  { id: 'tbt', label: 'TBT (informational)', audit: 'total-blocking-time', unit: 'ms' },
+]
 
 const THROTTLING_KEYS = [
   'rttMs',
@@ -165,18 +191,29 @@ export function parseBudget(raw: unknown): Budget {
 
 type Measurement = { value: number | null; note?: string }
 
+/** `base` with the measurement's note, when it has one (exactOptionalPropertyTypes: never `note: undefined`). */
+function withNote<T extends object>(base: T, m: Measurement): T & { note?: string } {
+  return m.note === undefined ? base : { ...base, note: m.note }
+}
+
 function line(spec: (typeof LINE_SPECS)[number], limits: Limits, m: Measurement): BudgetLine {
   const limit = limits[spec.limit]
-  const base = {
-    id: spec.id,
-    label: spec.label,
-    measured: m.value,
-    limit,
-    unit: spec.unit,
-    pass: m.value !== null && m.value <= limit,
-    gated: spec.gated,
-  }
-  return m.note === undefined ? base : { ...base, note: m.note }
+  return withNote(
+    {
+      id: spec.id,
+      label: spec.label,
+      measured: m.value,
+      limit,
+      unit: spec.unit,
+      pass: m.value !== null && m.value <= limit,
+      gated: spec.gated,
+    },
+    m,
+  )
+}
+
+function infoLine(spec: (typeof INFO_SPECS)[number], m: Measurement): InfoLine {
+  return withNote({ id: spec.id, label: spec.label, measured: m.value, unit: spec.unit }, m)
 }
 
 /** The run passes when every gated line passes; an informational line never decides. */
@@ -196,29 +233,29 @@ function itemsOf(audit: Record<string, unknown> | undefined): unknown[] | undefi
   return Array.isArray(items) ? items : undefined
 }
 
-/** Time to interactive from the `interactive` audit (still computed in Lighthouse 13, only hidden). */
-function titleScreenInteractive(lhr: unknown): Measurement {
-  const value = auditOf(lhr, 'interactive')?.['numericValue']
+/** An audit's numericValue (TTI and the informational readings), or null with the reason. */
+function numericValue(lhr: unknown, auditId: AuditId): Measurement {
+  const value = auditOf(lhr, auditId)?.['numericValue']
   return typeof value === 'number'
     ? { value }
-    : { value: null, note: 'audit "interactive" has no numericValue' }
+    : { value: null, note: `audit "${auditId}" has no numericValue` }
 }
 
-/** Start time of the world-playable mark in ms from navigation start, or null with the reason. */
-function worldPlayable(lhr: unknown): Measurement {
+/** Start time of the user-timing mark `name` in ms from navigation start, or null with the reason. */
+function markStart(lhr: unknown, name: string): Measurement {
   const items = itemsOf(auditOf(lhr, 'user-timings'))
   if (items === undefined) return { value: null, note: 'audit "user-timings" is missing' }
   for (const item of items) {
     if (
       isRecord(item) &&
-      item['name'] === WORLD_PLAYABLE_MARK &&
+      item['name'] === name &&
       item['timingType'] === 'Mark' &&
       typeof item['startTime'] === 'number'
     ) {
       return { value: item['startTime'] }
     }
   }
-  return { value: null, note: `mark "${WORLD_PLAYABLE_MARK}" not recorded` }
+  return { value: null, note: `mark "${name}" not recorded` }
 }
 
 /**
@@ -243,16 +280,17 @@ function downloadUntilPlayable(lhr: unknown, mark: Measurement): Measurement {
   return { value: bytes }
 }
 
-/** Evaluates the three budget lines against a Lighthouse result (`lhr`, taken as untrusted). */
+/** Evaluates the three budget lines and the informational readings against a Lighthouse result (`lhr`, taken as untrusted). */
 export function evaluateBudget(lhr: unknown, budget: Budget): BudgetReport {
-  const mark = worldPlayable(lhr)
+  const playable = markStart(lhr, WORLD_PLAYABLE_MARK)
   const measurements: Record<BudgetLineId, Measurement> = {
-    'title-screen-interactive': titleScreenInteractive(lhr),
-    'world-playable': mark,
-    'download-until-playable': downloadUntilPlayable(lhr, mark),
+    'title-screen-interactive': markStart(lhr, TITLE_SCREEN_INTERACTIVE_MARK),
+    'world-playable': playable,
+    'download-until-playable': downloadUntilPlayable(lhr, playable),
   }
   const lines = LINE_SPECS.map((spec) => line(spec, budget.limits, measurements[spec.id]))
-  return { pass: passes(lines), lines }
+  const info = INFO_SPECS.map((spec) => infoLine(spec, numericValue(lhr, spec.audit)))
+  return { pass: passes(lines), lines, info }
 }
 
 /**
@@ -299,11 +337,19 @@ export function failedReport(budget: Budget, note: string): BudgetReport {
   return {
     pass: false,
     lines: LINE_SPECS.map((spec) => line(spec, budget.limits, { value: null, note })),
+    info: INFO_SPECS.map((spec) => infoLine(spec, { value: null, note })),
   }
 }
 
-function amount(value: number, unit: Unit): string {
-  return unit === 'ms' ? `${String(Math.round(value))} ms` : `${value.toLocaleString('en-US')} B`
+function amount(value: number, unit: Unit | InfoUnit): string {
+  switch (unit) {
+    case 'ms':
+      return `${String(Math.round(value))} ms`
+    case 'B':
+      return `${value.toLocaleString('en-US')} B`
+    case 'score':
+      return value.toFixed(3)
+  }
 }
 
 /** pass / FAIL on a gated line; pass / over (or n/a without a value) on an informational one. */
@@ -313,12 +359,28 @@ function verdictOf(l: BudgetLine): string {
   return l.measured === null ? 'n/a' : 'over'
 }
 
-/** One text line per budget line: label, measured, limit, verdict, gating tag. Always all three. */
+const LABEL_WIDTH = 26
+const VALUE_WIDTH = 14
+
+/** The columns every printed line opens with: the label and the measured value, or n/a. */
+function cells(l: BudgetLine | InfoLine): string {
+  const measured = l.measured === null ? 'n/a' : amount(l.measured, l.unit)
+  return `  ${l.label.padEnd(LABEL_WIDTH)} ${measured.padStart(VALUE_WIDTH)}`
+}
+
+function noteOf(l: BudgetLine | InfoLine): string {
+  return l.note === undefined ? '' : ` (${l.note})`
+}
+
+/**
+ * One text line per budget line (label, measured, limit, verdict; always all three), then one per
+ * informational reading (label, measured; no limit, no verdict).
+ */
 export function formatReport(report: BudgetReport): string[] {
-  return report.lines.map((l) => {
-    const measured = l.measured === null ? 'n/a' : amount(l.measured, l.unit)
-    const tag = l.gated ? '' : `   ${INFORMATIONAL_UNTIL}`
-    const note = l.note === undefined ? '' : ` (${l.note})`
-    return `  ${l.label.padEnd(26)} ${measured.padStart(14)}   limit ${amount(l.limit, l.unit)}   ${verdictOf(l)}${tag}${note}`
+  const budgetLines = report.lines.map((l) => {
+    const tag = l.gated ? '' : '   informational'
+    return `${cells(l)}   limit ${amount(l.limit, l.unit)}   ${verdictOf(l)}${tag}${noteOf(l)}`
   })
+  const infoLines = report.info.map((l) => `${cells(l)}${noteOf(l)}`)
+  return [...budgetLines, ...infoLines]
 }

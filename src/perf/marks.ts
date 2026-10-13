@@ -2,6 +2,9 @@
 // requirements; plan §5, §7): user-timing marks that Lighthouse reads from its user-timings audit.
 // Each is recorded once per page load.
 
+/** After hydrateRoot committed and the handlers exist (plan §7 line 1); src/app/App.tsx records it. */
+export const TITLE_SCREEN_INTERACTIVE_MARK = 'title-screen-interactive'
+
 /** First frame after Rapier initialised with the key listener attached (plan §7 line 2). */
 export const WORLD_PLAYABLE_MARK = 'world-playable'
 

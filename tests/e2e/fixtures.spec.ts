@@ -1,20 +1,9 @@
-import { expect, expectedResponseHeaders, test, type Problem, type ProblemKind } from './fixtures'
+import { expect, expectedResponseHeaders, expectRecorded, test, type Problem } from './fixtures'
 
 // The shared fixture's passing-and-failing proof in every browser (plan §6: a page error, a console
 // error or a CSP violation fails the test). Three cases make the page report one problem each and
 // check that the fixture recorded it; the last case records a problem directly and is declared an
 // expected failure, so Playwright goes red the day the fixture stops failing the test.
-
-/** Waits until the fixture recorded a problem of `kind` mentioning `detail`, then consumes that entry alone. */
-async function expectRecorded(
-  problems: Problem[],
-  kind: ProblemKind,
-  detail: string,
-): Promise<void> {
-  const matches = (p: Problem): boolean => p.kind === kind && p.detail.includes(detail)
-  await expect.poll(() => problems.some(matches)).toBe(true)
-  problems.splice(problems.findIndex(matches), 1)
-}
 
 function throwLater(): void {
   setTimeout(() => {

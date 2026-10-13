@@ -1,16 +1,17 @@
 import { renderToStaticMarkup, renderToString } from 'react-dom/server'
 import { content } from 'virtual:content'
 
+import { App } from './app/App'
+import { createStore } from './app/store'
 import { FallbackPage } from './site/FallbackPage'
 import { Meta } from './site/Meta'
-import { TitleScreen } from './site/TitleScreen'
 
 // The pre-rendering entry (ADR 0010): built by Vite as an SSR bundle and imported by
 // build/build.ts, which places `head` and `body` into the client build's index.html for each
-// route of build/prerender.ts. The Title Screen is rendered with renderToString, the markup
-// hydrateRoot adopts (T5a); the Fallback Page ships no script, so static markup is enough.
-// `origin` is the site's origin when the build knows it, else '' (build/prerender.ts siteOrigin).
-// Titles: Owner on #27 Q8.
+// route of build/prerender.ts. The Title Screen is rendered with renderToString from the same
+// App tree and initial store that src/main.tsx hydrates (T5a); the Fallback Page ships no script,
+// so static markup is enough. `origin` is the site's origin when the build knows it, else ''
+// (build/prerender.ts siteOrigin). Titles: Owner on #27 Q8.
 export type Prerendered = { head: string; body: string }
 
 export function prerender(route: string, origin: string): Prerendered {
@@ -21,7 +22,7 @@ export function prerender(route: string, origin: string): Prerendered {
     case '/':
       return {
         head: renderToStaticMarkup(meta(`${content.owner.name} — portfolio`)),
-        body: renderToString(<TitleScreen content={content} />),
+        body: renderToString(<App content={content} store={createStore()} />),
       }
     case '/exhibits':
       return {

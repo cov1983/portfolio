@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { markOnce, WORLD_PLAYABLE_MARK, type MarkRecorder } from './marks'
+import {
+  markOnce,
+  TITLE_SCREEN_INTERACTIVE_MARK,
+  WORLD_PLAYABLE_MARK,
+  type MarkRecorder,
+} from './marks'
 
 function fakeRecorder(): MarkRecorder & { names: string[] } {
   const names: string[] = []
@@ -33,7 +38,7 @@ describe('markOnce', () => {
   it('records marks of different names independently', () => {
     const recorder = fakeRecorder()
     markOnce(recorder, WORLD_PLAYABLE_MARK)
-    expect(markOnce(recorder, 'other')).toBe(true)
-    expect(recorder.names).toEqual([WORLD_PLAYABLE_MARK, 'other'])
+    expect(markOnce(recorder, TITLE_SCREEN_INTERACTIVE_MARK)).toBe(true)
+    expect(recorder.names).toEqual([WORLD_PLAYABLE_MARK, TITLE_SCREEN_INTERACTIVE_MARK])
   })
 })

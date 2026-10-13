@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks.ts'
+import { TITLE_SCREEN_INTERACTIVE_MARK, WORLD_PLAYABLE_MARK } from '../../src/perf/marks.ts'
 import {
   BudgetFileError,
   diagnose,
@@ -8,10 +8,10 @@ import {
   failedReport,
   formatDiagnostics,
   formatReport,
-  INFORMATIONAL_UNTIL,
   parseBudget,
   type Budget,
   type BudgetLineId,
+  type InfoLineId,
 } from './budget.ts'
 
 const budget: Budget = {
@@ -37,15 +37,43 @@ type Request = {
   resourceType?: string
 }
 
-/** A Lighthouse result reduced to the three audits the budget reads. */
-function lhr(opts: { interactive?: number; markAt?: number; requests?: Request[] } = {}): unknown {
-  const { interactive = 1000, markAt = 3000, requests = [] } = opts
-  const marks = [{ name: WORLD_PLAYABLE_MARK, timingType: 'Mark', startTime: markAt }]
+type Readings = {
+  interactive?: number
+  interactiveAt?: number | null
+  markAt?: number | null
+  requests?: Request[]
+  lcp?: number
+  cls?: number
+  tbt?: number
+}
+
+/** A Lighthouse result reduced to the audits the budget reads. */
+function lhr(opts: Readings = {}): unknown {
+  const {
+    interactive = 1000,
+    interactiveAt = 300,
+    markAt = 3000,
+    requests = [],
+    lcp = 800,
+    cls = 0.001,
+    tbt = 12,
+  } = opts
+  const marks = [
+    ...(interactiveAt === null
+      ? []
+      : [{ name: TITLE_SCREEN_INTERACTIVE_MARK, timingType: 'Mark', startTime: interactiveAt }]),
+    ...(markAt === null
+      ? []
+      : [{ name: WORLD_PLAYABLE_MARK, timingType: 'Mark', startTime: markAt }]),
+  ]
   return {
     audits: {
       interactive: { numericValue: interactive },
       'user-timings': { details: { items: marks } },
       'network-requests': { details: { items: requests } },
+      'largest-contentful-paint': { numericValue: lcp },
+      'cumulative-layout-shift': { numericValue: cls },
+      'total-blocking-time': { numericValue: tbt },
     },
   }
 }
@@ -53,6 +81,12 @@ function lhr(opts: { interactive?: number; markAt?: number; requests?: Request[]
 function lineById(report: ReturnType<typeof evaluateBudget>, id: BudgetLineId) {
   const found = report.lines.find((l) => l.id === id)
   if (found === undefined) throw new Error(`no line ${id}`)
+  return found
+}
+
+function infoById(report: ReturnType<typeof evaluateBudget>, id: InfoLineId) {
+  const found = report.info.find((l) => l.id === id)
+  if (found === undefined) throw new Error(`no informational line ${id}`)
   return found
 }
 
@@ -74,47 +108,58 @@ describe('evaluateBudget', () => {
     ])
   })
 
-  it('reads Title Screen interactive from the interactive audit', () => {
-    expect(
-      lineById(evaluateBudget(lhr({ interactive: 1234.5 }), budget), 'title-screen-interactive')
-        .measured,
-    ).toBe(1234.5)
+  it('reads Title Screen interactive from the title-screen-interactive mark, not from TTI', () => {
+    const line = lineById(
+      evaluateBudget(lhr({ interactiveAt: 1234.5, interactive: 2695 }), budget),
+      'title-screen-interactive',
+    )
+    expect(line.measured).toBe(1234.5)
   })
 
-  it('marks Title Screen interactive as over above the limit', () => {
-    expect(
-      lineById(evaluateBudget(lhr({ interactive: 2000.1 }), budget), 'title-screen-interactive')
-        .pass,
-    ).toBe(false)
-  })
-
-  it('does not fail the run on Title Screen interactive (informational until T5a)', () => {
-    const report = evaluateBudget(lhr({ interactive: 2695 }), budget)
-    expect(report.pass).toBe(true)
-    expect(lineById(report, 'title-screen-interactive').gated).toBe(false)
-  })
-
-  it('does not fail the run when Title Screen interactive has no value', () => {
+  it('ignores a measure that carries the title-screen-interactive name', () => {
     const result = {
       audits: {
         'user-timings': {
-          details: { items: [{ name: WORLD_PLAYABLE_MARK, timingType: 'Mark', startTime: 1 }] },
+          details: {
+            items: [{ name: TITLE_SCREEN_INTERACTIVE_MARK, timingType: 'Measure', startTime: 1 }],
+          },
         },
-        'network-requests': { details: { items: [] } },
       },
     }
-    expect(evaluateBudget(result, budget).pass).toBe(true)
+    expect(lineById(evaluateBudget(result, budget), 'title-screen-interactive').measured).toBeNull()
   })
 
-  it('gates World playable and the download line', () => {
+  it('fails Title Screen interactive with a note when the mark is missing', () => {
+    const line = lineById(
+      evaluateBudget(lhr({ interactiveAt: null }), budget),
+      'title-screen-interactive',
+    )
+    expect(line).toMatchObject({
+      measured: null,
+      pass: false,
+      note: `mark "${TITLE_SCREEN_INTERACTIVE_MARK}" not recorded`,
+    })
+  })
+
+  it('fails the run when Title Screen interactive is over its limit (gated again since T5a)', () => {
+    const report = evaluateBudget(lhr({ interactiveAt: 2000.1 }), budget)
+    expect(report.pass).toBe(false)
+    expect(lineById(report, 'title-screen-interactive').pass).toBe(false)
+  })
+
+  it('fails the run when the title-screen-interactive mark is missing', () => {
+    expect(evaluateBudget(lhr({ interactiveAt: null }), budget).pass).toBe(false)
+  })
+
+  it('gates all three lines', () => {
     const report = evaluateBudget(lhr(), budget)
-    expect(lineById(report, 'world-playable').gated).toBe(true)
-    expect(lineById(report, 'download-until-playable').gated).toBe(true)
+    expect(report.lines.map((l) => l.gated)).toEqual([true, true, true])
   })
 
   it('passes a line that sits exactly on its limit', () => {
     expect(
-      lineById(evaluateBudget(lhr({ interactive: 2000 }), budget), 'title-screen-interactive').pass,
+      lineById(evaluateBudget(lhr({ interactiveAt: 2000 }), budget), 'title-screen-interactive')
+        .pass,
     ).toBe(true)
   })
 
@@ -248,12 +293,11 @@ describe('evaluateBudget', () => {
     })
   })
 
-  it('reports a missing audit as null with a note instead of throwing', () => {
-    const result = { audits: { 'user-timings': { details: { items: [] } } } }
-    expect(lineById(evaluateBudget(result, budget), 'title-screen-interactive')).toMatchObject({
+  it('reports a missing user-timings audit as null with a note instead of throwing', () => {
+    expect(lineById(evaluateBudget({}, budget), 'title-screen-interactive')).toMatchObject({
       measured: null,
       pass: false,
-      note: 'audit "interactive" has no numericValue',
+      note: 'audit "user-timings" is missing',
     })
   })
 
@@ -264,6 +308,28 @@ describe('evaluateBudget', () => {
   it('fails the run when the download line is over its limit', () => {
     const requests = [{ transferSize: 4097, networkEndTime: 100 }]
     expect(evaluateBudget(lhr({ requests }), budget).pass).toBe(false)
+  })
+
+  it('reports TTI, LCP, CLS and TBT as informational lines, in that order', () => {
+    const report = evaluateBudget(lhr({ interactive: 2695, lcp: 800, cls: 0.001, tbt: 12 }), budget)
+    expect(report.info.map((l) => [l.id, l.measured])).toEqual([
+      ['tti', 2695],
+      ['lcp', 800],
+      ['cls', 0.001],
+      ['tbt', 12],
+    ])
+  })
+
+  it('never fails the run on an informational line', () => {
+    expect(evaluateBudget(lhr({ interactive: 9999, tbt: 5000 }), budget).pass).toBe(true)
+  })
+
+  it('reports an informational line without a value as null with a note', () => {
+    const result = { audits: { 'user-timings': { details: { items: [] } } } }
+    expect(infoById(evaluateBudget(result, budget), 'lcp')).toMatchObject({
+      measured: null,
+      note: 'audit "largest-contentful-paint" has no numericValue',
+    })
   })
 })
 
@@ -281,18 +347,22 @@ describe('diagnose', () => {
     expect(diagnose({ runtimeError: { message: 'hung' } }).runtimeError).toBe('hung')
   })
 
-  it('reports the run warnings and the audit errors', () => {
+  it('reports the run warnings and the audit errors of every audit the run asks for', () => {
     const result = {
       runWarnings: ['The page loaded too slowly', 7],
       audits: {
         interactive: { errorMessage: 'Required trace gatherer did not run' },
         'user-timings': { numericValue: 1 },
+        'total-blocking-time': { errorMessage: 'no trace' },
       },
     }
     expect(diagnose(result)).toEqual({
       runtimeError: null,
       warnings: ['The page loaded too slowly'],
-      auditErrors: ['audit "interactive": Required trace gatherer did not run'],
+      auditErrors: [
+        'audit "interactive": Required trace gatherer did not run',
+        'audit "total-blocking-time": no trace',
+      ],
     })
   })
 
@@ -332,6 +402,16 @@ describe('failedReport', () => {
       [null, false, 'error: Chrome did not start'],
     ])
   })
+
+  it('carries the informational lines without a value and with the same note', () => {
+    const report = failedReport(budget, 'error: Chrome did not start')
+    expect(report.info.map((l) => [l.id, l.measured, l.note])).toEqual([
+      ['tti', null, 'error: Chrome did not start'],
+      ['lcp', null, 'error: Chrome did not start'],
+      ['cls', null, 'error: Chrome did not start'],
+      ['tbt', null, 'error: Chrome did not start'],
+    ])
+  })
 })
 
 describe('formatReport', () => {
@@ -345,27 +425,25 @@ describe('formatReport', () => {
     expect(playable).toMatch(/World playable\s+5001 ms\s+limit 5000 ms\s+FAIL$/)
   })
 
-  it('tags the informational line and prints "over", never FAIL, above its limit', () => {
-    const [first] = formatReport(evaluateBudget(lhr({ interactive: 2695 }), budget))
-    expect(first).toMatch(
-      /Title Screen interactive\s+2695 ms\s+limit 2000 ms\s+over\s+informational/,
-    )
-    expect(first).toContain(INFORMATIONAL_UNTIL)
-    expect(first).not.toContain('FAIL')
+  it('prints FAIL, never "over" or an informational tag, for Title Screen interactive over its limit', () => {
+    const [first] = formatReport(evaluateBudget(lhr({ interactiveAt: 2695 }), budget))
+    expect(first).toMatch(/Title Screen interactive\s+2695 ms\s+limit 2000 ms\s+FAIL$/)
+    expect(first).not.toContain('informational')
   })
 
-  it('tags the informational line under its limit as well', () => {
-    const [first] = formatReport(evaluateBudget(lhr({ interactive: 1234.4 }), budget))
-    expect(first).toMatch(
-      /Title Screen interactive\s+1234 ms\s+limit 2000 ms\s+pass\s+informational/,
+  it('prints over or n/a with an informational tag, never FAIL, should a line be ungated again', () => {
+    const report = evaluateBudget(lhr({ interactiveAt: 2695 }), budget)
+    const [first] = report.lines
+    if (first === undefined) throw new Error('no line')
+    const over = formatReport({ ...report, lines: [{ ...first, gated: false }] })
+    expect(over[0]).toMatch(
+      /Title Screen interactive\s+2695 ms\s+limit 2000 ms\s+over\s+informational$/,
     )
-  })
-
-  it('prints n/a with the note for an informational line without a value', () => {
-    const [first] = formatReport(evaluateBudget({}, budget))
-    expect(first).toMatch(
-      /Title Screen interactive\s+n\/a\s+limit 2000 ms\s+n\/a\s+informational until T5a \(plan §7\) \(audit "interactive" has no numericValue\)$/,
-    )
+    const none = formatReport({
+      ...report,
+      lines: [{ ...first, gated: false, measured: null, pass: false }],
+    })
+    expect(none[0]).toMatch(/limit 2000 ms\s+n\/a\s+informational$/)
   })
 
   it('prints n/a and the note for a line without a value', () => {
@@ -380,6 +458,24 @@ describe('formatReport', () => {
       evaluateBudget(lhr({ requests: [{ transferSize: 1234567, networkEndTime: 1 }] }), budget),
     )
     expect(download).toContain('1,234,567 B')
+  })
+
+  it('prints the informational lines after the three budget lines, with no limit and no verdict', () => {
+    const lines = formatReport(
+      evaluateBudget(lhr({ interactive: 2695.4, lcp: 812.6, cls: 0.0012, tbt: 12.4 }), budget),
+    )
+    expect(lines).toHaveLength(7)
+    expect(lines[3]).toMatch(/^ {2}TTI \(informational\)\s+2695 ms$/)
+    expect(lines[4]).toMatch(/^ {2}LCP \(informational\)\s+813 ms$/)
+    expect(lines[5]).toMatch(/^ {2}CLS \(informational\)\s+0\.001$/)
+    expect(lines[6]).toMatch(/^ {2}TBT \(informational\)\s+12 ms$/)
+  })
+
+  it('prints n/a with the note for an informational line without a value', () => {
+    const lines = formatReport(evaluateBudget({}, budget))
+    expect(lines[3]).toMatch(
+      /TTI \(informational\)\s+n\/a \(audit "interactive" has no numericValue\)$/,
+    )
   })
 })
 
