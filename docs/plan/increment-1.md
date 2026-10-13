@@ -595,7 +595,9 @@ in increment-1; a later spec decides client metrics).
      chore/perf-median-and-long-task-limit, #49: 150 ms on the CI runner, judged on the median of
      three runs; ADR 0013). TTI
      stays **printed as an informational line**, with LCP, CLS and TBT from the same run, so a
-     regression is seen without being gated.
+     regression is seen without being gated (corrected by chore/perf-median-and-long-task-limit,
+     #49: each informational line prints the median of the three runs with all three readings, so
+     two medians may come from different runs; ADR 0013).
   2. **World playable**: mark `world-playable` ≤ 5000 ms, recorded on the first frame after Rapier
      initialised with the key listener attached, while the World sits paused behind the Title Screen
      (§2 entry policy). This is the instrument the spec asked the plan to pick. **Q3, answered

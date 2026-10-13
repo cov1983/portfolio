@@ -11,7 +11,7 @@
 // median of the three readings (`combineRuns`), printed with all three readings, and the exit status
 // follows the gated lines' medians. A run that errors (an exception, or a Lighthouse runtimeError
 // such as NO_NAVSTART) is retried once on its own and counts once; a breach is never retried. A run
-// that errors or lacks a value prints Lighthouse's runtimeError, runWarnings and audit errors (#41).
+// that fails, errors or lacks a value prints Lighthouse's runtimeError, runWarnings and audit errors (#41).
 // Each Lighthouse result is written to .lighthouse/lhr-<run>.json, a retry's to
 // .lighthouse/lhr-<run>-retry.json (a CI artifact).
 //
@@ -126,7 +126,7 @@ async function measureRun(run: number, budget: Budget): Promise<BudgetReport> {
   }
   console.log(`${label}: ${outcome.errored ? 'error' : 'done'}`)
   // A failed or incomplete run says why: without this, run 2 on #41 left only "audit missing".
-  if (outcome.errored || outcome.report.lines.some((l) => l.measured === null)) {
+  if (!outcome.report.pass || outcome.report.lines.some((l) => l.measured === null)) {
     printDiagnostics(outcome.diagnostics)
   }
   return outcome.report
