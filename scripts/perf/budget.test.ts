@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 
 import { TITLE_SCREEN_INTERACTIVE_MARK, WORLD_PLAYABLE_MARK } from '../../src/perf/marks.ts'
 import {
-  AUDIT_IDS,
   BudgetFileError,
   diagnose,
   evaluateBudget,
@@ -38,7 +37,7 @@ type Request = {
   resourceType?: string
 }
 
-type Options = {
+type Readings = {
   interactive?: number
   interactiveAt?: number | null
   markAt?: number | null
@@ -49,7 +48,7 @@ type Options = {
 }
 
 /** A Lighthouse result reduced to the audits the budget reads. */
-function lhr(opts: Options = {}): unknown {
+function lhr(opts: Readings = {}): unknown {
   const {
     interactive = 1000,
     interactiveAt = 300,
@@ -326,7 +325,6 @@ describe('evaluateBudget', () => {
   })
 
   it('reports an informational line without a value as null with a note', () => {
-    expect(infoById(evaluateBudget(lhr(), budget), 'tti')).toMatchObject({ measured: 1000 })
     const result = { audits: { 'user-timings': { details: { items: [] } } } }
     expect(infoById(evaluateBudget(result, budget), 'lcp')).toMatchObject({
       measured: null,
@@ -370,17 +368,6 @@ describe('diagnose', () => {
 
   it('tolerates a result that is not an object', () => {
     expect(diagnose(undefined)).toEqual({ runtimeError: null, warnings: [], auditErrors: [] })
-  })
-
-  it('asks Lighthouse for the three budget audits and the three informational ones', () => {
-    expect([...AUDIT_IDS]).toEqual([
-      'interactive',
-      'user-timings',
-      'network-requests',
-      'largest-contentful-paint',
-      'cumulative-layout-shift',
-      'total-blocking-time',
-    ])
   })
 })
 

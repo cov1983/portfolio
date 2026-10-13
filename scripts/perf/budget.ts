@@ -108,14 +108,6 @@ const LINE_SPECS: readonly {
   },
 ]
 
-/** The informational readings, in report order, each from one Lighthouse audit's numericValue. */
-const INFO_SPECS: readonly { id: InfoLineId; label: string; audit: string; unit: InfoUnit }[] = [
-  { id: 'tti', label: 'TTI (informational)', audit: 'interactive', unit: 'ms' },
-  { id: 'lcp', label: 'LCP (informational)', audit: 'largest-contentful-paint', unit: 'ms' },
-  { id: 'cls', label: 'CLS (informational)', audit: 'cumulative-layout-shift', unit: 'score' },
-  { id: 'tbt', label: 'TBT (informational)', audit: 'total-blocking-time', unit: 'ms' },
-]
-
 /** The audits the run asks Lighthouse for (`onlyAudits` in scripts/perf-budget.ts). */
 export const AUDIT_IDS = [
   'interactive',
@@ -125,6 +117,16 @@ export const AUDIT_IDS = [
   'cumulative-layout-shift',
   'total-blocking-time',
 ] as const
+
+type AuditId = (typeof AUDIT_IDS)[number]
+
+/** The informational readings, in report order, each from one requested audit's numericValue. */
+const INFO_SPECS: readonly { id: InfoLineId; label: string; audit: AuditId; unit: InfoUnit }[] = [
+  { id: 'tti', label: 'TTI (informational)', audit: 'interactive', unit: 'ms' },
+  { id: 'lcp', label: 'LCP (informational)', audit: 'largest-contentful-paint', unit: 'ms' },
+  { id: 'cls', label: 'CLS (informational)', audit: 'cumulative-layout-shift', unit: 'score' },
+  { id: 'tbt', label: 'TBT (informational)', audit: 'total-blocking-time', unit: 'ms' },
+]
 
 const THROTTLING_KEYS = [
   'rttMs',
@@ -189,23 +191,29 @@ export function parseBudget(raw: unknown): Budget {
 
 type Measurement = { value: number | null; note?: string }
 
-function line(spec: (typeof LINE_SPECS)[number], limits: Limits, m: Measurement): BudgetLine {
-  const limit = limits[spec.limit]
-  const base = {
-    id: spec.id,
-    label: spec.label,
-    measured: m.value,
-    limit,
-    unit: spec.unit,
-    pass: m.value !== null && m.value <= limit,
-    gated: spec.gated,
-  }
+/** `base` with the measurement's note, when it has one (exactOptionalPropertyTypes: never `note: undefined`). */
+function withNote<T extends object>(base: T, m: Measurement): T & { note?: string } {
   return m.note === undefined ? base : { ...base, note: m.note }
 }
 
+function line(spec: (typeof LINE_SPECS)[number], limits: Limits, m: Measurement): BudgetLine {
+  const limit = limits[spec.limit]
+  return withNote(
+    {
+      id: spec.id,
+      label: spec.label,
+      measured: m.value,
+      limit,
+      unit: spec.unit,
+      pass: m.value !== null && m.value <= limit,
+      gated: spec.gated,
+    },
+    m,
+  )
+}
+
 function infoLine(spec: (typeof INFO_SPECS)[number], m: Measurement): InfoLine {
-  const base = { id: spec.id, label: spec.label, measured: m.value, unit: spec.unit }
-  return m.note === undefined ? base : { ...base, note: m.note }
+  return withNote({ id: spec.id, label: spec.label, measured: m.value, unit: spec.unit }, m)
 }
 
 /** The run passes when every gated line passes; an informational line never decides. */
@@ -226,7 +234,7 @@ function itemsOf(audit: Record<string, unknown> | undefined): unknown[] | undefi
 }
 
 /** An audit's numericValue (TTI and the informational readings), or null with the reason. */
-function numericValue(lhr: unknown, auditId: string): Measurement {
+function numericValue(lhr: unknown, auditId: AuditId): Measurement {
   const value = auditOf(lhr, auditId)?.['numericValue']
   return typeof value === 'number'
     ? { value }
@@ -354,21 +362,25 @@ function verdictOf(l: BudgetLine): string {
 const LABEL_WIDTH = 26
 const VALUE_WIDTH = 14
 
+/** The columns every printed line opens with: the label and the measured value, or n/a. */
+function cells(l: BudgetLine | InfoLine): string {
+  const measured = l.measured === null ? 'n/a' : amount(l.measured, l.unit)
+  return `  ${l.label.padEnd(LABEL_WIDTH)} ${measured.padStart(VALUE_WIDTH)}`
+}
+
+function noteOf(l: BudgetLine | InfoLine): string {
+  return l.note === undefined ? '' : ` (${l.note})`
+}
+
 /**
  * One text line per budget line (label, measured, limit, verdict; always all three), then one per
  * informational reading (label, measured; no limit, no verdict).
  */
 export function formatReport(report: BudgetReport): string[] {
   const budgetLines = report.lines.map((l) => {
-    const measured = l.measured === null ? 'n/a' : amount(l.measured, l.unit)
     const tag = l.gated ? '' : '   informational'
-    const note = l.note === undefined ? '' : ` (${l.note})`
-    return `  ${l.label.padEnd(LABEL_WIDTH)} ${measured.padStart(VALUE_WIDTH)}   limit ${amount(l.limit, l.unit)}   ${verdictOf(l)}${tag}${note}`
+    return `${cells(l)}   limit ${amount(l.limit, l.unit)}   ${verdictOf(l)}${tag}${noteOf(l)}`
   })
-  const infoLines = report.info.map((l) => {
-    const measured = l.measured === null ? 'n/a' : amount(l.measured, l.unit)
-    const note = l.note === undefined ? '' : ` (${l.note})`
-    return `  ${l.label.padEnd(LABEL_WIDTH)} ${measured.padStart(VALUE_WIDTH)}${note}`
-  })
+  const infoLines = report.info.map((l) => `${cells(l)}${noteOf(l)}`)
   return [...budgetLines, ...infoLines]
 }
