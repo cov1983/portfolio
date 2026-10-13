@@ -1,5 +1,5 @@
 import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks'
-import { expect, test } from './fixtures'
+import { expect, recorded, test } from './fixtures'
 
 // Seam 1 at `/?world` (plan §9 risk 10): presence and wiring of the World, never WebGL output.
 // The mark is the perf gate's instrument (plan §7 line 2); this is its canary in the three
@@ -12,28 +12,14 @@ test('the World mounts a canvas at /?world', async ({ page }) => {
 
 test('the World records the world-playable mark once it is ready', async ({ page }) => {
   await page.goto('/?world')
-  await expect
-    .poll(() =>
-      page.evaluate(
-        (name) => performance.getEntriesByName(name, 'mark').length,
-        WORLD_PLAYABLE_MARK,
-      ),
-    )
-    .toBe(1)
+  await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
 })
 
 test('the World requests only same-origin files and no Exhibit media', async ({ page }) => {
   const urls: string[] = []
   page.on('request', (request) => urls.push(request.url()))
   await page.goto('/?world')
-  await expect
-    .poll(() =>
-      page.evaluate(
-        (name) => performance.getEntriesByName(name, 'mark').length,
-        WORLD_PLAYABLE_MARK,
-      ),
-    )
-    .toBe(1)
+  await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
   const origin = new URL(page.url()).origin
   expect(urls.filter((url) => !url.startsWith(origin))).toEqual([])
   expect(urls.filter((url) => new URL(url).pathname.startsWith('/media/exhibits/'))).toEqual([])
@@ -52,14 +38,7 @@ test('driving up from the Hub reaches the Goal without any loading', async ({ pa
     if (playable && request.resourceType() === 'script') scriptsAfterPlayable.push(request.url())
   })
   await page.goto('/?world')
-  await expect
-    .poll(() =>
-      page.evaluate(
-        (name) => performance.getEntriesByName(name, 'mark').length,
-        WORLD_PLAYABLE_MARK,
-      ),
-    )
-    .toBe(1)
+  await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
   playable = true
   const busy = page.locator('[aria-busy="true"], [role="progressbar"]')
   await page.keyboard.down('ArrowUp')

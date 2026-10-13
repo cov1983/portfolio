@@ -2,12 +2,7 @@ import AxeBuilder from '@axe-core/playwright'
 import type { Page } from '@playwright/test'
 
 import { TITLE_SCREEN_INTERACTIVE_MARK, WORLD_PLAYABLE_MARK } from '../../src/perf/marks'
-import { expect, expectRecorded, test } from './fixtures'
-
-/** How many times the page recorded the user-timing mark `name`. */
-function recorded(page: Page, name: string): Promise<number> {
-  return page.evaluate((n) => performance.getEntriesByName(n, 'mark').length, name)
-}
+import { expect, expectRecorded, recorded, test } from './fixtures'
 
 // Seam 1 at `/`: the pre-rendered Title Screen (ADR 0010). The `?world` guard keeps the World and
 // its chunk away from the root (plan §9 risk 10: production never shows work in progress).

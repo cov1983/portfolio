@@ -1,4 +1,4 @@
-import { expect, test as base } from '@playwright/test'
+import { expect, test as base, type Page } from '@playwright/test'
 
 import { loadContentFromDisk } from '../../build/content-plugin.ts'
 import type { Content } from '../../src/content/types.ts'
@@ -93,6 +93,11 @@ export async function expectRecorded(
   const matches = (p: Problem): boolean => p.kind === kind && p.detail.includes(detail)
   await expect.poll(() => problems.some(matches)).toBe(true)
   problems.splice(problems.findIndex(matches), 1)
+}
+
+/** How many times the page recorded the user-timing mark `name` (the perf gate's instruments). */
+export function recorded(page: Page, name: string): Promise<number> {
+  return page.evaluate((n) => performance.getEntriesByName(n, 'mark').length, name)
 }
 
 export { expect }
