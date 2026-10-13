@@ -4,8 +4,10 @@
 // always reported, also when its input is missing or the run failed, so a breach never hides
 // behind an error (Phase 0b plan, Owner decision 5). All four lines are gated (their breach fails
 // the run): the three limits of the spec and, since T5b, line 1's condition (b) of plan §7, no
-// long task ≥ the limit between the two marks (ADR 0010: 100 ms). TTI, LCP, CLS and TBT follow as
-// informational lines that never decide (plan §7).
+// long task ≥ the limit between the two marks (the limit and its reason: ADR 0013). TTI, LCP, CLS
+// and TBT follow as informational lines that never decide (plan §7). Since #49 the runner makes
+// three Lighthouse runs and `combineRuns` judges each line on the median of their readings
+// (ADR 0013); every reading is kept on the line and printed next to the median.
 import { TITLE_SCREEN_INTERACTIVE_MARK, WORLD_PLAYABLE_MARK } from '../../src/perf/marks.ts'
 
 export type Throttling = {
@@ -21,7 +23,7 @@ export type Limits = {
   titleScreenInteractiveMs: number
   worldPlayableMs: number
   downloadUntilPlayableBytes: number
-  /** The longest task allowed to start between the marks must stay under this (ADR 0010). */
+  /** The longest task allowed to start between the marks must stay under this (ADR 0013). */
   longTaskBetweenMarksMs: number
 }
 
@@ -38,8 +40,10 @@ export type Unit = 'ms' | 'B'
 export type BudgetLine = {
   id: BudgetLineId
   label: string
-  /** null when the run produced no value for this line; the note says why. */
+  /** null when the run produced no value for this line; the note says why. The median over runs. */
   measured: number | null
+  /** Every run's reading, in run order; `measured` is their median (`medianOf`). */
+  readings: (number | null)[]
   limit: number
   unit: Unit
   /** measured ≤ limit, or measured < limit on a strict line. */
@@ -60,7 +64,9 @@ export type InfoUnit = 'ms' | 'score'
 export type InfoLine = {
   id: InfoLineId
   label: string
+  /** The median over runs, like a budget line's. */
   measured: number | null
+  readings: (number | null)[]
   unit: InfoUnit
   note?: string
 }
@@ -222,13 +228,19 @@ function withNote<T extends object>(base: T, m: Measurement): T & { note?: strin
   return m.note === undefined ? base : { ...base, note: m.note }
 }
 
-function line(spec: (typeof LINE_SPECS)[number], limits: Limits, m: Measurement): BudgetLine {
+function line(
+  spec: (typeof LINE_SPECS)[number],
+  limits: Limits,
+  m: Measurement,
+  readings: (number | null)[] = [m.value],
+): BudgetLine {
   const limit = limits[spec.limit]
   return withNote(
     {
       id: spec.id,
       label: spec.label,
       measured: m.value,
+      readings,
       limit,
       unit: spec.unit,
       pass: m.value !== null && (spec.strict ? m.value < limit : m.value <= limit),
@@ -239,8 +251,15 @@ function line(spec: (typeof LINE_SPECS)[number], limits: Limits, m: Measurement)
   )
 }
 
-function infoLine(spec: (typeof INFO_SPECS)[number], m: Measurement): InfoLine {
-  return withNote({ id: spec.id, label: spec.label, measured: m.value, unit: spec.unit }, m)
+function infoLine(
+  spec: (typeof INFO_SPECS)[number],
+  m: Measurement,
+  readings: (number | null)[] = [m.value],
+): InfoLine {
+  return withNote(
+    { id: spec.id, label: spec.label, measured: m.value, readings, unit: spec.unit },
+    m,
+  )
 }
 
 /** The run passes when every gated line passes; an informational line never decides. */
@@ -383,6 +402,52 @@ export function formatDiagnostics(d: Diagnostics): string[] {
   return lines.length === 0 ? ['  no runtimeError, no runWarnings, no audit error reported'] : lines
 }
 
+/**
+ * The median of a line's readings over runs (ADR 0013): a missing reading (a run without a value)
+ * sorts above every number, and an even count takes the upper of the two middle readings, so the
+ * gate never averages two runs into a value no run measured. One reading is its own median; none
+ * has no median. With three runs, one missing or busy run does not decide a line; two do.
+ */
+export function medianOf(readings: readonly (number | null)[]): number | null {
+  const sorted = [...readings].sort((a, b) =>
+    a === null ? (b === null ? 0 : 1) : b === null ? -1 : a - b,
+  )
+  return sorted[Math.floor(sorted.length / 2)] ?? null
+}
+
+/**
+ * The line `id` across the reports: every run's reading in run order and their median; without a
+ * median, the first missing run's note. Budget and informational ids never collide.
+ */
+function acrossRuns(
+  reports: readonly BudgetReport[],
+  id: BudgetLineId | InfoLineId,
+): { measurement: Measurement; readings: (number | null)[] } {
+  const runs = reports.map((r) => [...r.lines, ...r.info].find((l) => l.id === id))
+  const readings = runs.flatMap((l) => (l === undefined ? [null] : l.readings))
+  const value = medianOf(readings)
+  if (value !== null) return { measurement: { value }, readings }
+  const note = runs.find((l) => l?.measured === null && l.note !== undefined)?.note ?? 'no run'
+  return { measurement: { value: null, note }, readings }
+}
+
+/**
+ * One report over several runs (ADR 0013): each budget line and informational reading is the median
+ * of the runs' readings, and a budget line's verdict is decided on that median, with the same strict
+ * or inclusive bound as a single run. A run that produced no result enters as its `failedReport`.
+ */
+export function combineRuns(reports: readonly BudgetReport[], budget: Budget): BudgetReport {
+  const lines = LINE_SPECS.map((spec) => {
+    const { measurement, readings } = acrossRuns(reports, spec.id)
+    return line(spec, budget.limits, measurement, readings)
+  })
+  const info = INFO_SPECS.map((spec) => {
+    const { measurement, readings } = acrossRuns(reports, spec.id)
+    return infoLine(spec, measurement, readings)
+  })
+  return { pass: passes(lines), lines, info }
+}
+
 /** The report for a run that produced no result at all: every line fails with the same note. */
 export function failedReport(budget: Budget, note: string): BudgetReport {
   return {
@@ -392,15 +457,31 @@ export function failedReport(budget: Budget, note: string): BudgetReport {
   }
 }
 
-function amount(value: number, unit: Unit | InfoUnit): string {
+/** A value without its unit: ms rounded, bytes with thousands separators, a score to three places. */
+function figure(value: number, unit: Unit | InfoUnit): string {
   switch (unit) {
     case 'ms':
-      return `${String(Math.round(value))} ms`
+      return String(Math.round(value))
     case 'B':
-      return `${value.toLocaleString('en-US')} B`
+      return value.toLocaleString('en-US')
     case 'score':
       return value.toFixed(3)
   }
+}
+
+function unitSuffix(unit: Unit | InfoUnit): string {
+  return unit === 'score' ? '' : ` ${unit}`
+}
+
+function amount(value: number, unit: Unit | InfoUnit): string {
+  return `${figure(value, unit)}${unitSuffix(unit)}`
+}
+
+/** Every run's reading in run order, n/a for a run without one: `(runs: 268 · 73 · 99 ms)`. */
+function runsOf(l: BudgetLine | InfoLine): string {
+  const figures = l.readings.map((r) => (r === null ? 'n/a' : figure(r, l.unit)))
+  const suffix = l.readings.some((r) => r !== null) ? unitSuffix(l.unit) : ''
+  return `   (runs: ${figures.join(' · ')}${suffix})`
 }
 
 /** pass / FAIL on a gated line; pass / over (or n/a without a value) on an informational one. */
@@ -424,15 +505,16 @@ function noteOf(l: BudgetLine | InfoLine): string {
 }
 
 /**
- * One text line per budget line (label, measured, limit, verdict; always all four), then one per
- * informational reading (label, measured; no limit, no verdict).
+ * One text line per budget line (label, median, limit, verdict, every run's reading; always all
+ * four), then one per informational reading (label, median, every run's reading; no limit, no
+ * verdict).
  */
 export function formatReport(report: BudgetReport): string[] {
   const budgetLines = report.lines.map((l) => {
     const tag = l.gated ? '' : '   informational'
     const bound = l.strict ? '< ' : ''
-    return `${cells(l)}   limit ${bound}${amount(l.limit, l.unit)}   ${verdictOf(l)}${tag}${noteOf(l)}`
+    return `${cells(l)}   limit ${bound}${amount(l.limit, l.unit)}   ${verdictOf(l)}${tag}${noteOf(l)}${runsOf(l)}`
   })
-  const infoLines = report.info.map((l) => `${cells(l)}${noteOf(l)}`)
+  const infoLines = report.info.map((l) => `${cells(l)}${noteOf(l)}${runsOf(l)}`)
   return [...budgetLines, ...infoLines]
 }

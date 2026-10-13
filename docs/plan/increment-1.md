@@ -483,7 +483,7 @@ cases use a context with `javaScriptEnabled: false`; reduced motion uses
 
 | AC | level | test (seam · file · what it proves) | ticket |
 |---|---|---|---|
-| 1.1 | perf + e2e | perf: `title-screen-interactive` ≤ 2000 ms **and** no long task ≥ the `longTaskBetweenMarksMs` limit between that mark and `world-playable` (Lighthouse `long-tasks` audit; threshold from Q1, start value 200 ms, written to `perf/budget.json` in T5b; corrected by T5b, #29: 100 ms, ADR 0010's measured value, §7) · e2e `title-screen.spec`: the six pieces are in the HTML of a no-script context | T4, T5a (mark), T5b (long-task line) |
+| 1.1 | perf + e2e | perf: `title-screen-interactive` ≤ 2000 ms **and** no long task ≥ the `longTaskBetweenMarksMs` limit between that mark and `world-playable` (Lighthouse `long-tasks` audit; threshold from Q1, start value 200 ms, written to `perf/budget.json` in T5b; corrected by T5b, #29: 100 ms, ADR 0010's measured value, §7; corrected by chore/perf-median-and-long-task-limit, #49: 150 ms on the CI runner, judged on the median of three runs, ADR 0013) · e2e `title-screen.spec`: the six pieces are in the HTML of a no-script context | T4, T5a (mark), T5b (long-task line) |
 | 1.2 | e2e | no-script: Fallback link, two Contact links, each list entry navigate | T4 |
 | 1.3 | e2e | Enter, Space, pointer on the way-in → the way-in shows loading or the World container becomes visible | T5b |
 | 2.1 | e2e | `exhibit-panel.spec`: world chunk delayed via route; pick entry → Panel with full content | T6 |
@@ -591,9 +591,13 @@ in increment-1; a later spec decides client metrics).
      (AC-1.1 "without waiting for the World bundle"); condition (b) is what keeps the swap honest.
      The threshold is **100 ms** (Q1's measurement: 53 ms median, 65 ms maximum between the marks
      for the 3.14 MB chunk; ADR 0010); T5b writes it into `perf/budget.json`
-     (`limits.longTaskBetweenMarksMs`) next to the three existing limits. TTI
+     (`limits.longTaskBetweenMarksMs`) next to the three existing limits (corrected by
+     chore/perf-median-and-long-task-limit, #49: 150 ms on the CI runner, judged on the median of
+     three runs; ADR 0013). TTI
      stays **printed as an informational line**, with LCP, CLS and TBT from the same run, so a
-     regression is seen without being gated.
+     regression is seen without being gated (corrected by chore/perf-median-and-long-task-limit,
+     #49: each informational line prints the median of the three runs with all three readings, so
+     two medians may come from different runs; ADR 0013).
   2. **World playable**: mark `world-playable` ≤ 5000 ms, recorded on the first frame after Rapier
      initialised with the key listener attached, while the World sits paused behind the Title Screen
      (§2 entry policy). This is the instrument the spec asked the plan to pick. **Q3, answered
@@ -617,7 +621,9 @@ in increment-1; a later spec decides client metrics).
   `scripts/perf/budget.ts` gains the first line's two conditions, the prefix rule and the
   informational lines (`onlyAudits` adds `long-tasks`, `largest-contentful-paint`,
   `cumulative-layout-shift`, `total-blocking-time`); the evaluator stays pure and unit-tested; the
-  runner's retry-once and print-all behaviour stays.
+  runner's retry-once and print-all behaviour stays (corrected by chore/perf-median-and-long-task-limit,
+  #49: three runs, each line judged on the median of their readings, all three printed, an erroring
+  run retried once on its own; ADR 0013).
 - **Build output**: the `build` job keeps printing gzip sizes per chunk; T0 adds the `tests/build`
   Vitest project; T1, which creates the `world` chunk (`codeSplitting.groups`, ADR 0010), adds its check that the entry
   chunk does not import it (three, R3F, Rapier never leak into the Title Screen path).
