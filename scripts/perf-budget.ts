@@ -1,10 +1,11 @@
 // `make perf`: the CI performance budget (docs/spec/increment-1.md, Non-functional requirements).
 // Serves dist/ (built by the make target), launches headless Chrome with software WebGL so the
 // first frame renders and the world-playable mark exists, runs Lighthouse 13 with devtools
-// throttling from perf/budget.json, and evaluates the three budget lines (scripts/perf/budget.ts).
-// All three numbers are always printed; line 1 (Lighthouse TTI) is informational until T5a, lines
-// 2 and 3 gate. A run that breaches or errors is retried once; the exit status follows the last
-// run (Phase 0b plan, Owner decision 5). A run that fails or lacks a value also prints Lighthouse's
+// throttling from perf/budget.json, and evaluates the three budget lines (scripts/perf/budget.ts):
+// the title-screen-interactive mark, the world-playable mark and the download until that mark, all
+// gated (plan §7; line 1 reads the mark since T5a). All three numbers are always printed, followed by
+// TTI, LCP, CLS and TBT as informational lines. A run that breaches or errors is retried once; the
+// exit status follows the last run (Phase 0b plan, Owner decision 5). A run that fails or lacks a value also prints Lighthouse's
 // runtimeError, runWarnings and audit errors. Each run's Lighthouse result is written to
 // .lighthouse/lhr-<run>.json (a CI artifact).
 //
@@ -20,6 +21,7 @@ import lighthouse from 'lighthouse'
 import { preview, type PreviewServer } from 'vite'
 
 import {
+  AUDIT_IDS,
   diagnose,
   evaluateBudget,
   failedReport,
@@ -61,7 +63,7 @@ async function runLighthouse(budget: Budget): Promise<unknown> {
       {
         extends: 'lighthouse:default',
         settings: {
-          onlyAudits: ['interactive', 'user-timings', 'network-requests'],
+          onlyAudits: [...AUDIT_IDS],
           formFactor: 'desktop',
           screenEmulation: { disabled: true },
           throttlingMethod: 'devtools',
