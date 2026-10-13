@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright'
 import type { Page } from '@playwright/test'
 
 import { TITLE_SCREEN_INTERACTIVE_MARK } from '../../src/perf/marks'
@@ -108,4 +109,39 @@ test('Enter after Escape resumes the World where it was, with no loading (AC-6.2
   await expect(worldContainer(page)).toBeVisible()
   await expect(worldContainer(page)).toBeFocused()
   await expect(page.locator('canvas')).toHaveCount(1)
+})
+
+// AC-12.2: the overlay's Reset control does the same Reset as R and hands focus back to the World
+// container, so the next key goes to the World and not to the control (Space on a focused button
+// would activate it again; here it reaches the key router, which ignores it in the World).
+test.describe('the World overlay', () => {
+  test('the Reset control returns focus to the World container; the next key is the World’s (AC-12.2)', async ({
+    page,
+  }) => {
+    await entered(page)
+    await page.getByRole('button', { name: 'Reset' }).click()
+    await expect(worldContainer(page)).toBeFocused()
+    await page.keyboard.press('Space')
+    await expect(worldContainer(page)).toBeVisible()
+    await expect(worldContainer(page)).toBeFocused()
+    await expect(wayIn(page)).toBeHidden()
+  })
+
+  test('shows a one-line key legend naming the arrows or WASD, R and Esc', async ({ page }) => {
+    await entered(page)
+    const legend = worldContainer(page).locator('.key-legend')
+    await expect(legend).toBeVisible()
+    await expect(legend).toContainText(/arrows/i)
+    await expect(legend).toContainText(/WASD/)
+    await expect(legend).toContainText(/\bR\b/)
+    await expect(legend).toContainText(/Esc/)
+  })
+
+  test('has no WCAG 2.2 AA violations', async ({ page }) => {
+    await entered(page)
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+      .analyze()
+    expect(results.violations).toEqual([])
+  })
 })

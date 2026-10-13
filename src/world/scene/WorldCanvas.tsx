@@ -8,7 +8,15 @@
 // Rapier's wasm and instantiates it in the page.
 import RAPIER from '@dimforge/rapier3d-compat'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react'
 import type { Mesh } from 'three'
 
 import type { WorldFailure } from '../../app/types'
@@ -30,6 +38,9 @@ import { interpolatePuck, renderAlpha } from './interpolate'
 import { IceLine, Solid } from './Solid'
 import './world.css'
 
+/** What the overlay's Reset control reaches (plan §5, corrected by T5b, #29): the same Reset as R. */
+export type WorldHandle = { reset: () => void }
+
 export type WorldCanvasProps = {
   layout: WorldLayout
   paused: boolean
@@ -37,6 +48,7 @@ export type WorldCanvasProps = {
   onEvent: (e: WorldEvent) => void
   onReady: () => void
   onFailure: (f: WorldFailure) => void
+  handle?: RefObject<WorldHandle | null>
 }
 
 // Plan §5: a frame longer than 0.1 s (a tab in the background) counts as 0.1 s, and one frame runs
@@ -78,7 +90,15 @@ export function WorldCanvas(props: WorldCanvasProps) {
   )
 }
 
-function Scene({ layout, paused, reducedMotion, onEvent, onReady, onFailure }: WorldCanvasProps) {
+function Scene({
+  layout,
+  paused,
+  reducedMotion,
+  onEvent,
+  onReady,
+  onFailure,
+  handle,
+}: WorldCanvasProps) {
   const [keys] = useState(createKeyState)
   const model = useRef<WorldModel | null>(null)
   const states = useRef<PuckStates | null>(null)
@@ -120,28 +140,34 @@ function Scene({ layout, paused, reducedMotion, onEvent, onReady, onFailure }: W
     }
   }, [layout, invalidate])
 
+  // Reset (AC-12.1): the model's, then a snap of both render states so nothing is blended, and
+  // the camera at its goal; R and the overlay's control (AC-12.2) both end here.
+  const resetNow = useCallback((): void => {
+    const world = model.current
+    if (world === null) return
+    world.reset()
+    states.current = snapTo(world)
+    pose.current = cameraGoal(world.puck().position)
+    invalidate()
+  }, [invalidate])
+  useImperativeHandle(handle, () => ({ reset: resetNow }), [resetNow])
+
   useEffect(() => {
-    const handle = (type: 'keydown' | 'keyup') => (event: KeyboardEvent) => {
+    const listener = (type: 'keydown' | 'keyup') => (event: KeyboardEvent) => {
       if (!handlesCode(event.code)) return
       // A shortcut (Ctrl+R, Alt+Left, Cmd+A) belongs to the browser; a keyup is always taken so a
       // held direction is released. While paused nothing is forwarded (AC-6.1: the Puck keeps
-      // its state); T5a's key router takes this decision over.
+      // its state): the key router (src/app/keys.ts) owns Enter, Space and Escape then.
       if (type === 'keydown' && (event.ctrlKey || event.metaKey || event.altKey)) return
       if (type === 'keydown' && pausedRef.current) return
       // Steering keys would scroll the page; Enter, Space and Escape keep their default so the
-      // Title Screen's links and controls work once T4 adds them (T5a's key router decides then).
+      // overlay's control and the Title Screen's links work.
       if (isDriveCode(event.code)) event.preventDefault()
       const command = keys.onKey({ code: event.code, type })
-      const world = model.current
-      if (command === 'reset' && world !== null) {
-        world.reset()
-        states.current = snapTo(world) // snap, AC-12.1: both states, so nothing is blended
-        pose.current = cameraGoal(world.puck().position)
-        invalidate()
-      }
+      if (command === 'reset') resetNow()
     }
-    const onKeyDown = handle('keydown')
-    const onKeyUp = handle('keyup')
+    const onKeyDown = listener('keydown')
+    const onKeyUp = listener('keyup')
     const onBlur = () => {
       keys.clear()
     }
@@ -153,7 +179,7 @@ function Scene({ layout, paused, reducedMotion, onEvent, onReady, onFailure }: W
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('blur', onBlur)
     }
-  }, [keys, invalidate])
+  }, [keys, resetNow])
 
   // On resume the accumulator is cleared and the resume frame's long delta is skipped; the render
   // state is the model's (the Puck keeps its state, AC-6.1), not a blend towards it.

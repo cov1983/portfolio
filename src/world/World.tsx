@@ -4,12 +4,13 @@
 // invisible while the Title Screen is shown (`inert` hides it from assistive technology and the
 // tab order; world.css makes it `visibility: hidden`, never `display: none`, so the canvas keeps
 // its size and the paused demand frame that records world-playable still renders).
-import { useCallback, useState, useSyncExternalStore, type RefObject } from 'react'
+import { useCallback, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
 
 import type { WorldFailure } from '../app/types'
 import { PLACEHOLDER_EXHIBIT, worldLayout } from './model/layout'
 import type { WorldEvent } from './model/world'
-import { WorldCanvas } from './scene/WorldCanvas'
+import { WorldOverlay } from '../site/WorldOverlay'
+import { WorldCanvas, type WorldHandle } from './scene/WorldCanvas'
 
 // T7's layoutFromContent builds the layout from the content; until then the one Zone is the placeholder.
 const layout = worldLayout(PLACEHOLDER_EXHIBIT)
@@ -45,6 +46,14 @@ export function World({ paused, hidden, containerRef, onReady, onEvent, onFailur
   // The placeholder of #25: "Goal" while the Puck is in the net, so the re-arm is visible. Every
   // event also reaches the store; T7 opens the Exhibit Panel from there and drops this line.
   const [goalShown, setGoalShown] = useState(false)
+  const handle = useRef<WorldHandle>(null)
+  // The overlay's Reset: the model's Reset through the scene's handle, then focus back to the
+  // container so the steering keys work without clicking into the World (AC-12.2; spec, Focus
+  // handling). Not a state transition, so not focusAfter's (src/app/focus.ts).
+  const onReset = useCallback(() => {
+    handle.current?.reset()
+    containerRef.current?.focus()
+  }, [containerRef])
   const handleEvent = useCallback(
     (event: WorldEvent) => {
       if (event.type === 'goal') setGoalShown(true)
@@ -68,7 +77,9 @@ export function World({ paused, hidden, containerRef, onReady, onEvent, onFailur
         onEvent={handleEvent}
         onReady={onReady}
         onFailure={onFailure}
+        handle={handle}
       />
+      <WorldOverlay onReset={onReset} />
       <p className="world-goal" role="status">
         {goalShown ? 'Goal' : ''}
       </p>
