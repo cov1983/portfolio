@@ -119,8 +119,8 @@ export type Store = {
   subscribe: (listener: () => void) => () => void
 }
 
-export function createStore(initial: AppState = INITIAL_STATE): Store {
-  let state = initial
+export function createStore(): Store {
+  let state = INITIAL_STATE
   const listeners = new Set<() => void>()
   return {
     getState: () => state,

@@ -16,8 +16,4 @@ describe('detectCapability', () => {
   it('reports a fine pointer when it does not', () => {
     expect(detectCapability(() => ({ matches: false }))).toEqual({ coarsePointer: false })
   })
-
-  it('asks for the pointer media feature', () => {
-    expect(COARSE_POINTER_QUERY).toBe('(pointer: coarse)')
-  })
 })

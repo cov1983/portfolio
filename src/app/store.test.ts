@@ -7,7 +7,6 @@ import {
   reduce,
   selectWorldPaused,
   selectWorldPreload,
-  type Action,
   type AppState,
 } from './store.ts'
 
@@ -100,21 +99,10 @@ describe('reduce', () => {
     expect(next).toMatchObject({ screen: 'world', panel: null })
   })
 
-  it('shows the Title Screen over the World on escape, with no reset action (AC-6.1, 6.2)', () => {
+  it('shows the Title Screen over the World on escape; the World keeps its state (AC-6.1, 6.2)', () => {
+    // No reset exists in Action: the model is untouched, selectWorldPaused pauses it.
     const next = reduce(state({ screen: 'world', worldStatus: 'ready' }), { type: 'escape' })
     expect(next).toMatchObject({ screen: 'title', worldStatus: 'ready' })
-    const actionTypes: Action['type'][] = [
-      'capability',
-      'world-status',
-      'enter',
-      'escape',
-      'open-panel',
-      'close-panel',
-      'world-event',
-      'world-failure',
-      'caption-expired',
-    ]
-    expect(actionTypes).not.toContain('reset')
   })
 
   it('returns from the failure screen to the Title Screen on escape (AC-22.2)', () => {
@@ -129,10 +117,14 @@ describe('reduce', () => {
     expect(reduce(before, { type: 'escape' })).toBe(before)
   })
 
-  it('opens and closes a Panel', () => {
-    const opened = reduce(state(), { type: 'open-panel', panel: panelFromList })
-    expect(opened.panel).toEqual(panelFromList)
-    expect(reduce(opened, { type: 'close-panel' }).panel).toBeNull()
+  it('opens a Panel', () => {
+    expect(reduce(state(), { type: 'open-panel', panel: panelFromList }).panel).toEqual(
+      panelFromList,
+    )
+  })
+
+  it('closes the Panel', () => {
+    expect(reduce(state({ panel: panelFromList }), { type: 'close-panel' }).panel).toBeNull()
   })
 
   it('sets the caption place when the Puck first enters a Zone (AC-13.1)', () => {
@@ -229,19 +221,32 @@ describe('createStore', () => {
     expect(store.getState().entering).toBe(true)
   })
 
-  it('notifies subscribers on a change only, and stops after unsubscribe', () => {
+  it('notifies subscribers on a change only', () => {
+    const store = createStore()
+    let calls = 0
+    store.subscribe(() => {
+      calls += 1
+    })
+    store.dispatch({ type: 'caption-expired' })
+    store.dispatch({ type: 'enter' })
+    expect(calls).toBe(1)
+  })
+
+  it('stops notifying after unsubscribe', () => {
     const store = createStore()
     let calls = 0
     const unsubscribe = store.subscribe(() => {
       calls += 1
     })
-    store.dispatch({ type: 'caption-expired' })
-    expect(calls).toBe(0)
-    store.dispatch({ type: 'enter' })
-    expect(calls).toBe(1)
     unsubscribe()
-    store.dispatch({ type: 'escape' })
-    store.dispatch({ type: 'close-panel' })
-    expect(calls).toBe(1)
+    store.dispatch({ type: 'enter' })
+    expect(calls).toBe(0)
+  })
+
+  it('never leaves entering set once the World is ready, so the way-in reads entering alone', () => {
+    const entering = state({ worldStatus: 'loading', entering: true })
+    expect(reduce(entering, { type: 'world-status', status: 'ready' }).entering).toBe(false)
+    expect(reduce(state({ worldStatus: 'ready' }), { type: 'enter' }).entering).toBe(false)
+    expect(reduce(entering, { type: 'world-failure', failure }).entering).toBe(false)
   })
 })

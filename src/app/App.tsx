@@ -43,6 +43,8 @@ export function App({ content, store }: Props) {
     }
   }, [store])
 
+  // `entering` alone is the loading state: the reducer clears it on every path to a ready World
+  // (store.test.ts proves the invariant), so no second condition is needed here.
   return (
     <TitleScreen
       content={content}

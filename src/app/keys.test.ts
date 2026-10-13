@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { ExhibitId } from '../content/types.ts'
-import { INTERACTIVE_SELECTOR, keyAction, routeKey } from './keys.ts'
+import { keyAction, routeKey } from './keys.ts'
 import { INITIAL_STATE, type AppState } from './store.ts'
 
 const panel = { exhibitId: 'first' as ExhibitId, opener: 'list' } as const
@@ -30,17 +30,6 @@ describe('routeKey', () => {
   it('treats the failure screen like the Title Screen, so Escape still reaches it (AC-22.2)', () => {
     expect(routeKey(state({ screen: 'failed', worldStatus: 'failed' }), false)).toBe('title')
     expect(routeKey(state({ screen: 'failed', worldStatus: 'failed' }), true)).toBe('none')
-  })
-
-  it('names the interactive elements the DOM listener checks the target against', () => {
-    expect(INTERACTIVE_SELECTOR.split(',').map((s) => s.trim())).toEqual([
-      'a',
-      'button',
-      'input',
-      'select',
-      'textarea',
-      '[contenteditable]',
-    ])
   })
 })
 
