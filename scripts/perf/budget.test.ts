@@ -87,6 +87,14 @@ function lhr(opts: Readings = {}): unknown {
   }
 }
 
+/** One run whose only long task starts between the marks and lasts `duration` ms. */
+function longTaskRun(duration: number, against: Budget = budget) {
+  return evaluateBudget(
+    lhr({ interactiveAt: 300, markAt: 3000, tasks: [{ startTime: 1000, duration }] }),
+    against,
+  )
+}
+
 function lineById(report: ReturnType<typeof evaluateBudget>, id: BudgetLineId) {
   const found = report.lines.find((l) => l.id === id)
   if (found === undefined) throw new Error(`no line ${id}`)
@@ -522,8 +530,11 @@ describe('medianOf', () => {
     expect(medianOf([268, 73, 99])).toBe(99)
   })
 
-  it('sorts a missing reading above every number', () => {
+  it('sorts a missing reading above every number: one missing run does not decide', () => {
     expect(medianOf([null, 73, 99])).toBe(99)
+  })
+
+  it('has no median when most runs are missing', () => {
     expect(medianOf([null, 73, null])).toBeNull()
   })
 
@@ -534,11 +545,7 @@ describe('medianOf', () => {
 
 describe('combineRuns', () => {
   const lenient: Budget = { ...budget, limits: { ...budget.limits, longTaskBetweenMarksMs: 150 } }
-  const run = (duration: number) =>
-    evaluateBudget(
-      lhr({ interactiveAt: 300, markAt: 3000, tasks: [{ startTime: 1000, duration }] }),
-      lenient,
-    )
+  const run = (duration: number) => longTaskRun(duration, lenient)
   const longTask = (report: ReturnType<typeof combineRuns>) =>
     lineById(report, 'long-task-between-marks')
 
@@ -557,9 +564,14 @@ describe('combineRuns', () => {
   })
 
   it('fails a line whose median breaches', () => {
-    const report = combineRuns([run(268), run(73), run(151)], lenient)
-    expect(longTask(report)).toMatchObject({ measured: 151, pass: false })
-    expect(report.pass).toBe(false)
+    expect(longTask(combineRuns([run(268), run(73), run(151)], lenient))).toMatchObject({
+      measured: 151,
+      pass: false,
+    })
+  })
+
+  it('fails the run when a median breaches', () => {
+    expect(combineRuns([run(268), run(73), run(151)], lenient).pass).toBe(false)
   })
 
   it('counts a run without a result as a missing reading', () => {
@@ -623,9 +635,9 @@ describe('formatReport', () => {
     )
     const none = formatReport({
       ...report,
-      lines: [{ ...first, gated: false, measured: null, pass: false }],
+      lines: [{ ...first, gated: false, measured: null, readings: [null], pass: false }],
     })
-    expect(none[0]).toMatch(/limit 2000 ms\s+n\/a\s+informational\s+\(runs: 2695 ms\)$/)
+    expect(none[0]).toMatch(/limit 2000 ms\s+n\/a\s+informational\s+\(runs: n\/a\)$/)
   })
 
   it('prints n/a and the note for a line without a value', () => {
@@ -636,9 +648,9 @@ describe('formatReport', () => {
   })
 
   it("prints the median, then every run's reading in run order", () => {
-    const run = (duration: number) =>
-      evaluateBudget(lhr({ tasks: [{ startTime: 1000, duration }] }), budget)
-    const [, , , longTask] = formatReport(combineRuns([run(268), run(73), run(99)], budget))
+    const [, , , longTask] = formatReport(
+      combineRuns([longTaskRun(268), longTaskRun(73), longTaskRun(99)], budget),
+    )
     expect(longTask).toMatch(
       /Longest task between marks\s+99 ms\s+limit < 100 ms\s+pass\s+\(runs: 268 · 73 · 99 ms\)$/,
     )

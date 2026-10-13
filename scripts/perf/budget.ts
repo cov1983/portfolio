@@ -4,7 +4,7 @@
 // always reported, also when its input is missing or the run failed, so a breach never hides
 // behind an error (Phase 0b plan, Owner decision 5). All four lines are gated (their breach fails
 // the run): the three limits of the spec and, since T5b, line 1's condition (b) of plan §7, no
-// long task ≥ the limit between the two marks (ADR 0013: 150 ms on the CI runner). TTI, LCP, CLS
+// long task ≥ the limit between the two marks (the limit and its reason: ADR 0013). TTI, LCP, CLS
 // and TBT follow as informational lines that never decide (plan §7). Since #49 the runner makes
 // three Lighthouse runs and `combineRuns` judges each line on the median of their readings
 // (ADR 0013); every reading is kept on the line and printed next to the median.
@@ -415,16 +415,20 @@ export function medianOf(readings: readonly (number | null)[]): number | null {
   return sorted[Math.floor(sorted.length / 2)] ?? null
 }
 
-/** The median measurement of the same line across runs; without a value, the first missing run's note. */
-function medianMeasurement(runs: readonly (BudgetLine | InfoLine | undefined)[]): {
-  m: Measurement
-  readings: (number | null)[]
-} {
+/**
+ * The line `id` across the reports: every run's reading in run order and their median; without a
+ * median, the first missing run's note. Budget and informational ids never collide.
+ */
+function acrossRuns(
+  reports: readonly BudgetReport[],
+  id: BudgetLineId | InfoLineId,
+): { measurement: Measurement; readings: (number | null)[] } {
+  const runs = reports.map((r) => [...r.lines, ...r.info].find((l) => l.id === id))
   const readings = runs.flatMap((l) => (l === undefined ? [null] : l.readings))
   const value = medianOf(readings)
-  if (value !== null) return { m: { value }, readings }
+  if (value !== null) return { measurement: { value }, readings }
   const note = runs.find((l) => l?.measured === null && l.note !== undefined)?.note ?? 'no run'
-  return { m: { value: null, note }, readings }
+  return { measurement: { value: null, note }, readings }
 }
 
 /**
@@ -434,16 +438,12 @@ function medianMeasurement(runs: readonly (BudgetLine | InfoLine | undefined)[])
  */
 export function combineRuns(reports: readonly BudgetReport[], budget: Budget): BudgetReport {
   const lines = LINE_SPECS.map((spec) => {
-    const { m, readings } = medianMeasurement(
-      reports.map((r) => r.lines.find((l) => l.id === spec.id)),
-    )
-    return line(spec, budget.limits, m, readings)
+    const { measurement, readings } = acrossRuns(reports, spec.id)
+    return line(spec, budget.limits, measurement, readings)
   })
   const info = INFO_SPECS.map((spec) => {
-    const { m, readings } = medianMeasurement(
-      reports.map((r) => r.info.find((l) => l.id === spec.id)),
-    )
-    return infoLine(spec, m, readings)
+    const { measurement, readings } = acrossRuns(reports, spec.id)
+    return infoLine(spec, measurement, readings)
   })
   return { pass: passes(lines), lines, info }
 }
