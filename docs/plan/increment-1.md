@@ -617,7 +617,9 @@ in increment-1; a later spec decides client metrics).
   `scripts/perf/budget.ts` gains the first line's two conditions, the prefix rule and the
   informational lines (`onlyAudits` adds `long-tasks`, `largest-contentful-paint`,
   `cumulative-layout-shift`, `total-blocking-time`); the evaluator stays pure and unit-tested; the
-  runner's retry-once and print-all behaviour stays.
+  runner's retry-once and print-all behaviour stays (corrected by chore/perf-median-and-long-task-limit,
+  #49: three runs, each line judged on the median of their readings, all three printed, an erroring
+  run retried once on its own; ADR 0013).
 - **Build output**: the `build` job keeps printing gzip sizes per chunk; T0 adds the `tests/build`
   Vitest project; T1, which creates the `world` chunk (`codeSplitting.groups`, ADR 0010), adds its check that the entry
   chunk does not import it (three, R3F, Rapier never leak into the Title Screen path).

@@ -3,11 +3,17 @@
 // first frame renders and the world-playable mark exists, runs Lighthouse 13 with devtools
 // throttling from perf/budget.json, and evaluates the four budget lines (scripts/perf/budget.ts):
 // the title-screen-interactive mark, the world-playable mark, the download until that mark and the
-// longest task between the marks (line 1's condition (b), plan §7), all gated. All four numbers are
-// always printed, followed by TTI, LCP, CLS and TBT as informational lines. A run that breaches or errors is retried once; the
-// exit status follows the last run (Phase 0b plan, Owner decision 5). A run that fails or lacks a value also prints Lighthouse's
-// runtimeError, runWarnings and audit errors. Each run's Lighthouse result is written to
-// .lighthouse/lhr-<run>.json (a CI artifact).
+// longest task between the marks (line 1's condition (b), plan §7), all gated.
+//
+// Three runs, judged on the median (ADR 0013, #49): the shared CI runner varies 3–4× between runs,
+// so one pass cannot tell a slow chunk from a busy runner. Each of the three Lighthouse runs is
+// evaluated on its own; every line, the informational TTI, LCP, CLS and TBT included, is then the
+// median of the three readings (`combineRuns`), printed with all three readings, and the exit status
+// follows the gated lines' medians. A run that errors (an exception, or a Lighthouse runtimeError
+// such as NO_NAVSTART) is retried once on its own and counts once; a breach is never retried. A run
+// that errors or lacks a value prints Lighthouse's runtimeError, runWarnings and audit errors (#41).
+// Each Lighthouse result is written to .lighthouse/lhr-<run>.json, a retry's to
+// .lighthouse/lhr-<run>-retry.json (a CI artifact).
 //
 // Chrome: chrome-launcher finds an installed Chrome or Chromium; where there is none (the
 // devcontainer), point CHROME_PATH at one, e.g. the Chromium that `make browsers` installs.
@@ -22,6 +28,7 @@ import { preview, type PreviewServer } from 'vite'
 
 import {
   AUDIT_IDS,
+  combineRuns,
   diagnose,
   evaluateBudget,
   failedReport,
@@ -39,7 +46,7 @@ const PORT = 4173
 // A plain navigation to `/`: the World preloads behind the Title Screen and records world-playable
 // there (plan §2, §7 line 2), so every line is measured as a Visitor would see it.
 const URL_UNDER_TEST = `http://localhost:${String(PORT)}/`
-const RUNS = 2
+const RUNS = 3
 const CHROME_FLAGS = [
   '--headless=new',
   '--use-gl=angle',
@@ -78,30 +85,51 @@ async function runLighthouse(budget: Budget): Promise<unknown> {
   }
 }
 
-async function attempt(run: number, budget: Budget): Promise<BudgetReport> {
-  let report: BudgetReport
+/** What one Lighthouse navigation produced: its report, what it said about itself, whether it errored. */
+type Outcome = { report: BudgetReport; diagnostics: Diagnostics; errored: boolean }
+
+/** One Lighthouse navigation, evaluated; an error becomes a failed report, never a throw. */
+async function measure(budget: Budget, file: string): Promise<Outcome> {
   let diagnostics: Diagnostics = diagnose(undefined)
   try {
     const lhr = await runLighthouse(budget)
-    await writeFile(`${OUT_DIR}/lhr-${String(run)}.json`, JSON.stringify(lhr))
+    await writeFile(`${OUT_DIR}/${file}`, JSON.stringify(lhr))
     diagnostics = diagnose(lhr)
     if (diagnostics.runtimeError !== null) {
       throw new Error(`Lighthouse runtime error: ${diagnostics.runtimeError}`)
     }
-    report = evaluateBudget(lhr, budget)
+    return { report: evaluateBudget(lhr, budget), diagnostics, errored: false }
   } catch (error) {
-    console.error(error) // the stack, for the log; the lines below carry the message
-    report = failedReport(budget, `error: ${messageOf(error)}`)
+    console.error(error) // the stack, for the log; the report's notes carry the message
+    return {
+      report: failedReport(budget, `error: ${messageOf(error)}`),
+      diagnostics,
+      errored: true,
+    }
   }
-  printReport(
-    `perf budget, run ${String(run)} of ${String(RUNS)}: ${report.pass ? 'pass' : 'FAIL'}`,
-    report,
-  )
+}
+
+function printDiagnostics(diagnostics: Diagnostics): void {
+  for (const line of formatDiagnostics(diagnostics)) console.log(line)
+}
+
+/** Run `run` of RUNS: retried once on its own when it errors, then it counts once, as it came out. */
+async function measureRun(run: number, budget: Budget): Promise<BudgetReport> {
+  const heading = `perf budget, run ${String(run)} of ${String(RUNS)}`
+  let outcome = await measure(budget, `lhr-${String(run)}.json`)
+  let label = heading
+  if (outcome.errored) {
+    console.log(`${heading}: error, retrying once`)
+    printDiagnostics(outcome.diagnostics)
+    outcome = await measure(budget, `lhr-${String(run)}-retry.json`)
+    label = `${heading} (retry)`
+  }
+  console.log(`${label}: ${outcome.errored ? 'error' : 'done'}`)
   // A failed or incomplete run says why: without this, run 2 on #41 left only "audit missing".
-  if (!report.pass || report.lines.some((l) => l.measured === null)) {
-    for (const line of formatDiagnostics(diagnostics)) console.log(line)
+  if (outcome.errored || outcome.report.lines.some((l) => l.measured === null)) {
+    printDiagnostics(outcome.diagnostics)
   }
-  return report
+  return outcome.report
 }
 
 function printReport(heading: string, report: BudgetReport): void {
@@ -123,11 +151,13 @@ async function main(): Promise<number> {
     return 1
   }
   try {
-    let report = await attempt(1, budget)
-    if (!report.pass) {
-      console.log('retrying once')
-      report = await attempt(2, budget)
-    }
+    const reports: BudgetReport[] = []
+    for (let run = 1; run <= RUNS; run++) reports.push(await measureRun(run, budget))
+    const report = combineRuns(reports, budget)
+    printReport(
+      `perf budget, median of ${String(RUNS)} runs: ${report.pass ? 'pass' : 'FAIL'}`,
+      report,
+    )
     return report.pass ? 0 : 1
   } finally {
     await server.close()

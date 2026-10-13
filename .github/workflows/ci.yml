@@ -133,7 +133,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
 
-      - name: Lighthouse budget against the production build (perf/budget.json; retries once, prints all three lines)
+      - name: Lighthouse budget against the production build (perf/budget.json; median of three runs, prints all four lines)
         run: make perf
 
       - uses: ./.github/actions/clean-worktree
