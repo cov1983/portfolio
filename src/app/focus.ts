@@ -3,7 +3,7 @@
 // since T5b; the Panel's targets arrive with T6). "Overlay control activated → the World" is not
 // a state transition (Reset is the model's, never the store's), so the overlay's handler returns
 // focus itself (src/world/World.tsx, AC-12.2). Escape to the Title Screen moves focus nowhere:
-// the spec names no target (T5b's PR body says so).
+// the spec names no target (plan §5, corrected by T5b).
 import type { ExhibitId } from '../content/types.ts'
 import type { AppState } from './store.ts'
 

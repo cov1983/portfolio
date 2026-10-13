@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { createWorldLoader, idleScheduler, shouldLoadOnEntry, type LoadReport } from './preload.ts'
+import {
+  createWorldLoader,
+  idleScheduler,
+  shouldLoadOnEntry,
+  shouldPreload,
+  type LoadReport,
+} from './preload.ts'
 import { INITIAL_STATE, type AppState } from './store.ts'
 
 type Module = { World: string }
@@ -97,43 +103,79 @@ describe('createWorldLoader', () => {
 })
 
 describe('idleScheduler', () => {
-  it('uses requestIdleCallback where the host has one', () => {
+  function idleHost() {
     const scheduled: (() => void)[] = []
     const cancelled: number[] = []
-    const schedule = idleScheduler({
-      requestIdleCallback: (callback) => scheduled.push(callback),
-      cancelIdleCallback: (handle) => cancelled.push(handle),
+    const host = {
+      requestIdleCallback: (callback: () => void) => scheduled.push(callback),
+      cancelIdleCallback: (handle: number) => cancelled.push(handle),
       setTimeout: () => {
         throw new Error('setTimeout must not be used when requestIdleCallback exists')
       },
       clearTimeout: () => undefined,
-    })
+    }
+    return { host, scheduled, cancelled }
+  }
+
+  function timeoutHost() {
+    const timeouts: { callback: () => void; delay: number }[] = []
+    const cleared: number[] = []
+    const host = {
+      setTimeout: (callback: () => void, delay: number) => timeouts.push({ callback, delay }),
+      clearTimeout: (handle: number) => cleared.push(handle),
+    }
+    return { host, timeouts, cleared }
+  }
+
+  it('runs the callback through requestIdleCallback where the host has one', () => {
+    const { host, scheduled } = idleHost()
     let ran = 0
-    const cancel = schedule(() => {
+    idleScheduler(host)(() => {
       ran += 1
     })
     scheduled[0]?.()
     expect(ran).toBe(1)
-    cancel()
+  })
+
+  it('cancels an idle callback through cancelIdleCallback', () => {
+    const { host, cancelled } = idleHost()
+    idleScheduler(host)(() => undefined)()
     expect(cancelled).toEqual([1])
   })
 
   it('falls back to a zero-delay timeout where the host has no requestIdleCallback (WebKit)', () => {
-    const timeouts: { callback: () => void; delay: number }[] = []
-    const cleared: number[] = []
-    const schedule = idleScheduler({
-      setTimeout: (callback, delay) => timeouts.push({ callback, delay }),
-      clearTimeout: (handle) => cleared.push(handle),
-    })
+    const { host, timeouts } = timeoutHost()
     let ran = 0
-    const cancel = schedule(() => {
+    idleScheduler(host)(() => {
       ran += 1
     })
     expect(timeouts[0]?.delay).toBe(0)
     timeouts[0]?.callback()
     expect(ran).toBe(1)
-    cancel()
+  })
+
+  it('cancels the fallback timeout', () => {
+    const { host, cleared } = timeoutHost()
+    idleScheduler(host)(() => undefined)()
     expect(cleared).toEqual([1])
+  })
+})
+
+describe('shouldPreload', () => {
+  it('preloads on a fine pointer while nothing has been imported', () => {
+    expect(shouldPreload(state({ capability: { coarsePointer: false } }))).toBe(true)
+  })
+
+  it('does not preload before the capability is known or on a coarse pointer', () => {
+    expect(shouldPreload(state())).toBe(false)
+    expect(shouldPreload(state({ capability: { coarsePointer: true } }))).toBe(false)
+  })
+
+  it('does not preload twice: an import under way, done or failed is left alone', () => {
+    const fine = { coarsePointer: false }
+    expect(shouldPreload(state({ capability: fine, worldStatus: 'loading' }))).toBe(false)
+    expect(shouldPreload(state({ capability: fine, worldStatus: 'ready' }))).toBe(false)
+    expect(shouldPreload(state({ capability: fine, worldStatus: 'failed' }))).toBe(false)
   })
 })
 

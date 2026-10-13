@@ -3,7 +3,7 @@
 // coarse pointer was detected (selectWorldPreload, store.ts), and on entry when nothing imported
 // it before. Pure: the import function and the host's scheduling functions are injected, so the
 // policy is unit-tested without a DOM; src/app/App.tsx wires it to `import()` and `window`.
-import type { AppState } from './store.ts'
+import { selectWorldPreload, type AppState } from './store.ts'
 import type { WorldFailure } from './types.ts'
 
 /** What the loader tells the app: the store's world-status and the failure action (its UI is T8b's). */
@@ -70,6 +70,11 @@ export function idleScheduler(host: IdleHost): (callback: () => void) => () => v
       host.clearTimeout.call(host, handle)
     }
   }
+}
+
+/** The policy says preload and nothing imported yet: schedule the import for an idle moment. */
+export function shouldPreload(state: AppState): boolean {
+  return selectWorldPreload(state) && state.worldStatus === 'idle'
 }
 
 /** The Visitor entered before any import started: load now (no preload on a coarse pointer). */

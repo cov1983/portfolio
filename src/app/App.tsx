@@ -7,8 +7,14 @@ import type { World as WorldComponent } from '../world/World'
 import { detectCapability } from './capability.ts'
 import { focusAfter } from './focus.ts'
 import { INTERACTIVE_SELECTOR, keyAction, routeKey } from './keys.ts'
-import { createWorldLoader, idleScheduler, shouldLoadOnEntry, type WorldLoader } from './preload.ts'
-import { selectWorldPaused, selectWorldPreload, type Store } from './store.ts'
+import {
+  createWorldLoader,
+  idleScheduler,
+  shouldLoadOnEntry,
+  shouldPreload,
+  type WorldLoader,
+} from './preload.ts'
+import { selectWorldPaused, type Store } from './store.ts'
 import type { WorldFailure } from './types.ts'
 
 // The hydrated root (plan §2, module app; ADR 0010): the one tree both src/entry-prerender.tsx
@@ -96,7 +102,7 @@ export function App({ content, store }: Props) {
   // The preload: the world chunk in an idle callback after the mark, unless a coarse pointer was
   // detected (spec, Architecture). Cancelled on cleanup, so nothing is scheduled twice; the
   // loader imports once anyway. Declared after the mount effect, so the loader exists.
-  const preload = selectWorldPreload(state) && state.worldStatus === 'idle'
+  const preload = shouldPreload(state)
   useEffect(() => {
     if (!preload) return
     return idleScheduler(window)(() => {
