@@ -5,7 +5,7 @@ Thomas's personal website: an immersive, interactive 3D portfolio in which visit
 puck through a playful virtual world to discover his projects and background. Physics, hockey-inspired
 challenges and light storytelling make exploring the portfolio an experience that itself demonstrates
 his development skills. Status: **Phase 3, increment-1 in progress** (plan `docs/plan/increment-1.md`;
-T5a #28 hydrates the pre-rendered `/` (store, key router, the mark gates perf line 1); the World stays behind `/?world` until T5b).
+T5b #29 mounts the World paused behind the hydrated `/` and wires the way in and out; the perf gate reads four lines at `/`).
 The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the model owns Rapier, the scene mirrors it.
 
 ## Environment
@@ -13,8 +13,8 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
 - Site: Vercel through its Git integration (ADR 0006). `vercel.json` is the only hosting config:
   a preview per PR, production from `main`, held by Deployment Checks until the CI gates pass.
   Dashboard settings (project, checks, domain, ruleset, secret) are stages of the setup wizard.
-- World guard (plan §9 risk 10): until T5b the World is reachable only at /?world; the perf run, the e2e canary
-  and the Owner's checks use that URL, the live root is the pre-rendered, hydrated Title Screen (T4, T5a).
+- The World at `/` (T5b, plan §2): preloaded after the hydration mark, mounted paused behind the Title Screen through
+  the store; the perf run, the e2e canary and the Owner's checks all use `/` (the `?world` guard of plan §9 risk 10 is gone).
 - Team: solo. No required human approvals; the independent reviewer is the `ai-review` CI job
   (posts once the setup wizard stores `ANTHROPIC_API_KEY`; skipped with a notice before). The owner merges.
 - `main` is protected by a ruleset: PR required, no force-push, no deletion. Required status checks:
@@ -58,14 +58,14 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
 - `.github/`                CI (`workflows/ci.yml`), weekly audit (`workflows/audit.yml`), composite setup action (`actions/setup/`), PR template, CODEOWNERS
 - `scripts/`                `perf-budget.ts` (+ `perf/budget.ts`, the pure evaluator and its test), `spec-freeze.sh` (+ its test) and
                             `setup-wizard.sh` (the Owner's dashboard steps; never run by an agent); TypeScript runs under plain Node 24
-- `perf/budget.json`        the performance budget: throttling profile and the three limits; nowhere else
+- `perf/budget.json`        the performance budget: throttling profile, the three limits and the long-task bound; nowhere else
 - `renovate.json`           Renovate: grouped patch automerge, majors behind the Dependency Dashboard (ADR 0007)
 - `.devcontainer/`          Dockerfile + devcontainer.json: the reference toolchain
-- `src/`                    application code: `main.tsx` (hydrates `/`; the `?world` guard, plan §9 risk 10), `entry-prerender.tsx`
+- `src/`                    application code: `main.tsx` (hydrates `/`), `entry-prerender.tsx`
                             (both documents as strings for `build/build.ts`), `site/` (the HTML surfaces: TitleScreen, FallbackPage,
-                            Exhibit, Picture, Contact, Meta, `site.css`; no three, Rapier or World model), `world/` (`model/`: layout, Rapier
+                            Exhibit, Picture, Contact, Meta, WorldOverlay, `site.css`; no three, Rapier or World model), `world/` (`model/`: layout, Rapier
                             model, pure camera; `input/`: keys by physical code; `scene/`: the R3F mirror; `World.tsx`), `perf/` (the marks),
-                            `content/` (ADR 0011: schema, types, `loadContent`, variant planner, `mailto.ts`), `app/` (plan §5: store, keys, focus, capability; `App.tsx` the hydrated root)
+                            `content/` (ADR 0011: schema, types, `loadContent`, variant planner, `mailto.ts`), `app/` (plan §5: store, keys, focus, capability, preload; `App.tsx` the hydrated root)
 - `build/`                  the build's I/O (plan §2, ADR 0010): `build.ts` (`make build`: client build, SSR build, both documents),
                             `prerender.ts` (pure: routes, shell fill, preview `cleanUrl`, `siteOrigin`), `content-plugin.ts` (validates
                             `content/`, serves `virtual:content`, emits `dist/media/`, dev media; `CONTENT_DIR`), `images.ts` (sharp)
