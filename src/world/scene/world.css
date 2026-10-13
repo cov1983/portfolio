@@ -1,8 +1,25 @@
-/* The World fills the viewport; classes only, never a style attribute (ADR 0012). */
-.world {
+/* The World's container fills the viewport (src/world/World.tsx); the canvas fills the container.
+   Classes only, never a style attribute (ADR 0012). */
+.world-container {
   position: fixed;
   inset: 0;
+}
+
+.world {
+  position: absolute;
+  inset: 0;
   background: #0b1a2a;
+}
+
+/* Hidden behind the Title Screen: invisible but laid out, so the canvas keeps its size and the
+   paused demand frame renders; `inert` already removes it from focus and assistive technology. */
+.world-container[inert] {
+  visibility: hidden;
+}
+
+/* The container takes focus on entry (plan §5) so the keys have a home; it is not a control. */
+.world-container:focus {
+  outline: none;
 }
 
 /* The placeholder Goal line of T2 (removed by T7's Exhibit Panel): over the canvas, never in its way. */

@@ -36,9 +36,9 @@ import {
 const BUDGET_FILE = 'perf/budget.json'
 const OUT_DIR = '.lighthouse'
 const PORT = 4173
-// `/?world` until T5b: the World ships behind that query on the root while production shows the
-// placeholder (plan §9 risk 10); T5b removes the guard and returns this run to `/`.
-const URL_UNDER_TEST = `http://localhost:${String(PORT)}/?world`
+// A plain navigation to `/`: the World preloads behind the Title Screen and records world-playable
+// there (plan §2, §7 line 2), so every line is measured as a Visitor would see it.
+const URL_UNDER_TEST = `http://localhost:${String(PORT)}/`
 const RUNS = 2
 const CHROME_FLAGS = [
   '--headless=new',
