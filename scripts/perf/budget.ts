@@ -2,8 +2,10 @@
 // requirements) against a Lighthouse result. No I/O: the runner (scripts/perf-budget.ts) reads the
 // budget file and runs Lighthouse, then prints what comes back from here. Every budget line is
 // always reported, also when its input is missing or the run failed, so a breach never hides
-// behind an error (Phase 0b plan, Owner decision 5). All three lines are gated (their breach fails
-// the run); TTI, LCP, CLS and TBT follow as informational lines that never decide (plan §7).
+// behind an error (Phase 0b plan, Owner decision 5). All four lines are gated (their breach fails
+// the run): the three limits of the spec and, since T5b, line 1's condition (b) of plan §7, no
+// long task ≥ the limit between the two marks (ADR 0010: 100 ms). TTI, LCP, CLS and TBT follow as
+// informational lines that never decide (plan §7).
 import { TITLE_SCREEN_INTERACTIVE_MARK, WORLD_PLAYABLE_MARK } from '../../src/perf/marks.ts'
 
 export type Throttling = {
@@ -19,11 +21,17 @@ export type Limits = {
   titleScreenInteractiveMs: number
   worldPlayableMs: number
   downloadUntilPlayableBytes: number
+  /** The longest task allowed to start between the marks must stay under this (ADR 0010). */
+  longTaskBetweenMarksMs: number
 }
 
 export type Budget = { throttling: Throttling; limits: Limits }
 
-export type BudgetLineId = 'title-screen-interactive' | 'world-playable' | 'download-until-playable'
+export type BudgetLineId =
+  | 'title-screen-interactive'
+  | 'world-playable'
+  | 'download-until-playable'
+  | 'long-task-between-marks'
 
 export type Unit = 'ms' | 'B'
 
@@ -34,10 +42,12 @@ export type BudgetLine = {
   measured: number | null
   limit: number
   unit: Unit
-  /** measured ≤ limit. */
+  /** measured ≤ limit, or measured < limit on a strict line. */
   pass: boolean
   /** A gated line's breach fails the run; every line is gated since T5a (plan §7). */
   gated: boolean
+  /** The limit is a bound the value must stay under ("no long task ≥ the limit"), printed as `< limit`. */
+  strict: boolean
   note?: string
 }
 
@@ -73,10 +83,12 @@ export class BudgetFileError extends Error {
 }
 
 /**
- * The three lines of the budget, in report order; the limit names the key in perf/budget.json.
+ * The four lines of the budget, in report order; the limit names the key in perf/budget.json.
  * Line 1 reads the `title-screen-interactive` mark (recorded after hydrateRoot committed and the
- * handlers exist) since T5a: Lighthouse's TTI, the Phase 0b provisional instrument, counts the
- * World chunk's evaluation at `/?world` (plan §7) and stays printed below as information.
+ * handlers exist) since T5a: Lighthouse's TTI, the Phase 0b provisional instrument, would count
+ * the World chunk's evaluation (plan §7) and stays printed below as information. The fourth line
+ * is line 1's condition (b): the chunk evaluates after the mark, so the main thread must stay
+ * usable meanwhile.
  */
 const LINE_SPECS: readonly {
   id: BudgetLineId
@@ -84,6 +96,7 @@ const LINE_SPECS: readonly {
   unit: Unit
   limit: keyof Limits
   gated: boolean
+  strict: boolean
 }[] = [
   {
     id: 'title-screen-interactive',
@@ -91,6 +104,7 @@ const LINE_SPECS: readonly {
     unit: 'ms',
     limit: 'titleScreenInteractiveMs',
     gated: true,
+    strict: false,
   },
   {
     id: 'world-playable',
@@ -98,6 +112,7 @@ const LINE_SPECS: readonly {
     unit: 'ms',
     limit: 'worldPlayableMs',
     gated: true,
+    strict: false,
   },
   {
     id: 'download-until-playable',
@@ -105,6 +120,15 @@ const LINE_SPECS: readonly {
     unit: 'B',
     limit: 'downloadUntilPlayableBytes',
     gated: true,
+    strict: false,
+  },
+  {
+    id: 'long-task-between-marks',
+    label: 'Longest task between marks',
+    unit: 'ms',
+    limit: 'longTaskBetweenMarksMs',
+    gated: true,
+    strict: true,
   },
 ]
 
@@ -116,6 +140,7 @@ export const AUDIT_IDS = [
   'largest-contentful-paint',
   'cumulative-layout-shift',
   'total-blocking-time',
+  'long-tasks',
 ] as const
 
 type AuditId = (typeof AUDIT_IDS)[number]
@@ -140,6 +165,7 @@ const LIMIT_KEYS = [
   'titleScreenInteractiveMs',
   'worldPlayableMs',
   'downloadUntilPlayableBytes',
+  'longTaskBetweenMarksMs',
 ] as const
 
 /**
@@ -205,8 +231,9 @@ function line(spec: (typeof LINE_SPECS)[number], limits: Limits, m: Measurement)
       measured: m.value,
       limit,
       unit: spec.unit,
-      pass: m.value !== null && m.value <= limit,
+      pass: m.value !== null && (spec.strict ? m.value < limit : m.value <= limit),
       gated: spec.gated,
+      strict: spec.strict,
     },
     m,
   )
@@ -280,13 +307,37 @@ function downloadUntilPlayable(lhr: unknown, mark: Measurement): Measurement {
   return { value: bytes }
 }
 
-/** Evaluates the three budget lines and the informational readings against a Lighthouse result (`lhr`, taken as untrusted). */
+/**
+ * The longest main-thread task that starts between the two marks, in ms, 0 when none. Lighthouse's
+ * `long-tasks` audit lists top-level tasks of 50 ms or more, the 20 longest, with `startTime` and
+ * `duration` in ms from the same time origin as the marks (read in its source on #29); a task
+ * between the marks could only hide behind twenty longer ones elsewhere, which TBT would show.
+ */
+function longestTaskBetween(lhr: unknown, from: Measurement, to: Measurement): Measurement {
+  if (from.value === null) return { value: null, note: 'needs the title-screen-interactive mark' }
+  if (to.value === null) return { value: null, note: 'needs the world-playable mark' }
+  const items = itemsOf(auditOf(lhr, 'long-tasks'))
+  if (items === undefined) return { value: null, note: 'audit "long-tasks" is missing' }
+  let longest = 0
+  for (const item of items) {
+    if (!isRecord(item)) continue
+    const { startTime, duration } = item
+    if (typeof startTime !== 'number' || typeof duration !== 'number') continue
+    if (startTime < from.value || startTime > to.value) continue
+    longest = Math.max(longest, duration)
+  }
+  return { value: longest }
+}
+
+/** Evaluates the four budget lines and the informational readings against a Lighthouse result (`lhr`, taken as untrusted). */
 export function evaluateBudget(lhr: unknown, budget: Budget): BudgetReport {
+  const interactive = markStart(lhr, TITLE_SCREEN_INTERACTIVE_MARK)
   const playable = markStart(lhr, WORLD_PLAYABLE_MARK)
   const measurements: Record<BudgetLineId, Measurement> = {
-    'title-screen-interactive': markStart(lhr, TITLE_SCREEN_INTERACTIVE_MARK),
+    'title-screen-interactive': interactive,
     'world-playable': playable,
     'download-until-playable': downloadUntilPlayable(lhr, playable),
+    'long-task-between-marks': longestTaskBetween(lhr, interactive, playable),
   }
   const lines = LINE_SPECS.map((spec) => line(spec, budget.limits, measurements[spec.id]))
   const info = INFO_SPECS.map((spec) => infoLine(spec, numericValue(lhr, spec.audit)))
@@ -373,13 +424,14 @@ function noteOf(l: BudgetLine | InfoLine): string {
 }
 
 /**
- * One text line per budget line (label, measured, limit, verdict; always all three), then one per
+ * One text line per budget line (label, measured, limit, verdict; always all four), then one per
  * informational reading (label, measured; no limit, no verdict).
  */
 export function formatReport(report: BudgetReport): string[] {
   const budgetLines = report.lines.map((l) => {
     const tag = l.gated ? '' : '   informational'
-    return `${cells(l)}   limit ${amount(l.limit, l.unit)}   ${verdictOf(l)}${tag}${noteOf(l)}`
+    const bound = l.strict ? '< ' : ''
+    return `${cells(l)}   limit ${bound}${amount(l.limit, l.unit)}   ${verdictOf(l)}${tag}${noteOf(l)}`
   })
   const infoLines = report.info.map((l) => `${cells(l)}${noteOf(l)}`)
   return [...budgetLines, ...infoLines]
