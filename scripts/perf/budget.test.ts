@@ -48,8 +48,8 @@ type Readings = {
   lcp?: number
   cls?: number
   tbt?: number
-  /** The long-tasks audit's items; `null` leaves the audit out. */
-  tasks?: Task[] | null
+  /** The long-tasks audit's items, taken as untrusted; `null` leaves the audit out. */
+  tasks?: unknown[] | null
 }
 
 /** A Lighthouse result reduced to the audits the budget reads. */
@@ -390,7 +390,7 @@ describe('evaluateBudget', () => {
           lhr({
             interactiveAt: 300,
             markAt: 3000,
-            tasks: [{ startTime: 1000, duration: 55 }, { startTime: 1200 } as Task],
+            tasks: [{ startTime: 1000, duration: 55 }, { startTime: 1200 }],
           }),
           budget,
         ),
