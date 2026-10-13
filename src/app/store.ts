@@ -56,9 +56,18 @@ export function reduce(state: AppState, action: Action): AppState {
     case 'capability':
       return { ...state, capability: action.capability }
     case 'world-status':
-      if (action.status === 'ready' && state.entering) {
-        // Entry started while loading: the switch happens on readiness, no second press (AC-4.2).
-        return { ...state, worldStatus: 'ready', entering: false, screen: 'world' }
+      if (action.status === 'ready') {
+        // Readiness happens once per page load, so it is the Hub caption's once-per-place trigger
+        // (AC-5.1, 18.1) the way the model's single zone-entered is the Zone's: the reducer keeps
+        // no history. T8a renders the caption and times it from when the World is shown. Entry
+        // started while loading switches here, no second press (AC-4.2).
+        return {
+          ...state,
+          worldStatus: 'ready',
+          entering: false,
+          screen: state.entering ? 'world' : state.screen,
+          caption: { place: 'hub' },
+        }
       }
       return action.status === state.worldStatus ? state : { ...state, worldStatus: action.status }
     case 'enter':
