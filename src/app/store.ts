@@ -111,11 +111,12 @@ export const selectWorldPaused = (s: AppState): boolean => s.screen !== 'world' 
 export const selectWorldPreload = (s: AppState): boolean =>
   s.capability !== null && !s.capability.coarsePointer
 
+// Function-typed properties, not methods: useSyncExternalStore takes them unbound.
 export type Store = {
-  getState(): AppState
-  dispatch(action: Action): void
+  getState: () => AppState
+  dispatch: (action: Action) => void
   /** Called after every change; returns the unsubscribe function (the useSyncExternalStore contract). */
-  subscribe(listener: () => void): () => void
+  subscribe: (listener: () => void) => () => void
 }
 
 export function createStore(initial: AppState = INITIAL_STATE): Store {

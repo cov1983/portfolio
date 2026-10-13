@@ -73,13 +73,11 @@ describe('the built chunks', () => {
     expect(reached).toEqual([])
   })
 
-  // Owner on #27 Q4: the dev-only client render of the Title Screen imports the content inside a
-  // branch the production build drops; T5a's hydration is what brings the content JSON in.
-  it('keeps the content JSON out of the entry chunk and its static imports', async () => {
+  // Owner on #27 Q4 ended with T5a: hydration renders from virtual:content, so the content JSON
+  // travels in the entry chunk's static closure and the Title Screen hydrates without a request.
+  it('carries the content JSON in the entry chunk or its static imports', async () => {
     const closure = await staticImportClosure(entryFile)
-    for (const [file, source] of closure) {
-      expect(source, file).not.toContain(CONTENT_MARKER)
-    }
+    expect([...closure.values()].some((source) => source.includes(CONTENT_MARKER))).toBe(true)
   })
 
   it('keeps three and Rapier out of the entry chunk and its static imports', async () => {

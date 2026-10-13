@@ -36,3 +36,13 @@ export function styleAttributes(html: string): string[] {
 export function nonceAttributes(html: string): string[] {
   return rawTags(html, (tag) => NONCE_ATTRIBUTE.test(tag.attributes))
 }
+
+const ROOT_OPEN = '<div id="root">'
+
+/** What `#root` holds: the pre-rendered markup `hydrateRoot` adopts. Vite moves the module script into `<head>`, so the root's `</div>` is the document's last. */
+export function rootMarkup(html: string): string {
+  const start = html.indexOf(ROOT_OPEN)
+  const end = html.lastIndexOf('</div>')
+  if (start === -1 || end < start) throw new Error('the document has no #root element')
+  return html.slice(start + ROOT_OPEN.length, end)
+}

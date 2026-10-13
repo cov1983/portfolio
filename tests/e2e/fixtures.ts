@@ -84,4 +84,15 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
   },
 })
 
+/** Waits until the fixture recorded a problem of `kind` mentioning `detail`, then consumes that entry alone. */
+export async function expectRecorded(
+  problems: Problem[],
+  kind: ProblemKind,
+  detail: string,
+): Promise<void> {
+  const matches = (p: Problem): boolean => p.kind === kind && p.detail.includes(detail)
+  await expect.poll(() => problems.some(matches)).toBe(true)
+  problems.splice(problems.findIndex(matches), 1)
+}
+
 export { expect }
