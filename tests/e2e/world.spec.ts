@@ -1,21 +1,13 @@
 import type { Page } from '@playwright/test'
 
 import { TITLE_SCREEN_INTERACTIVE_MARK, WORLD_PLAYABLE_MARK } from '../../src/perf/marks'
-import { expect, recorded, test } from './fixtures'
+import { entered, expect, hydrated, recorded, test, WORLD_CHUNK, worldContainer } from './fixtures'
 
 // Seam 1 at `/` (plan §2, Entry and preload policy; ADR 0010): the World preloads after the
 // title-screen-interactive mark and mounts paused behind the Title Screen, where it records
 // world-playable from a plain navigation. The mark is the perf gate's instrument (plan §7 line 2);
 // this is its canary in the three browsers under the CSP of ADR 0012 (the shared fixture fails
 // on any violation). Presence and wiring, never WebGL output.
-const WORLD_CHUNK = /\/assets\/world-.*\.js$/i
-const worldContainer = (page: Page) => page.locator('section[aria-label="World"]')
-
-async function hydrated(page: Page): Promise<void> {
-  await page.goto('/')
-  await expect.poll(() => recorded(page, TITLE_SCREEN_INTERACTIVE_MARK)).toBe(1)
-}
-
 /** Start times (ms from navigation start) of the World chunk requests, from resource timing. */
 function chunkStartTimes(page: Page, pattern: RegExp): Promise<number[]> {
   return page.evaluate(
@@ -100,20 +92,24 @@ test('the World requests only same-origin files and no Exhibit media', async ({ 
 // AC-10.1, seam 1 half: Hub → Path → Zone → Goal is one continuous run. The Goal's placeholder
 // status line (T2; T7 opens the Exhibit Panel instead) is the observable end of the run; "no
 // loading" is no script fetched after the World was playable and no busy or progress element.
-// CI renders in software and the scene steps the model at most four times per frame, so the run
-// takes longer than its 6 s of model time; the wait is generous rather than the check weakened.
-test('driving up from the Hub reaches the Goal without any loading', async ({ page }) => {
+// The run starts with the overlay's Reset control, so it is also AC-12.2's proof that the steering
+// keys work after the control without clicking back into the World. CI renders in software and
+// the scene steps the model at most four times per frame, so the run takes longer than its 6 s of
+// model time; the wait is generous rather than the check weakened.
+test('after the Reset control, driving up from the Hub reaches the Goal without any loading', async ({
+  page,
+}) => {
   test.setTimeout(120_000)
   const scriptsAfterPlayable: string[] = []
   let playable = false
   page.on('request', (request) => {
     if (playable && request.resourceType() === 'script') scriptsAfterPlayable.push(request.url())
   })
-  await hydrated(page)
-  await page.keyboard.press('Enter')
-  await expect(worldContainer(page)).toBeVisible()
+  await entered(page)
   await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
   playable = true
+  await page.getByRole('button', { name: 'Reset' }).click()
+  await expect(worldContainer(page)).toBeFocused()
   const busy = page.locator('[aria-busy="true"], [role="progressbar"]')
   await page.keyboard.down('ArrowUp')
   // Polled through the drive: a loading element seen on the way fails the run, not only at the end.

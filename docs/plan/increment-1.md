@@ -380,17 +380,21 @@ export function framesPoint(pose: CameraPose, point: Vec3, aspect: number, rig?:
 // dispatch events to the store. On resume the accumulator is cleared (no catch-up burst).
 export type WorldCanvasProps = { layout: WorldLayout; paused: boolean; reducedMotion: boolean;
   onEvent(e: WorldEvent): void; onReady(): void; onFailure(f: WorldFailure): void;
-  handle?: RefObject<WorldHandle | null> }                        // added by T5b (#29), see below
+  handle: RefObject<WorldHandle | null> }                         // added by T5b (#29), see below
 export type WorldHandle = { reset(): void }                        // the overlay's Reset control reaches the same Reset as R
 ```
 
-**Corrected by T5b (#29, 2026-10-13; Owner's answers to Q2–Q4)**: `WorldCanvas` takes an optional
+**Corrected by T5b (#29, 2026-10-13; Owner's answers to Q2–Q4)**: `WorldCanvas` takes a
 `handle` through which the overlay's Reset control (AC-12.2) runs the same Reset as R; Reset stays
 the model's and never becomes an app action. `src/world/World.tsx` wraps the scene and the overlay
 in the World container (`section`, `tabIndex={-1}`, `inert` plus `visibility: hidden` while the
 Title Screen is shown: the canvas keeps its size, so the paused demand frame renders and the mark
 fires; `display: none` would leave React Three Fiber without a root) and takes
-`{ paused, hidden, containerRef, onReady, onEvent, onFailure }`. The reducer sets the Hub caption's
+`{ paused, hidden, containerRef, onReady, onEvent, onFailure }`; until T7 the World keeps the Goal
+events to itself (the reducer's `goal` branch would open the Panel's state with no Panel to show)
+and forwards `zone-entered` for the caption's place. Escape to the Title Screen moves focus nowhere:
+the spec's Focus handling names no target for World → Title Screen (Owner on #29, addition 1), the
+inert World drops focus to the body, where Enter and Space reach the key router. The reducer sets the Hub caption's
 place on `world-status: 'ready'`, readiness being the once-per-load trigger the way the model's
 single `zone-entered` is the Zone's. The World loader and the idle preload policy live in
 `src/app/preload.ts` (`createWorldLoader`, `idleScheduler` with a timeout fallback for WebKit, which

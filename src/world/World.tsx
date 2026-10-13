@@ -43,8 +43,10 @@ function readReducedMotion(): boolean {
 export function World({ paused, hidden, containerRef, onReady, onEvent, onFailure }: WorldProps) {
   // Subscribed, so a change of the preference while the World runs applies at once (AC-11.3).
   const reducedMotion = useSyncExternalStore(subscribeReducedMotion, readReducedMotion)
-  // The placeholder of #25: "Goal" while the Puck is in the net, so the re-arm is visible. Every
-  // event also reaches the store; T7 opens the Exhibit Panel from there and drops this line.
+  // The placeholder of #25: "Goal" while the Puck is in the net, so the re-arm is visible. The
+  // Goal events stay here until T7 routes them to the store (the reducer would open the Exhibit
+  // Panel's state and pause the World without a Panel to show); the Zone's entry reaches the
+  // store now, for the caption's place (T8a renders it).
   const [goalShown, setGoalShown] = useState(false)
   const handle = useRef<WorldHandle>(null)
   // The overlay's Reset: the model's Reset through the scene's handle, then focus back to the
@@ -58,7 +60,7 @@ export function World({ paused, hidden, containerRef, onReady, onEvent, onFailur
     (event: WorldEvent) => {
       if (event.type === 'goal') setGoalShown(true)
       else if (event.type === 'goal-left') setGoalShown(false)
-      onEvent(event)
+      else onEvent(event)
     },
     [onEvent],
   )

@@ -48,7 +48,7 @@ export type WorldCanvasProps = {
   onEvent: (e: WorldEvent) => void
   onReady: () => void
   onFailure: (f: WorldFailure) => void
-  handle?: RefObject<WorldHandle | null>
+  handle: RefObject<WorldHandle | null>
 }
 
 // Plan §5: a frame longer than 0.1 s (a tab in the background) counts as 0.1 s, and one frame runs

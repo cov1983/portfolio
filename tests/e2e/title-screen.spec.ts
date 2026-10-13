@@ -1,8 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
-import type { Page } from '@playwright/test'
 
 import { TITLE_SCREEN_INTERACTIVE_MARK } from '../../src/perf/marks'
-import { expect, expectRecorded, recorded, test } from './fixtures'
+import { expect, expectRecorded, recorded, test, wayIn, WORLD_CHUNK } from './fixtures'
 
 // Seam 1 at `/`: the pre-rendered Title Screen (ADR 0010). The World preloads behind it after
 // hydration (world.spec.ts); without script nothing of it is requested or mounted.
@@ -44,13 +43,18 @@ test.describe('without script', () => {
     await expect(main.getByRole('link', { name: /plain page/ })).toBeVisible()
   })
 
-  test('mounts no canvas and requests no world chunk', async ({ page }) => {
+  test('mounts no canvas', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(page.locator('canvas')).toHaveCount(0)
+  })
+
+  test('requests no world chunk', async ({ page }) => {
     const urls: string[] = []
     page.on('request', (request) => urls.push(request.url()))
     await page.goto('/')
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-    await expect(page.locator('canvas')).toHaveCount(0)
-    expect(urls.filter((url) => /\/assets\/world-/i.test(url))).toEqual([])
+    expect(urls.filter((url) => WORLD_CHUNK.test(url))).toEqual([])
   })
 
   test('the Fallback Page link navigates (AC-1.2)', async ({ page }) => {
@@ -80,9 +84,6 @@ test.describe('without script', () => {
 // reaches the page as an uncaught error (never console.error, which is the dev build's channel),
 // and the fixture fails the test on it; the negative case below shows it in each browser.
 test.describe('hydration', () => {
-  const wayIn = (page: Page) =>
-    page.getByRole('button', { name: /Enter the World|Loading the World/ })
-
   test('hydrates the pre-rendered Title Screen and records the title-screen-interactive mark (AC-1.1)', async ({
     page,
   }) => {
