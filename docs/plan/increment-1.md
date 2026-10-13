@@ -394,7 +394,7 @@ export function createKeyState(): { input: DriveInput; onKey(e: { code: string; 
 ### Store and key routing (`src/app/store.ts`, `src/app/keys.ts`)
 
 ```ts
-export type Capability = { coarsePointer: boolean; webgl: boolean; reducedMotion: boolean }
+export type Capability = { coarsePointer: boolean }                     // trimmed by T5a (#28), see below
 export type WorldFailure = { kind: 'bundle' | 'webgl' | 'physics'; message: string }
 export type PanelRef = { exhibitId: ExhibitId; opener: 'list' | 'goal' }
 export type AppState = {
@@ -402,7 +402,7 @@ export type AppState = {
   worldStatus: 'idle' | 'loading' | 'ready' | 'failed'
   entering: boolean                                              // Enter pressed while loading (AC-4.2)
   panel: PanelRef | null
-  caption: { place: 'hub' | ExhibitId; text: string } | null     // shown once per place per page load
+  caption: { place: 'hub' | ExhibitId } | null                   // shown once per place per page load; trimmed by T5a (#28)
   capability: Capability | null                                  // null until detected after hydration (AC-21.2)
   failure: WorldFailure | null
 }
@@ -414,9 +414,16 @@ export type Action =
 export function reduce(state: AppState, action: Action): AppState            // pure, unit-tested
 export const selectWorldPaused = (s: AppState) => s.screen !== 'world' || s.panel !== null
 export const selectWorldPreload = (s: AppState) => s.capability !== null && !s.capability.coarsePointer
-export function routeKey(state: AppState, code: string, targetIsInteractive: boolean): 'panel' | 'title' | 'world' | 'none'
+export function routeKey(state: AppState, targetIsInteractive: boolean): 'panel' | 'title' | 'world' | 'none'   // trimmed by T5a (#28)
 //   panel open → 'panel' (R, steering ignored: AC-12.3, 16.4); title shown → 'title' only when the event target is not a link/button
 ```
+
+**Trimmed by T5a (#28, 2026-10-13; Owner's answer to Q3)**, each trim additive later: `Capability`
+holds `coarsePointer` only (T8a adds `reducedMotion`, T8b adds `webgl`, when something reads them;
+no placeholder values); `caption` holds the place only, the text is looked up in the Content where
+the caption renders (T8a), so the reducer stays Content-free; `routeKey(state, targetIsInteractive)`
+takes no key code (the route depends on the state and the target, the code decides the action in
+`keyAction(route, code): Action | null`, also `src/app/keys.ts`). The modules carry the same note.
 
 ### Focus (`src/app/focus.ts`)
 
