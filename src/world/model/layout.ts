@@ -1,7 +1,8 @@
 // The World layout (plan §5, Content ↔ World model): the Rinks, their boards, the Path and the Zones
 // as plain data on the ice plane. +x is right, −z is "up" (away from the Follow Camera); a Rect's
 // length runs along z, its width along x. Pure: no React, no three, no Rapier, no DOM.
-import type { ExhibitId } from '../../content/types'
+// `layoutFromContent` is how the site builds it: from the content's Exhibits (AC-13.2).
+import type { Exhibit, ExhibitId } from '../../content/types'
 
 export type Vec2 = { x: number; z: number }
 export type Vec3 = { x: number; y: number; z: number }
@@ -15,10 +16,15 @@ export type Rink = { id: 'hub' | ExhibitId; rect: Rect; boards: Segment[] }
  * the goal line to the back, and the back (spec: "posts and net outside are solid").
  */
 export type Goal = { zoneId: ExhibitId; line: Segment; sensor: Rect; posts: Rect[] }
+/**
+ * The Banner's words: `text` is the Exhibit's title and hook as one string (AC-13.2), `lines` the
+ * same two parts as the sign draws them, one line each (plan §5, corrected by T7, #31).
+ */
+export type Banner = { text: string; lines: [title: string, hook: string] }
 export type Zone = Rink & {
   exhibitId: ExhibitId
   goal: Goal
-  banner: { text: string }
+  banner: Banner
   captionPlace: Rect
 }
 export type WorldLayout = {
@@ -65,16 +71,12 @@ export function bannerPlace(zone: Zone, size = BANNER): BannerPlace {
   }
 }
 
-/** What the layout needs of an Exhibit: T7's `layoutFromContent` derives it from the content. */
-export type ZoneExhibit = { id: ExhibitId; bannerText: string }
+/** What the layout needs of an Exhibit: its id names the Zone, its title and hook make the Banner. */
+export type ZoneExhibit = Pick<Exhibit, 'id' | 'title' | 'hook'>
 
-/**
- * The one Zone's Exhibit until the content exists: only T3's schema produces an ExhibitId, so this
- * is the single cast in the code base; T7 replaces it with `layoutFromContent` and deletes it.
- */
-export const PLACEHOLDER_EXHIBIT: ZoneExhibit = {
-  id: 'exhibit-1' as ExhibitId,
-  bannerText: 'Exhibit 1 — placeholder',
+/** The Banner of an Exhibit's Zone: title and hook (AC-13.2). */
+export function bannerOf(exhibit: ZoneExhibit): Banner {
+  return { text: `${exhibit.title} — ${exhibit.hook}`, lines: [exhibit.title, exhibit.hook] }
 }
 
 /** True when the point lies inside the rect, edges included. */
@@ -142,8 +144,7 @@ function goalOf(zoneId: ExhibitId, zone: Rect, dims: Dimensions): Goal {
 /**
  * The World: the Hub, the Path leaving its far end and, with an Exhibit, one Zone at the end of the
  * Path, all one continuous ice (the openings are left out of the boards). Without an Exhibit the
- * Hub is closed and the Path rect is only placed, as T1 shipped it. T7's `layoutFromContent`
- * derives the Exhibit from the content; until then the caller passes a placeholder.
+ * Hub is closed and the Path rect is only placed, as T1 shipped it.
  */
 export function worldLayout(
   exhibit: ZoneExhibit | null,
@@ -189,11 +190,24 @@ export function worldLayout(
         rect: zone,
         boards: [zoneFar, ...withOpening(zoneNear, path.width), zoneLeft, zoneRight],
         goal: goalOf(exhibit.id, zone, dims),
-        banner: { text: exhibit.bannerText },
+        banner: bannerOf(exhibit),
         captionPlace: zone,
       },
     ],
   }
+}
+
+/**
+ * The World the site shows: the Zone of the first Exhibit, in content order. increment-1 has one
+ * Path and exactly one Exhibit (spec, Further notes); how several Zones are placed is a later
+ * increment's, and until then any further Exhibit is reached from the list (AC-15.1). No Exhibit:
+ * the closed Hub (plan §5, corrected by T7, #31).
+ */
+export function layoutFromContent(
+  content: { exhibits: readonly ZoneExhibit[] },
+  dims: Dimensions = DIMENSIONS,
+): WorldLayout {
+  return worldLayout(content.exhibits[0] ?? null, dims)
 }
 
 /** The Hub alone, closed on four sides: ADR 0005's reference Rink for the feel tests. */

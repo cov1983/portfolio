@@ -1,21 +1,36 @@
 import RAPIER from '@dimforge/rapier3d-compat'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 
+import { insideRect, type WorldLayout } from '../../src/world/model/layout'
 import {
-  insideRect,
-  PLACEHOLDER_EXHIBIT,
-  worldLayout,
-  type WorldLayout,
-} from '../../src/world/model/layout'
-import { createWorldModel, PUCK, type Place, type WorldModel } from '../../src/world/model/world'
-import { at, collect, DOWN, drive, NONE, reboundAt, RIGHT, stepsWith, UP } from './helpers'
+  createWorldModel,
+  FIXED_DT,
+  PUCK,
+  type Place,
+  type WorldModel,
+} from '../../src/world/model/world'
+import {
+  at,
+  collect,
+  oneZoneLayout,
+  DOWN,
+  drive,
+  LEAVE_S,
+  NONE,
+  reboundAt,
+  REENTRY_BUDGET_S,
+  RIGHT,
+  STAY_S,
+  stepsWith,
+  UP,
+} from './helpers'
 
 // Spec seam 2, the Zone's events: the Goal is a sensor volume inside the net behind the goal line,
 // armed again only after the Puck has left it (AC-14.1, 14.2); posts and the net's outside are solid
 // (AC-14.3); the Zone reports its first entry once per page load (AC-13.1, model half).
-const layout = worldLayout(PLACEHOLDER_EXHIBIT)
+const layout = oneZoneLayout()
 const zone = layout.zones[0]
-if (zone === undefined) throw new Error('the placeholder layout has no Zone')
+if (zone === undefined) throw new Error('the one-Zone layout has no Zone')
 const ZONE_ID = zone.exhibitId
 const ZONE_CENTRE = zone.rect.centre
 const LINE_Z = zone.goal.line.a.z
@@ -82,6 +97,42 @@ describe('Goal re-arm (AC-14.2)', () => {
     const [first] = collect(model, NONE, 1)
     expect(first?.events).toEqual([{ type: 'goal-left', zoneId: ZONE_ID }])
     expect(stepsWith(collect(model, UP, STEPS), 'goal')).toHaveLength(1)
+  })
+})
+
+/**
+ * Model seconds of holding `input` until the step that emits `goal`, stopping there as the
+ * scene's stepFrame does; Infinity if none within `limit` steps.
+ */
+function secondsToGoal(input: typeof UP, limit = STEPS * 2): number {
+  for (let step = 1; step <= limit; step += 1) {
+    if (model.step(input).some((event) => event.type === 'goal')) return step * FIXED_DT
+  }
+  return Infinity
+}
+
+/** The journey after Escape: STAY_S with no key, DOWN for LEAVE_S, then UP until `goal`. */
+function journeyReentry(): number {
+  drive(model, NONE, Math.round(STAY_S / FIXED_DT))
+  drive(model, DOWN, Math.round(LEAVE_S / FIXED_DT))
+  return secondsToGoal(UP)
+}
+
+// The e2e journey's budget (REENTRY_BUDGET_S), replayed step for step: the scene stops stepping
+// at the Goal, so the journey resumes with the Puck in the net. A Reset by R while paused would
+// put it at rest at the Hub's Reset point instead, from where the same sequence takes far longer.
+describe('Re-entry budget of the e2e journey (AC-12.3, 14.2)', () => {
+  it('is about 1.5× the replayed journey from the Goal to the next Goal', () => {
+    create(layout)
+    expect(secondsToGoal(UP)).toBeLessThan(Infinity)
+    // Measured 1.68 s (budget 2.5 s); toBeCloseTo(1.5, 0) accepts a ratio between 1 and 2.
+    expect(REENTRY_BUDGET_S / journeyReentry()).toBeCloseTo(1.5, 0)
+  })
+
+  it('is less than half the time a Puck reset by R needs for the same sequence', () => {
+    create(layout)
+    // Measured 6.43 s from rest at the Hub's Reset point.
+    expect(journeyReentry()).toBeGreaterThan(2 * REENTRY_BUDGET_S)
   })
 })
 

@@ -1,25 +1,29 @@
 import RAPIER from '@dimforge/rapier3d-compat'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 
-import {
-  insideRect,
-  PLACEHOLDER_EXHIBIT,
-  worldLayout,
-  type Rect,
-  type Vec2,
-  type WorldLayout,
-} from '../../src/world/model/layout'
+import { insideRect, type Rect, type Vec2, type WorldLayout } from '../../src/world/model/layout'
 import { createWorldModel, type DriveInput, type WorldModel } from '../../src/world/model/world'
-import { at, DOWN, drive, LEFT, randomInput, reboundAt, RIGHT, seededRandom, UP } from './helpers'
+import {
+  at,
+  oneZoneLayout,
+  DOWN,
+  drive,
+  LEFT,
+  randomInput,
+  reboundAt,
+  RIGHT,
+  seededRandom,
+  UP,
+} from './helpers'
 
 // Spec seam 2, AC-9.1 and AC-9.2 over the whole World: at top speed into every board of the Hub,
 // the Path and the Zone the Puck rebounds (the velocity component towards the board reverses) and
 // never leaves that part; under any input it stays inside the union of the three rects. The Hub's
 // far board and the Zone's near board have an opening in the middle, so those runs start to the
 // side of it; the Zone's far board is approached beside the net.
-const layout = worldLayout(PLACEHOLDER_EXHIBIT)
+const layout = oneZoneLayout()
 const zone = layout.zones[0]
-if (zone === undefined) throw new Error('the placeholder layout has no Zone')
+if (zone === undefined) throw new Error('the one-Zone layout has no Zone')
 const STEPS = 360 // 6 s: enough to reach any board at top speed and come back
 
 type Part = 'Hub' | 'Path' | 'Zone'

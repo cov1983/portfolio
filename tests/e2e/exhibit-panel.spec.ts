@@ -1,5 +1,8 @@
 import AxeBuilder from '@axe-core/playwright'
+import type { Page } from '@playwright/test'
+
 import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks'
+import { LEAVE_S, REENTRY_BUDGET_S, STAY_S } from '../model/helpers'
 import {
   entered,
   exhibitPanel,
@@ -7,8 +10,10 @@ import {
   firstExhibit,
   hydrated,
   listEntry,
+  modelTime,
   opened,
   recorded,
+  scored,
   test,
   textOf,
   titleScreen,
@@ -16,10 +21,19 @@ import {
   worldContainer,
 } from './fixtures'
 
-// Seam 1, the Exhibit Panel over the Title Screen (spec: Title Screen US-2, Exhibit Panel US-16;
-// plan §6, T6): after hydration a list entry opens the Panel instead of navigating, before the
-// World has loaded too; Escape or the close control closes it and focus returns to the entry.
-// Without script the entry stays a link to /exhibits#<id> (title-screen.spec.ts, AC-2.3).
+// Seam 1, the Exhibit Panel (spec: Title Screen US-2, Reaching the Exhibit US-14, Exhibit Panel
+// US-16; plan §6, T6, T7): after hydration a list entry opens the Panel over the Title Screen
+// instead of navigating, before the World has loaded too; Escape or the close control closes it
+// and focus returns to the entry. From the World, the Goal opens it over the paused World and
+// closing returns focus to the World. Without script the entry stays a link to /exhibits#<id>
+// (title-screen.spec.ts, AC-2.3).
+
+/** The World with nothing over it: no Panel, the World container focused, the Title Screen hidden. */
+async function expectBackInTheWorld(page: Page): Promise<void> {
+  await expect(exhibitPanel(page)).toHaveCount(0)
+  await expect(worldContainer(page)).toBeFocused()
+  await expect(titleScreen(page)).toBeHidden()
+}
 
 test.describe('opening from the list', () => {
   test('picking an entry while the World chunk is held opens its Panel over the Title Screen (AC-2.1)', async ({
@@ -79,6 +93,67 @@ test.describe('opening from the list', () => {
   })
 })
 
+// One journey (Owner, #31: one driving test instead of four), since every step needs the Puck in
+// the Goal and the drive is the slow part (CI renders in software). It starts with the Hub → Path
+// → Zone → Goal run without any loading (AC-10.1, seam 1 half) and ends with a second Goal after
+// the Puck has left the net (AC-14.2).
+// Presence, wiring and focus only, never WebGL output.
+test('from the Goal: the Panel opens over the paused World, owns the keys and closes back into it', async ({
+  page,
+  content,
+}) => {
+  test.setTimeout(240_000)
+  const scriptsAfterPlayable: string[] = []
+  let playable = false
+  page.on('request', (request) => {
+    if (playable && request.resourceType() === 'script') scriptsAfterPlayable.push(request.url())
+  })
+  await entered(page)
+  await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
+  playable = true
+  await scored(page)
+  expect(scriptsAfterPlayable, 'no script fetched on the way (AC-10.1)').toEqual([])
+
+  // (a) The Zone's Exhibit, over the World (AC-14.1).
+  await expect(exhibitPanel(page).getByRole('heading', { level: 2 })).toHaveText(
+    firstExhibit(content).title,
+  )
+  await expect(worldContainer(page)).toBeVisible()
+  await expect(titleScreen(page)).toBeHidden()
+
+  // (b) R goes to the Panel: it stays open, focus stays inside it (AC-12.3).
+  await page.keyboard.press('KeyR')
+  await expect(exhibitPanel(page)).toBeVisible()
+  expect(
+    await page.evaluate(() => document.activeElement?.closest('dialog.exhibit-panel') != null),
+  ).toBe(true)
+
+  // (c) Escape closes the Panel only, back into the World (AC-16.5).
+  await page.keyboard.press('Escape')
+  await expectBackInTheWorld(page)
+  // No reopen while the Puck stays in the Goal (AC-14.2): STAY_S of model time, no key.
+  await modelTime(page, STAY_S)
+  expect(await exhibitPanel(page).isVisible(), 'no Panel while the Puck stays in the Goal').toBe(
+    false,
+  )
+
+  // Out of the net and in again within a model-time budget (AC-14.2: the Puck is still in the
+  // Goal on resume; AC-12.3: R did nothing to the paused World). A Reset by R would have put the
+  // Puck at the Hub's Reset point, from where the budget cannot reach the Goal (goal.test.ts,
+  // REENTRY_BUDGET_S), so the Panel would still be closed when it is read.
+  await page.keyboard.down('ArrowDown')
+  await modelTime(page, LEAVE_S)
+  await page.keyboard.up('ArrowDown')
+  await page.keyboard.down('ArrowUp')
+  await modelTime(page, REENTRY_BUDGET_S)
+  expect(await exhibitPanel(page).isVisible(), 'the Goal again within the budget').toBe(true)
+  await page.keyboard.up('ArrowUp')
+
+  // (d) The close control does the same as Escape (AC-16.5).
+  await exhibitPanel(page).getByRole('button', { name: 'Close' }).click()
+  await expectBackInTheWorld(page)
+})
+
 test.describe('closing (AC-2.2)', () => {
   test('Escape closes the Panel, shows the Title Screen and focuses the entry that opened it', async ({
     page,
@@ -126,7 +201,10 @@ test.describe('reading (AC-16.1, 16.2)', () => {
       await expect(panel.getByRole('img', { name: image.alt })).toBeAttached()
     }
     await expect(panel).toContainText(textOf(exhibit.whatIdDoDifferentlyHtml))
-    await expect(panel).not.toContainText(exhibit.visibility)
+    // Never shown as a field: no element reads the value alone, and no label names it. Body text
+    // that happens to use either word ("personal", "visibility") is not the field.
+    await expect(panel.getByText(exhibit.visibility, { exact: true })).toHaveCount(0)
+    await expect(panel.getByText(/^\s*visibility\s*:?\s*$/i)).toHaveCount(0)
   })
 
   test('the Panel is named by the Exhibit’s title', async ({ page, content }) => {

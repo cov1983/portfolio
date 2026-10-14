@@ -1,14 +1,14 @@
 import RAPIER from '@dimforge/rapier3d-compat'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 
-import { hubLayout, PLACEHOLDER_EXHIBIT, worldLayout } from '../../src/world/model/layout'
+import { hubLayout } from '../../src/world/model/layout'
 import {
   createWorldModel,
   STANDARD,
   type PuckState,
   type WorldModel,
 } from '../../src/world/model/world'
-import { at, collect, distance, driveUntil, NONE, UP } from './helpers'
+import { at, collect, oneZoneLayout, distance, driveUntil, NONE, UP } from './helpers'
 
 // Spec seam 2, AC-10.1 (model half): Hub → Path → Zone is one continuous ice. Held at top speed the
 // Puck crosses both openings without losing speed or direction; released, its glide across them
@@ -16,9 +16,9 @@ import { at, collect, distance, driveUntil, NONE, UP } from './helpers'
 // have different ice colliders, so Rapier's contact arithmetic differs in the last digits (measured:
 // 5e-6 m/s at about 1 m/s, deep in the Zone); the tolerance is 1e-6 of the top speed, the series'
 // scale (Owner decision on #25), and the glide distance agrees within a centimetre.
-const layout = worldLayout(PLACEHOLDER_EXHIBIT)
+const layout = oneZoneLayout()
 const zone = layout.zones[0]
-if (zone === undefined) throw new Error('the placeholder layout has no Zone')
+if (zone === undefined) throw new Error('the one-Zone layout has no Zone')
 const ZONE_ID = zone.exhibitId
 const CAP = STANDARD.maxSpeed
 const RELATIVE_TOLERANCE = 1e-6

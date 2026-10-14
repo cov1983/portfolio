@@ -3,6 +3,8 @@ import { expect, test as base, type Locator, type Page } from '@playwright/test'
 import { loadContentFromDisk } from '../../build/content-plugin.ts'
 import type { Content } from '../../src/content/types.ts'
 import { TITLE_SCREEN_INTERACTIVE_MARK } from '../../src/perf/marks.ts'
+import { FIXED_DT } from '../../src/world/model/world.ts'
+import { MAX_STEPS_PER_FRAME } from '../../src/world/scene/stepFrame.ts'
 import { vercelHeaders } from '../../vercel-headers.ts'
 
 /** The `/(.*)` headers of vercel.json with names lower-cased, as a browser reports them. */
@@ -145,6 +147,64 @@ export async function entered(page: Page): Promise<void> {
   await hydrated(page)
   await page.keyboard.press('Enter')
   await expect(worldContainer(page)).toBeVisible()
+}
+
+/** Any loading element: a World run that shows one is not "without any loading" (AC-10.1). */
+const busy = (page: Page): Locator => page.locator('[aria-busy="true"], [role="progressbar"]')
+
+/**
+ * Holds ArrowUp until the Exhibit Panel is open: from the Reset point straight up the Hub, the
+ * Path and the Zone into the Goal (AC-10.1, 14.1). Polled with non-waiting reads only (#46), so a
+ * loading element seen on the way fails the run, not only at the end. CI renders in software and
+ * the scene steps the model at most four times per frame, so the run takes longer than its 6 s of
+ * model time; the wait is generous rather than the check weakened.
+ */
+export async function driveIntoGoal(page: Page): Promise<void> {
+  await page.keyboard.down('ArrowUp')
+  await expect
+    .poll(
+      async () =>
+        (await busy(page).count()) > 0 ? 'a loading element' : await exhibitPanel(page).isVisible(),
+      { timeout: 90_000 },
+    )
+    .toBe(true)
+  await page.keyboard.up('ArrowUp')
+}
+
+/**
+ * From the entered, playable World: the overlay's Reset control (the steering keys work after it
+ * without clicking back into the World, AC-12.2), then the drive into the Goal: the Panel is open.
+ * No navigation of its own, so a test can watch the requests from the moment the World is playable.
+ */
+export async function scored(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Reset' }).click()
+  await expect(worldContainer(page)).toBeFocused()
+  await driveIntoGoal(page)
+}
+
+/**
+ * Resolves once the page has rendered frames worth at least `seconds` of model time: each frame
+ * counts what the scene can step in it at most (its delta, capped at four steps). It sets how long
+ * a key is held, an input's duration, not a wait for the page to settle: no assertion depends on
+ * it, the condition after it is polled. Counted in frames, not wall-clock time, so a slow software
+ * renderer only makes it take longer.
+ */
+export function modelTime(page: Page, seconds: number): Promise<void> {
+  return page.evaluate(
+    ({ seconds, cap }) =>
+      new Promise<void>((resolve) => {
+        let total = 0
+        let last = performance.now()
+        const frame = (now: number): void => {
+          total += Math.min((now - last) / 1000, cap)
+          last = now
+          if (total >= seconds) resolve()
+          else requestAnimationFrame(frame)
+        }
+        requestAnimationFrame(frame)
+      }),
+    { seconds, cap: MAX_STEPS_PER_FRAME * FIXED_DT },
+  )
 }
 
 export { expect }

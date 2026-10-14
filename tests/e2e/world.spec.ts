@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test'
 
 import { TITLE_SCREEN_INTERACTIVE_MARK, WORLD_PLAYABLE_MARK } from '../../src/perf/marks'
-import { entered, expect, hydrated, recorded, test, WORLD_CHUNK, worldContainer } from './fixtures'
+import { expect, hydrated, recorded, test, WORLD_CHUNK, worldContainer } from './fixtures'
 
 // Seam 1 at `/` (plan §2, Entry and preload policy; ADR 0010): the World preloads after the
 // title-screen-interactive mark and mounts paused behind the Title Screen, where it records
@@ -89,40 +89,5 @@ test('the World requests only same-origin files and no Exhibit media', async ({ 
   expect(urls.filter((url) => new URL(url).pathname.startsWith('/media/exhibits/'))).toEqual([])
 })
 
-// AC-10.1, seam 1 half: Hub → Path → Zone → Goal is one continuous run. The Goal's placeholder
-// status line (T2; T7 opens the Exhibit Panel instead) is the observable end of the run; "no
-// loading" is no script fetched after the World was playable and no busy or progress element.
-// The run starts with the overlay's Reset control, so it is also AC-12.2's proof that the steering
-// keys work after the control without clicking back into the World. CI renders in software and
-// the scene steps the model at most four times per frame, so the run takes longer than its 6 s of
-// model time; the wait is generous rather than the check weakened.
-test('after the Reset control, driving up from the Hub reaches the Goal without any loading', async ({
-  page,
-}) => {
-  test.setTimeout(120_000)
-  const scriptsAfterPlayable: string[] = []
-  let playable = false
-  page.on('request', (request) => {
-    if (playable && request.resourceType() === 'script') scriptsAfterPlayable.push(request.url())
-  })
-  await entered(page)
-  await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
-  playable = true
-  await page.getByRole('button', { name: 'Reset' }).click()
-  await expect(worldContainer(page)).toBeFocused()
-  const busy = page.locator('[aria-busy="true"], [role="progressbar"]')
-  await page.keyboard.down('ArrowUp')
-  // Polled through the drive: a loading element seen on the way fails the run, not only at the end.
-  // Non-waiting reads only (#46): a status gone from the page reads as empty instead of blocking.
-  await expect
-    .poll(
-      async () =>
-        (await busy.count()) > 0
-          ? 'a loading element'
-          : (await page.getByRole('status').allTextContents()).join(''),
-      { timeout: 90_000 },
-    )
-    .toBe('Goal')
-  await page.keyboard.up('ArrowUp')
-  expect(scriptsAfterPlayable).toEqual([])
-})
+// AC-10.1's seam 1 half (the run Hub → Path → Zone → Goal without any loading) is the start of
+// exhibit-panel.spec.ts's Goal journey (T7): the run ends on the Exhibit Panel.

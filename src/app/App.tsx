@@ -173,6 +173,7 @@ export function App({ content, store }: Props) {
       )}
       {World !== null && (
         <World
+          content={content}
           paused={selectWorldPaused(state)}
           hidden={state.screen !== 'world'}
           containerRef={worldRef}
