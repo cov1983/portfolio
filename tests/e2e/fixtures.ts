@@ -120,6 +120,13 @@ export const listEntry = (page: Page, title: string): Locator =>
 /** The open Exhibit Panel: a modal dialog, absent from the page while closed. */
 export const exhibitPanel = (page: Page): Locator => page.getByRole('dialog')
 
+/** `/` hydrated, then the list entry of the Exhibit titled `title`: its Panel is open. */
+export async function opened(page: Page, title: string): Promise<void> {
+  await hydrated(page)
+  await listEntry(page, title).click()
+  await expect(exhibitPanel(page)).toBeVisible()
+}
+
 /** The first Exhibit of the content (the fixture guarantees one). */
 export function firstExhibit(content: Content): Content['exhibits'][number] {
   const [exhibit] = content.exhibits

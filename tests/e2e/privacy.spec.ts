@@ -7,6 +7,7 @@ import {
   firstExhibit,
   hydrated,
   listEntry,
+  opened,
   recorded,
   test,
   textOf,
@@ -113,8 +114,7 @@ test.describe('Exhibit media', () => {
     content,
   }) => {
     const exhibit = firstExhibit(content)
-    await hydrated(page)
-    await listEntry(page, exhibit.title).click()
+    await opened(page, exhibit.title)
     const sources = exhibitPanel(page).locator('picture source')
     await expect(sources).toHaveCount(exhibit.images.length * 2)
     const read = await sources.evaluateAll((elements) =>
@@ -134,6 +134,17 @@ test.describe('Exhibit media', () => {
         expect(new URL(url ?? '', page.url()).origin).toBe(new URL(page.url()).origin)
       }
       expect(sizes).not.toBe('')
+    }
+  })
+
+  test('each image fallback in the Panel is same-origin (AC-17.3)', async ({ page, content }) => {
+    await opened(page, firstExhibit(content).title)
+    const sources = await exhibitPanel(page)
+      .locator('picture img')
+      .evaluateAll((images) => images.map((image) => (image as HTMLImageElement).src))
+    expect(sources).not.toEqual([])
+    for (const source of sources) {
+      expect(new URL(source).origin).toBe(new URL(page.url()).origin)
     }
   })
 })

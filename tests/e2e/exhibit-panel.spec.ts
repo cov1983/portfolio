@@ -1,7 +1,4 @@
 import AxeBuilder from '@axe-core/playwright'
-import type { Page } from '@playwright/test'
-
-import type { Content } from '../../src/content/types.ts'
 import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks'
 import {
   entered,
@@ -10,6 +7,7 @@ import {
   firstExhibit,
   hydrated,
   listEntry,
+  opened,
   recorded,
   test,
   textOf,
@@ -22,15 +20,6 @@ import {
 // plan §6, T6): after hydration a list entry opens the Panel instead of navigating, before the
 // World has loaded too; Escape or the close control closes it and focus returns to the entry.
 // Without script the entry stays a link to /exhibits#<id> (title-screen.spec.ts, AC-2.3).
-
-type ExhibitContent = Content['exhibits'][number]
-
-/** `/` hydrated, then the Exhibit's list entry: its Panel is open. */
-async function opened(page: Page, exhibit: ExhibitContent): Promise<void> {
-  await hydrated(page)
-  await listEntry(page, exhibit.title).click()
-  await expect(exhibitPanel(page)).toBeVisible()
-}
 
 test.describe('opening from the list', () => {
   test('picking an entry while the World chunk is held opens its Panel over the Title Screen (AC-2.1)', async ({
@@ -96,9 +85,7 @@ test.describe('closing (AC-2.2)', () => {
     content,
   }) => {
     const exhibit = firstExhibit(content)
-    await hydrated(page)
-    await listEntry(page, exhibit.title).click()
-    await expect(exhibitPanel(page)).toBeVisible()
+    await opened(page, exhibit.title)
     await page.keyboard.press('Escape')
     await expect(exhibitPanel(page)).toHaveCount(0)
     await expect(titleScreen(page)).toBeVisible()
@@ -110,8 +97,7 @@ test.describe('closing (AC-2.2)', () => {
     content,
   }) => {
     const exhibit = firstExhibit(content)
-    await hydrated(page)
-    await listEntry(page, exhibit.title).click()
+    await opened(page, exhibit.title)
     await exhibitPanel(page).getByRole('button', { name: 'Close' }).click()
     await expect(exhibitPanel(page)).toHaveCount(0)
     await expect(titleScreen(page)).toBeVisible()
@@ -125,7 +111,7 @@ test.describe('reading (AC-16.1, 16.2)', () => {
     content,
   }) => {
     const exhibit = firstExhibit(content)
-    await opened(page, exhibit)
+    await opened(page, exhibit.title)
     const panel = exhibitPanel(page)
     await expect(panel.getByRole('heading', { level: 2 })).toHaveText(exhibit.title)
     await expect(panel).toContainText(exhibit.hook)
@@ -145,7 +131,7 @@ test.describe('reading (AC-16.1, 16.2)', () => {
 
   test('the Panel is named by the Exhibit’s title', async ({ page, content }) => {
     const exhibit = firstExhibit(content)
-    await opened(page, exhibit)
+    await opened(page, exhibit.title)
     await expect(page.getByRole('dialog', { name: exhibit.title })).toBeVisible()
   })
 
@@ -154,12 +140,11 @@ test.describe('reading (AC-16.1, 16.2)', () => {
     content,
   }) => {
     const exhibit = firstExhibit(content)
-    await opened(page, exhibit)
+    await opened(page, exhibit.title)
     for (const image of exhibit.images) {
       const img = exhibitPanel(page).getByRole('img', { name: image.alt })
+      // The build names its fallback <name>-<w>.<ext> (AC-27.1's build half); the original is never served.
       await expect(img).toHaveAttribute('src', image.fallback)
-      // The built fallback carries its width (<name>-<w>.<ext>); the original's name has none.
-      expect(image.fallback).toMatch(/-\d+\.(png|jpe?g)$/)
     }
   })
 
@@ -167,15 +152,25 @@ test.describe('reading (AC-16.1, 16.2)', () => {
     test.use({ viewport: { width: 320, height: 568 } })
 
     test('long content scrolls inside the Panel (AC-16.2)', async ({ page, content }) => {
-      await opened(page, firstExhibit(content))
+      await opened(page, firstExhibit(content).title)
       const overflows = await exhibitPanel(page).evaluate(
         (panel) => panel.scrollHeight > panel.clientHeight,
       )
       expect(overflows).toBe(true)
     })
 
+    // The Panel sits in the top layer and scrolls itself, so its own width is checked apart from
+    // the document's: content wider than the Panel would scroll sideways inside it.
+    test('the Panel does not overflow sideways (AC-16.2)', async ({ page, content }) => {
+      await opened(page, firstExhibit(content).title)
+      const sideways = await exhibitPanel(page).evaluate(
+        (panel) => panel.scrollWidth > panel.clientWidth,
+      )
+      expect(sideways).toBe(false)
+    })
+
     test('the document does not overflow sideways (AC-16.2)', async ({ page, content }) => {
-      await opened(page, firstExhibit(content))
+      await opened(page, firstExhibit(content).title)
       const sideways = await page.evaluate(
         () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
       )
@@ -187,13 +182,13 @@ test.describe('reading (AC-16.1, 16.2)', () => {
     page,
     content,
   }) => {
-    await opened(page, firstExhibit(content))
+    await opened(page, firstExhibit(content).title)
     const overflow = await page.evaluate(() => getComputedStyle(document.documentElement).overflowY)
     expect(overflow).toBe('hidden')
   })
 
   test('the open Panel has no WCAG 2.2 AA violations', async ({ page, content }) => {
-    await opened(page, firstExhibit(content))
+    await opened(page, firstExhibit(content).title)
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
       .analyze()
@@ -202,12 +197,15 @@ test.describe('reading (AC-16.1, 16.2)', () => {
 })
 
 // AC-16.3: Tab and Shift+Tab, two presses more than the Panel has controls, so focus has to pass
-// the last and the first control at least once; after every press it is inside the Panel.
+// the last and the first control at least once; after every press it is inside the Panel. The
+// selector is the Panel's own list of what Tab reaches (src/site/ExhibitPanel.tsx, TABBABLE).
 test.describe('focus stays inside the open Panel (AC-16.3)', () => {
   for (const key of ['Tab', 'Shift+Tab']) {
     test(`${key} never leaves the Panel`, async ({ page, content }) => {
-      await opened(page, firstExhibit(content))
-      const controls = await exhibitPanel(page).locator('a[href], button, video[controls]').count()
+      await opened(page, firstExhibit(content).title)
+      const controls = await exhibitPanel(page)
+        .locator('a[href], button:not([disabled]), video[controls]')
+        .count()
       for (let press = 0; press < controls + 2; press += 1) {
         await page.keyboard.press(key)
         const inside = await page.evaluate(
