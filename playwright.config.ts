@@ -13,7 +13,9 @@ export default defineConfig({
   forbidOnly: !!process.env['CI'],
   retries: 0,
   reporter: [['list'], ['html', { open: 'never' }]],
-  use: { baseURL },
+  // A failed test keeps its trace, which the HTML report (CI's playwright-report artifact) carries:
+  // #46 had only error contexts to diagnose from.
+  use: { baseURL, trace: 'retain-on-failure' },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     {
