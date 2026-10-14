@@ -1,7 +1,7 @@
 // The React Three Fiber mirror of the World model (plan §5, Scene loop ↔ model; ADR 0009): owns
-// the fixed-timestep accumulator, steps the model from the key state, renders the Puck mesh and
-// the camera goal from the state interpolated between the last two steps, eases the Follow
-// Camera and records `world-playable`. Nothing here steps physics outside `model.step`, and
+// the fixed-timestep accumulator, steps the model from the key state (the loop's rule is
+// stepFrame.ts), renders the Puck mesh and the camera goal from the state interpolated between
+// the last two steps, eases the Follow Camera and records `world-playable`. Nothing here steps physics outside `model.step`, and
 // nothing is fetched: the Banner's texture is drawn on a canvas, no font.
 //
 // 'wasm-unsafe-eval' in the CSP (ADR 0012) exists for this import: the compat package inlines
@@ -36,6 +36,7 @@ import {
 import { Goal } from './Goal'
 import { interpolatePuck, renderAlpha } from './interpolate'
 import { IceLine, Solid } from './Solid'
+import { stepFrame } from './stepFrame'
 import './world.css'
 
 /** What the overlay's Reset control reaches (plan §5, corrected by T5b, #29): the same Reset as R. */
@@ -51,12 +52,6 @@ export type WorldCanvasProps = {
   handle: RefObject<WorldHandle | null>
 }
 
-// Plan §5: a frame longer than 0.1 s (a tab in the background) counts as 0.1 s, and one frame runs
-// at most four steps (0.067 s), after which the remainder is dropped so a stall never spirals.
-// Below 15 fps the World therefore runs slower than real time, by design: the Visitor sees a
-// slower Puck, never a jump.
-const MAX_FRAME_DT = 0.1
-const MAX_STEPS_PER_FRAME = 4
 const ICE_COLOUR = '#eef4f8'
 const BOARD_COLOUR = '#d9dde2'
 
@@ -209,18 +204,16 @@ function Scene({
         state.invalidate()
       }
     }
-    if (!paused && !skipFrame.current) {
-      accumulator.current += Math.min(dt, MAX_FRAME_DT)
-      let steps = 0
-      while (accumulator.current >= FIXED_DT && steps < MAX_STEPS_PER_FRAME) {
+    // The ref, not the prop: it is synced from the store's paused state (the only source of
+    // truth) by the effect above, and the callback must not step on a stale capture.
+    if (!pausedRef.current && !skipFrame.current) {
+      accumulator.current = stepFrame(accumulator.current, dt, () => {
         const events = world.step(keys.input)
         puckStates.previous = puckStates.current
         puckStates.current = world.puck()
         for (const event of events) callbacks.current.onEvent(event)
-        accumulator.current -= FIXED_DT
-        steps += 1
-      }
-      if (steps === MAX_STEPS_PER_FRAME) accumulator.current = 0
+        return events
+      })
     }
     skipFrame.current = false
     // A frame holds 0, 1 or 2 steps, so the model's latest state moves in irregular jumps from

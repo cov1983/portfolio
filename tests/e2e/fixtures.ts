@@ -4,6 +4,7 @@ import { loadContentFromDisk } from '../../build/content-plugin.ts'
 import type { Content } from '../../src/content/types.ts'
 import { TITLE_SCREEN_INTERACTIVE_MARK } from '../../src/perf/marks.ts'
 import { FIXED_DT } from '../../src/world/model/world.ts'
+import { MAX_STEPS_PER_FRAME } from '../../src/world/scene/stepFrame.ts'
 import { vercelHeaders } from '../../vercel-headers.ts'
 
 /** The `/(.*)` headers of vercel.json with names lower-cased, as a browser reports them. */
@@ -180,9 +181,6 @@ export async function scored(page: Page): Promise<void> {
   await expect(worldContainer(page)).toBeFocused()
   await driveIntoGoal(page)
 }
-
-/** The scene's cap of steps per frame (src/world/scene/WorldCanvas.tsx: a component, not importable here). */
-const MAX_STEPS_PER_FRAME = 4
 
 /**
  * Resolves once the page has rendered frames worth at least `seconds` of model time: each frame

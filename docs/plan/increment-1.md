@@ -388,6 +388,8 @@ export function framesPoint(pose: CameraPose, point: Vec3, aspect: number, rig?:
 // useFrame: accumulator += min(dt, 0.1); while (acc >= FIXED_DT && steps < 4) events.push(...model.step(input.current))
 // then mirror model.puck() into the mesh, camera = cameraFollow(camera, cameraGoal(puck), dt, reducedMotion),
 // dispatch events to the store. On resume the accumulator is cleared (no catch-up burst).
+// Corrected by T7 (#31): the loop is the pure stepFrame (src/world/scene/stepFrame.ts, with both
+// caps); the step that emits `goal` is its frame's last, and useFrame reads paused through a ref.
 export type WorldCanvasProps = { layout: WorldLayout; paused: boolean; reducedMotion: boolean;
   onEvent(e: WorldEvent): void; onReady(): void; onFailure(f: WorldFailure): void;
   handle: RefObject<WorldHandle | null> }                         // added by T5b (#29), see below
