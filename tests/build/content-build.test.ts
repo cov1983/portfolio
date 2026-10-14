@@ -1,7 +1,12 @@
 import { readdir } from 'node:fs/promises'
 import { join } from 'node:path'
+import { createElement } from 'react'
+import { renderToString } from 'react-dom/server'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
+import { loadContentFromDisk } from '../../build/content-plugin.ts'
+import { App } from '../../src/app/App.tsx'
+import { createStore } from '../../src/app/store.ts'
 import { removeBuild, runProductionBuild, type BuildResult } from './production-build.ts'
 
 // Seam 1's build half for the content pipeline (plan §6, AC-26.1/26.2/26.3/27.1): the production
@@ -129,6 +134,23 @@ describe('fixture video', () => {
     expect(video).toContain('preload="none"')
     expect(video).not.toContain('autoplay')
     expect(video).toContain('<source src="/media/exhibits/sample/clip.mp4" type="video/mp4"')
+  })
+
+  // AC-17.2 in the Exhibit Panel (T6, Owner #30 Q4): the App tree with the fixture's Content and
+  // a store holding the open Panel, rendered as the client renders it. The browser half (paused
+  // after open) waits for the first published Exhibit with a video: #52.
+  it('renders the video in the open Exhibit Panel with its poster, controls and no autoplay', async () => {
+    const content = await loadContentFromDisk(`${FIXTURES}/content-video`)
+    const store = createStore()
+    const [exhibit] = content.exhibits
+    if (exhibit === undefined) throw new Error('the video fixture has no Exhibit')
+    store.dispatch({ type: 'open-panel', panel: { exhibitId: exhibit.id, opener: 'list' } })
+    const html = renderToString(createElement(App, { content, store }))
+    const panelVideo = /<dialog\b[\s\S]*?(<video\b[^>]*>)[\s\S]*?<\/dialog>/.exec(html)?.[1] ?? ''
+    expect(panelVideo).toContain('controls')
+    expect(panelVideo).toMatch(/poster="\/media\/exhibits\/sample\/poster-\d+\.png"/)
+    expect(panelVideo).toContain('preload="none"')
+    expect(panelVideo).not.toContain('autoplay')
   })
 })
 
