@@ -113,10 +113,13 @@ test('after the Reset control, driving up from the Hub reaches the Goal without 
   const busy = page.locator('[aria-busy="true"], [role="progressbar"]')
   await page.keyboard.down('ArrowUp')
   // Polled through the drive: a loading element seen on the way fails the run, not only at the end.
+  // Non-waiting reads only (#46): a status gone from the page reads as empty instead of blocking.
   await expect
     .poll(
       async () =>
-        (await busy.count()) > 0 ? 'a loading element' : page.getByRole('status').textContent(),
+        (await busy.count()) > 0
+          ? 'a loading element'
+          : (await page.getByRole('status').allTextContents()).join(''),
       { timeout: 90_000 },
     )
     .toBe('Goal')
