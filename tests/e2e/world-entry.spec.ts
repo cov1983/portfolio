@@ -1,10 +1,12 @@
 import AxeBuilder from '@axe-core/playwright'
 import type { Page } from '@playwright/test'
 
+import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks'
 import {
   entered,
   expect,
   hydrated,
+  recorded,
   test,
   titleScreen,
   wayIn,
@@ -17,14 +19,15 @@ import {
 // control shows it, Escape hides it again, paused, and Enter resumes it. Presence, visibility and
 // focus only, never WebGL output (CI renders in software).
 
-/** Entry began: the way-in shows loading, or the World is already there (the chunk may have arrived). */
+/**
+ * Entry began: the way-in shows loading, or the World is already there (the chunk may have arrived).
+ * Non-waiting reads only (#46): once the World shows, the hidden Title Screen takes the way-in out
+ * of the page's roles, and an auto-waiting read of it would block the poll until its timeout.
+ */
 async function expectEntryBegun(page: Page): Promise<void> {
+  const loading = wayIn(page).and(page.locator('[aria-busy="true"]'))
   await expect
-    .poll(
-      async () =>
-        (await wayIn(page).getAttribute('aria-busy')) === 'true' ||
-        (await worldContainer(page).isVisible()),
-    )
+    .poll(async () => (await loading.isVisible()) || (await worldContainer(page).isVisible()))
     .toBe(true)
 }
 
@@ -43,6 +46,15 @@ test.describe('entry (AC-1.3)', () => {
 
   test('the way-in control begins entry with a pointer', async ({ page }) => {
     await hydrated(page)
+    await wayIn(page).click()
+    await expectEntryBegun(page)
+  })
+
+  // #46: when the preload has finished before the press, entry shows the World at once and the
+  // Title Screen is hidden before the first check, so the way-in is gone from the page's roles.
+  test('the way-in control begins entry into a World that is already ready', async ({ page }) => {
+    await hydrated(page)
+    await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
     await wayIn(page).click()
     await expectEntryBegun(page)
   })
