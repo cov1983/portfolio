@@ -21,17 +21,3 @@
 .world-container:focus {
   outline: none;
 }
-
-/* The placeholder Goal line of T2 (removed by T7's Exhibit Panel): over the canvas, never in its way. */
-.world-goal {
-  position: fixed;
-  top: 1rem;
-  left: 50%;
-  transform: translateX(-50%);
-  margin: 0;
-  color: #ffffff;
-  font:
-    bold 2rem system-ui,
-    sans-serif;
-  pointer-events: none;
-}

@@ -4,7 +4,7 @@
 // invisible while the Title Screen is shown (`inert` hides it from assistive technology and the
 // tab order; world.css makes it `visibility: hidden`, never `display: none`, so the canvas keeps
 // its size and the paused demand frame that records world-playable still renders).
-import { useCallback, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
+import { useCallback, useMemo, useRef, useSyncExternalStore, type RefObject } from 'react'
 
 import type { WorldFailure } from '../app/types'
 import type { Content } from '../content/types'
@@ -25,6 +25,7 @@ export type WorldProps = {
   /** The container, so the app can focus it (plan §5, focusAfter). */
   containerRef: RefObject<HTMLElement | null>
   onReady: () => void
+  /** Every World event, for the store: the Zone entry sets the caption place, the Goal opens the Panel (AC-14.1). */
   onEvent: (event: WorldEvent) => void
   onFailure: (failure: WorldFailure) => void
 }
@@ -55,11 +56,6 @@ export function World({
   const layout = useMemo(() => layoutFromContent(content), [content])
   // Subscribed, so a change of the preference while the World runs applies at once (AC-11.3).
   const reducedMotion = useSyncExternalStore(subscribeReducedMotion, readReducedMotion)
-  // The placeholder of #25: "Goal" while the Puck is in the net, so the re-arm is visible. The
-  // Goal events stay here until T7 routes them to the store (the reducer would open the Exhibit
-  // Panel's state and pause the World without a Panel to show); the Zone's entry reaches the
-  // store now, for the caption's place (T8a renders it).
-  const [goalShown, setGoalShown] = useState(false)
   const handle = useRef<WorldHandle>(null)
   // The overlay's Reset: the model's Reset through the scene's handle, then focus back to the
   // container so the steering keys work without clicking into the World (AC-12.2; spec, Focus
@@ -68,14 +64,6 @@ export function World({
     handle.current?.reset()
     containerRef.current?.focus()
   }, [containerRef])
-  const handleEvent = useCallback(
-    (event: WorldEvent) => {
-      if (event.type === 'goal') setGoalShown(true)
-      else if (event.type === 'goal-left') setGoalShown(false)
-      else onEvent(event)
-    },
-    [onEvent],
-  )
   return (
     <section
       className="world-container"
@@ -88,15 +76,12 @@ export function World({
         layout={layout}
         paused={paused}
         reducedMotion={reducedMotion}
-        onEvent={handleEvent}
+        onEvent={onEvent}
         onReady={onReady}
         onFailure={onFailure}
         handle={handle}
       />
       <WorldOverlay onReset={onReset} />
-      <p className="world-goal" role="status">
-        {goalShown ? 'Goal' : ''}
-      </p>
     </section>
   )
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { ExhibitId } from '../content/types.ts'
+import { DRIVE_CODES } from '../world/input/keyboard.ts'
 import { isPlainActivation, keyAction, routeKey } from './keys.ts'
 import { INITIAL_STATE, type AppState } from './store.ts'
 
@@ -58,6 +59,13 @@ describe('keyAction', () => {
         expect(keyAction(route, code), `${route} ${code}`).toBeNull()
       }
     }
+  })
+
+  // routeKey takes no code (T5a), so "every steering code and R go to the Panel" is the Panel
+  // route turning each of them into nothing; the World input ignores them while paused.
+  it('turns every steering code and R into nothing while a Panel is open (AC-12.3, 16.4)', () => {
+    const codes = [...Object.values(DRIVE_CODES).flat(), 'KeyR']
+    expect(codes.map((code) => keyAction('panel', code))).toEqual(codes.map(() => null))
   })
 
   it('yields no action for Enter or Space inside a Panel or the World', () => {

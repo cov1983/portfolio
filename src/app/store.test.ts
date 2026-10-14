@@ -12,6 +12,7 @@ import {
 
 const first = 'first' as ExhibitId
 const panelFromList = { exhibitId: first, opener: 'list' } as const
+const panelFromGoal = { exhibitId: first, opener: 'goal' } as const
 const failure = { kind: 'bundle', message: 'chunk failed' } as const
 
 function state(overrides: Partial<AppState> = {}): AppState {
@@ -156,6 +157,20 @@ describe('reduce', () => {
 
   it('closes the Panel', () => {
     expect(reduce(state({ panel: panelFromList }), { type: 'close-panel' }).panel).toBeNull()
+  })
+
+  it('closes a Panel the Goal opened back into the running World (AC-14.2, 16.5)', () => {
+    const next = reduce(state({ screen: 'world', worldStatus: 'ready', panel: panelFromGoal }), {
+      type: 'close-panel',
+    })
+    expect([next.screen, next.panel, selectWorldPaused(next)]).toEqual(['world', null, false])
+  })
+
+  it('closes only the Panel on escape over the World, never shows the Title Screen (AC-16.5)', () => {
+    const next = reduce(state({ screen: 'world', worldStatus: 'ready', panel: panelFromGoal }), {
+      type: 'escape',
+    })
+    expect([next.screen, next.panel]).toEqual(['world', null])
   })
 
   it('sets the caption place when the Puck first enters a Zone (AC-13.1)', () => {
