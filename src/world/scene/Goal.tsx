@@ -45,7 +45,7 @@ export function Goal({ zone }: { zone: Zone }) {
       ))}
       <Solid box={geometry.net} colour={NET_COLOUR} opacity={NET_OPACITY} />
       <IceLine x={rect.centre.x} z={goal.line.a.z} width={rect.width} colour={FRAME_COLOUR} />
-      <Banner text={zone.banner.text} place={geometry.banner} />
+      <Banner lines={zone.banner.lines} place={geometry.banner} />
     </group>
   )
 }
