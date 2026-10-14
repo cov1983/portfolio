@@ -1,6 +1,6 @@
 // Focus rules (plan §5; spec, Focus handling): where keyboard focus goes after a state transition.
-// Pure: the component that owns the target applies it (src/app/App.tsx for the World container
-// since T5b; the Panel's targets arrive with T6). "Overlay control activated → the World" is not
+// Pure: src/app/App.tsx applies it to the World container (T5b), the Panel's close control and
+// the list entry (T6). "Overlay control activated → the World" is not
 // a state transition (Reset is the model's, never the store's), so the overlay's handler returns
 // focus itself (src/world/World.tsx, AC-12.2). Escape to the Title Screen moves focus nowhere:
 // the spec names no target (plan §5, corrected by T5b).

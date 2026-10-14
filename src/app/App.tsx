@@ -2,11 +2,12 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 
 import type { Content } from '../content/types.ts'
 import { markOnce, TITLE_SCREEN_INTERACTIVE_MARK } from '../perf/marks.ts'
+import { ExhibitPanel } from '../site/ExhibitPanel'
 import { TitleScreen } from '../site/TitleScreen'
 import type { World as WorldComponent } from '../world/World'
 import { detectCapability } from './capability.ts'
 import { focusAfter } from './focus.ts'
-import { INTERACTIVE_SELECTOR, keyAction, routeKey } from './keys.ts'
+import { INTERACTIVE_SELECTOR, isPlainActivation, keyAction, routeKey } from './keys.ts'
 import {
   createWorldLoader,
   idleScheduler,
@@ -22,8 +23,10 @@ import type { WorldFailure } from './types.ts'
 // render come from the same component and the same initial state (tests/build/index-html.test.ts
 // compares them). The initial state renders the Title Screen alone; the World arrives by dynamic
 // import (the entry chunk never imports it, ADR 0010) and mounts paused and hidden behind the
-// Title Screen through the store (plan §2, Entry and preload policy). Outside the coverage ratchet
-// (a component): seam 1 proves it (tests/e2e/world-entry.spec.ts, world.spec.ts).
+// Title Screen through the store (plan §2, Entry and preload policy). The Exhibit Panel renders
+// while the store holds one (T6), so the initial state, and the pre-rendered markup, have none.
+// Outside the coverage ratchet (a component): seam 1 proves it (tests/e2e/world-entry.spec.ts,
+// world.spec.ts, exhibit-panel.spec.ts).
 type Props = { content: Content; store: Store }
 
 export function App({ content, store }: Props) {
@@ -33,6 +36,8 @@ export function App({ content, store }: Props) {
   // module-free (ADR 0009). A function in useState needs the updater form.
   const [World, setWorld] = useState<typeof WorldComponent | null>(null)
   const worldRef = useRef<HTMLElement>(null)
+  const entriesRef = useRef<HTMLElement>(null)
+  const panelCloseRef = useRef<HTMLButtonElement>(null)
   const previous = useRef(state)
   const loaderRef = useRef<WorldLoader | null>(null)
 
@@ -116,14 +121,27 @@ export function App({ content, store }: Props) {
     if (loadOnEntry) loaderRef.current?.load()
   }, [loadOnEntry])
 
-  // Focus rules (plan §5): the World container on entry (AC-5.1, 6.2); the Panel's targets are
-  // T6's. Escape to the Title Screen moves focus nowhere (the spec names no target; the inert
-  // World drops it to the body, where Enter and Space reach the key router).
+  // Focus rules (plan §5): the World container on entry (AC-5.1, 6.2); the Panel's close control
+  // on open (Owner, #30 Q2); the list entry that opened the Panel on close (AC-2.2), found by its
+  // href, which the pre-rendered markup already carries. Escape to the Title Screen moves focus
+  // nowhere (the spec names no target; the inert World drops it to the body, where Enter and Space
+  // reach the key router).
   useEffect(() => {
     const target = focusAfter({ from: previous.current, to: state })
     previous.current = state
     if (target?.target === 'world') worldRef.current?.focus()
+    else if (target?.target === 'panel') panelCloseRef.current?.focus()
+    else if (target?.target === 'list-entry' && target.exhibitId !== undefined) {
+      entriesRef.current
+        ?.querySelector<HTMLAnchorElement>(`a[href="/exhibits#${target.exhibitId}"]`)
+        ?.focus()
+    }
   }, [state])
+
+  const panelExhibit =
+    state.panel === null
+      ? undefined
+      : content.exhibits.find((exhibit) => exhibit.id === state.panel?.exhibitId)
 
   // `entering` alone is the loading state: the reducer clears it on every path to a ready World
   // (store.test.ts proves the invariant), so no second condition is needed here.
@@ -136,7 +154,23 @@ export function App({ content, store }: Props) {
         onEnter={() => {
           store.dispatch({ type: 'enter' })
         }}
+        onPickExhibit={(exhibitId, event) => {
+          // A modified or middle click stays the link's: /exhibits#<id> in a new tab or window.
+          if (!isPlainActivation(event)) return
+          event.preventDefault()
+          store.dispatch({ type: 'open-panel', panel: { exhibitId, opener: 'list' } })
+        }}
+        entriesRef={entriesRef}
       />
+      {panelExhibit !== undefined && (
+        <ExhibitPanel
+          exhibit={panelExhibit}
+          closeRef={panelCloseRef}
+          onClose={() => {
+            store.dispatch({ type: 'close-panel' })
+          }}
+        />
+      )}
       {World !== null && (
         <World
           paused={selectWorldPaused(state)}
