@@ -25,7 +25,7 @@ export type WorldProps = {
   /** The container, so the app can focus it (plan §5, focusAfter). */
   containerRef: RefObject<HTMLElement | null>
   onReady: () => void
-  /** Every World event, for the store: the Zone entry sets the caption place, the Goal opens the Panel (AC-14.1). */
+  /** Every World event, for the store: the Zone's entry sets the caption's place, the Goal opens the Panel (AC-14.1). */
   onEvent: (event: WorldEvent) => void
   onFailure: (failure: WorldFailure) => void
 }

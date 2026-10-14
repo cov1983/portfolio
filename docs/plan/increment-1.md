@@ -329,8 +329,8 @@ export type WorldLayout = {
 }
 export const DIMENSIONS = { hub: { length: 40, width: 20 }, path: { length: 15, width: 6 },
   zone: { length: 30, width: 20 }, goal: { mouth: 6, depth: 2, post: 0.3 } }   // spec; Goal numbers are this plan's start values
-export function layoutFromContent(content: Content, dims = DIMENSIONS): WorldLayout
-// banner.text = `${exhibit.title} — ${exhibit.hook}` (AC-13.2); zone order = content.exhibits order
+export function layoutFromContent(content: { exhibits: readonly ZoneExhibit[] }, dims = DIMENSIONS): WorldLayout
+// banner.text = `${exhibit.title} — ${exhibit.hook}` (AC-13.2); the first Exhibit's Zone (corrected by T7, #31; was: zone order = content.exhibits order)
 ```
 
 **Corrected by T7 (#31, 2026-10-14; Owner's approval of Q2 and Q6)**: `banner` also carries

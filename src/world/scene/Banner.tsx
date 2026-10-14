@@ -7,7 +7,7 @@ import { CanvasTexture, SRGBColorSpace } from 'three'
 
 import type { Banner as BannerWords, BannerPlace } from '../model/layout'
 
-/** The canvas is this wide; its height follows the plane's shape. Wide enough for small glyphs to stay sharp. */
+/** The canvas is this wide, so small glyphs stay sharp; its height follows the plane's shape. */
 const PIXEL_WIDTH = 2048
 const BACKGROUND = '#0b1a2a'
 const INK = '#ffffff'
