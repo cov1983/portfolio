@@ -12,7 +12,8 @@ export const INTERACTIVE_SELECTOR = 'a, button, input, select, textarea, [conten
 /**
  * An open Panel owns every key (AC-12.3, 16.4). The Title Screen (and the failure screen, which
  * Escape leaves the same way, AC-22.2) owns a key only when the target is not a link or button,
- * so Enter on a focused list entry follows the link and Enter on the way-in is its click.
+ * so Enter on a focused list entry is its click (the Exhibit Panel opens, T6) and Enter on the
+ * way-in is its click.
  */
 export function routeKey(state: AppState, targetIsInteractive: boolean): KeyRoute {
   if (state.panel !== null) return 'panel'
