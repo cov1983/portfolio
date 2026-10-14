@@ -6,7 +6,7 @@ import { createWorldModel, PUCK, type Place, type WorldModel } from '../../src/w
 import {
   at,
   collect,
-  contentLayout,
+  oneZoneLayout,
   DOWN,
   drive,
   NONE,
@@ -19,7 +19,7 @@ import {
 // Spec seam 2, the Zone's events: the Goal is a sensor volume inside the net behind the goal line,
 // armed again only after the Puck has left it (AC-14.1, 14.2); posts and the net's outside are solid
 // (AC-14.3); the Zone reports its first entry once per page load (AC-13.1, model half).
-const layout = contentLayout()
+const layout = oneZoneLayout()
 const zone = layout.zones[0]
 if (zone === undefined) throw new Error('the content layout has no Zone')
 const ZONE_ID = zone.exhibitId

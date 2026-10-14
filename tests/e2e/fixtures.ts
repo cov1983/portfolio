@@ -3,6 +3,7 @@ import { expect, test as base, type Locator, type Page } from '@playwright/test'
 import { loadContentFromDisk } from '../../build/content-plugin.ts'
 import type { Content } from '../../src/content/types.ts'
 import { TITLE_SCREEN_INTERACTIVE_MARK } from '../../src/perf/marks.ts'
+import { FIXED_DT } from '../../src/world/model/world.ts'
 import { vercelHeaders } from '../../vercel-headers.ts'
 
 /** The `/(.*)` headers of vercel.json with names lower-cased, as a browser reports them. */
@@ -180,14 +181,15 @@ export async function scored(page: Page): Promise<void> {
   await driveIntoGoal(page)
 }
 
-/** The scene's step and its cap per frame (src/world/model/world.ts, src/world/scene/WorldCanvas.tsx). */
-const FIXED_DT = 1 / 60
+/** The scene's cap of steps per frame (src/world/scene/WorldCanvas.tsx: a component, not importable here). */
 const MAX_STEPS_PER_FRAME = 4
 
 /**
  * Resolves once the page has rendered frames worth at least `seconds` of model time: each frame
- * counts what the scene can step in it at most (its delta, capped at four steps). Counting frames,
- * not wall-clock time, so a slow software renderer only makes it take longer.
+ * counts what the scene can step in it at most (its delta, capped at four steps). It sets how long
+ * a key is held, an input's duration, not a wait for the page to settle: no assertion depends on
+ * it, the condition after it is polled. Counted in frames, not wall-clock time, so a slow software
+ * renderer only makes it take longer.
  */
 export function modelTime(page: Page, seconds: number): Promise<void> {
   return page.evaluate(

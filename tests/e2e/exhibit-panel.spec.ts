@@ -28,7 +28,7 @@ import {
 // closing returns focus to the World. Without script the entry stays a link to /exhibits#<id>
 // (title-screen.spec.ts, AC-2.3).
 
-/** The World is shown with nothing over it: the Panel gone, the World container focused, the Title Screen hidden. */
+/** The World with nothing over it: no Panel, the World container focused, the Title Screen hidden. */
 async function expectBackInTheWorld(page: Page): Promise<void> {
   await expect(exhibitPanel(page)).toHaveCount(0)
   await expect(worldContainer(page)).toBeFocused()
@@ -93,8 +93,8 @@ test.describe('opening from the list', () => {
   })
 })
 
-// One journey, since every step needs the Puck in the Goal and the drive is the slow part (CI
-// renders in software). It starts with the Hub → Path → Zone → Goal run without any loading
+// One journey (Owner, #31: one driving test instead of four), since every step needs the Puck in
+// the Goal and the drive is the slow part (CI renders in software). It starts with the Hub → Path → Zone → Goal run without any loading
 // (AC-10.1, seam 1 half) and ends with a second Goal after the Puck has left the net (AC-14.2).
 // Presence, wiring and focus only, never WebGL output.
 test('from the Goal: the Panel opens over the paused World, owns the keys and closes back into it', async ({

@@ -15,7 +15,7 @@ import {
  * fixture: the schema produces the Exhibit's id, so no cast, and nothing is read from disk. The
  * geometry does not depend on the text; AC-13.2's real-content check is layout.test.ts's.
  */
-export function contentLayout(): WorldLayout {
+export function oneZoneLayout(): WorldLayout {
   return layoutFromContent({
     exhibits: [
       { id: exhibitIdSchema.parse('exhibit-1'), title: 'Exhibit 1', hook: 'A model fixture' },

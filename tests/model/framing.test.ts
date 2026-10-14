@@ -14,14 +14,14 @@ import {
   type Vec3,
 } from '../../src/world/model/layout'
 import { FIXED_DT, PUCK, STANDARD } from '../../src/world/model/world'
-import { contentLayout, seededRandom } from './helpers'
+import { oneZoneLayout, seededRandom } from './helpers'
 
 // Spec seam 2, the Follow Camera over the whole World, pure: AC-5.2 (the first frame from the
 // Reset point holds the Hub's Path opening) and AC-11.2 (the Puck is inside the frame wherever it
 // is, both at the camera's goal pose and at the eased pose it lags behind at top speed, which is
 // the frame the Visitor sees). Four aspect ratios from ultra-wide to 4:3.
 const ASPECTS = [21 / 9, 16 / 9, 3 / 2, 4 / 3]
-const layout = contentLayout()
+const layout = oneZoneLayout()
 const zone = layout.zones[0]
 if (zone === undefined) throw new Error('the content layout has no Zone')
 const rects: Rect[] = [layout.hub.rect, layout.path.rect, zone.rect]

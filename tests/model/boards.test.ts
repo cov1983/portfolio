@@ -5,7 +5,7 @@ import { insideRect, type Rect, type Vec2, type WorldLayout } from '../../src/wo
 import { createWorldModel, type DriveInput, type WorldModel } from '../../src/world/model/world'
 import {
   at,
-  contentLayout,
+  oneZoneLayout,
   DOWN,
   drive,
   LEFT,
@@ -21,7 +21,7 @@ import {
 // never leaves that part; under any input it stays inside the union of the three rects. The Hub's
 // far board and the Zone's near board have an opening in the middle, so those runs start to the
 // side of it; the Zone's far board is approached beside the net.
-const layout = contentLayout()
+const layout = oneZoneLayout()
 const zone = layout.zones[0]
 if (zone === undefined) throw new Error('the content layout has no Zone')
 const STEPS = 360 // 6 s: enough to reach any board at top speed and come back
