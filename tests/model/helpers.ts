@@ -1,5 +1,6 @@
-// Shared helpers of the model seam: inputs, stepping and sampling, a seeded generator.
-import type { Vec2, WorldLayout } from '../../src/world/model/layout'
+// Shared helpers of the model seam: inputs, stepping and sampling, a seeded generator, the layout.
+import { exhibitIdSchema } from '../../src/content/schema'
+import { layoutFromContent, type Vec2, type WorldLayout } from '../../src/world/model/layout'
 import {
   NO_INPUT,
   type DriveInput,
@@ -8,6 +9,19 @@ import {
   type WorldEvent,
   type WorldModel,
 } from '../../src/world/model/world'
+
+/**
+ * The World with one Zone, built the way the site builds it (layoutFromContent) from a small
+ * fixture: the schema produces the Exhibit's id, so no cast, and nothing is read from disk. The
+ * geometry does not depend on the text; AC-13.2's real-content check is layout.test.ts's.
+ */
+export function contentLayout(): WorldLayout {
+  return layoutFromContent({
+    exhibits: [
+      { id: exhibitIdSchema.parse('exhibit-1'), title: 'Exhibit 1', hook: 'A model fixture' },
+    ],
+  })
+}
 
 export const NONE: DriveInput = NO_INPUT
 export const UP: DriveInput = { ...NONE, up: true }

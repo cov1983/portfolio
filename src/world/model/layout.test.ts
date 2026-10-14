@@ -1,15 +1,25 @@
 import { describe, expect, it } from 'vitest'
 
+import { loadContentFromDisk } from '../../../build/content-plugin'
+import { exhibitIdSchema } from '../../content/schema'
 import {
   bannerPlace,
   DIMENSIONS,
   hubLayout,
   insideRect,
-  PLACEHOLDER_EXHIBIT,
+  layoutFromContent,
   type Rect,
   rectEdges,
   worldLayout,
+  type ZoneExhibit,
 } from './layout'
+
+/** A small Exhibit for the geometry: the schema produces its id, so no cast. */
+const EXHIBIT: ZoneExhibit = {
+  id: exhibitIdSchema.parse('exhibit-1'),
+  title: 'Exhibit 1',
+  hook: 'A fixture for the layout',
+}
 
 describe('DIMENSIONS', () => {
   it('holds the spec sizes of the Hub, the Path and the Zone', () => {
@@ -58,7 +68,7 @@ describe('hubLayout', () => {
 })
 
 describe('worldLayout', () => {
-  const exhibit = PLACEHOLDER_EXHIBIT
+  const exhibit = EXHIBIT
   const layout = worldLayout(exhibit)
   const zone = layout.zones[0]
 
@@ -119,8 +129,11 @@ describe('worldLayout', () => {
     ])
   })
 
-  it('carries the Banner text through', () => {
-    expect(zone?.banner).toEqual({ text: exhibit.bannerText })
+  it('writes the Banner as the title and the hook, one line each', () => {
+    expect(zone?.banner).toEqual({
+      text: 'Exhibit 1 — A fixture for the layout',
+      lines: ['Exhibit 1', 'A fixture for the layout'],
+    })
   })
 
   it('uses the whole Zone as its caption place', () => {
@@ -154,8 +167,27 @@ describe('worldLayout', () => {
   })
 })
 
+describe('layoutFromContent', () => {
+  it("writes the real Exhibit's title and hook on its Zone's Banner (AC-13.2, 26.1)", async () => {
+    const content = await loadContentFromDisk()
+    const [exhibit] = content.exhibits
+    expect(layoutFromContent(content).zones[0]?.banner.text).toBe(
+      `${exhibit?.title ?? ''} — ${exhibit?.hook ?? ''}`,
+    )
+  })
+
+  it("builds the first Exhibit's Zone: one Path, one Zone (Q6 on #31)", () => {
+    const second = { ...EXHIBIT, id: exhibitIdSchema.parse('exhibit-2') }
+    expect(layoutFromContent({ exhibits: [EXHIBIT, second] })).toEqual(worldLayout(EXHIBIT))
+  })
+
+  it('closes the Hub when there is no Exhibit', () => {
+    expect(layoutFromContent({ exhibits: [] })).toEqual(hubLayout())
+  })
+})
+
 describe('bannerPlace', () => {
-  const zone = worldLayout(PLACEHOLDER_EXHIBIT).zones[0]
+  const zone = worldLayout(EXHIBIT).zones[0]
 
   it('stands the Banner on the ice against the end board, centred on the Goal', () => {
     const place = zone === undefined ? undefined : bannerPlace(zone)

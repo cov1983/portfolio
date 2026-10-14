@@ -1,21 +1,27 @@
 import RAPIER from '@dimforge/rapier3d-compat'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 
-import {
-  insideRect,
-  PLACEHOLDER_EXHIBIT,
-  worldLayout,
-  type WorldLayout,
-} from '../../src/world/model/layout'
+import { insideRect, type WorldLayout } from '../../src/world/model/layout'
 import { createWorldModel, PUCK, type Place, type WorldModel } from '../../src/world/model/world'
-import { at, collect, DOWN, drive, NONE, reboundAt, RIGHT, stepsWith, UP } from './helpers'
+import {
+  at,
+  collect,
+  contentLayout,
+  DOWN,
+  drive,
+  NONE,
+  reboundAt,
+  RIGHT,
+  stepsWith,
+  UP,
+} from './helpers'
 
 // Spec seam 2, the Zone's events: the Goal is a sensor volume inside the net behind the goal line,
 // armed again only after the Puck has left it (AC-14.1, 14.2); posts and the net's outside are solid
 // (AC-14.3); the Zone reports its first entry once per page load (AC-13.1, model half).
-const layout = worldLayout(PLACEHOLDER_EXHIBIT)
+const layout = contentLayout()
 const zone = layout.zones[0]
-if (zone === undefined) throw new Error('the placeholder layout has no Zone')
+if (zone === undefined) throw new Error('the content layout has no Zone')
 const ZONE_ID = zone.exhibitId
 const ZONE_CENTRE = zone.rect.centre
 const LINE_Z = zone.goal.line.a.z
