@@ -36,3 +36,21 @@ export function keyAction(route: KeyRoute, code: string): Action | null {
       return null
   }
 }
+
+/** The parts of a click that decide whether it is the page's or the browser's. */
+export type Activation = {
+  button: number
+  ctrlKey: boolean
+  metaKey: boolean
+  shiftKey: boolean
+  altKey: boolean
+}
+
+/**
+ * A list entry's activation opens the Exhibit Panel only when it is plain: the primary button (or
+ * Enter, which clicks with button 0) and no modifier. A modified or middle click stays the
+ * browser's, a new tab or window on the entry's `/exhibits#<id>` (AC-2.3's link, kept after hydration).
+ */
+export function isPlainActivation(event: Activation): boolean {
+  return event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey
+}
