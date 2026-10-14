@@ -34,10 +34,10 @@ describe('stepFrame (plan §5, Scene loop ↔ model)', () => {
     })
   })
 
-  it('counts a frame longer than MAX_FRAME_DT as MAX_FRAME_DT', () => {
-    const run = counting()
-    stepFrame(0, 10, run.step)
-    expect(run.calls()).toBe(Math.min(MAX_STEPS_PER_FRAME, Math.floor(MAX_FRAME_DT / FIXED_DT)))
+  // The goal stops the loop before the cap can drop the remainder, so only the clamp bounds it.
+  it('leaves at most MAX_FRAME_DT from a 10 s frame whose first step emits goal', () => {
+    const run = counting([[{ type: 'goal', zoneId: ZONE }]])
+    expect(stepFrame(0, 10, run.step)).toBeLessThanOrEqual(MAX_FRAME_DT)
   })
 
   it('runs no step after the one that emits goal in the same frame (AC-14.1, 16.4)', () => {

@@ -20,6 +20,7 @@ import {
   reboundAt,
   REENTRY_BUDGET_S,
   RIGHT,
+  STAY_S,
   stepsWith,
   UP,
 } from './helpers'
@@ -99,28 +100,39 @@ describe('Goal re-arm (AC-14.2)', () => {
   })
 })
 
-/** Model seconds of holding `input` until the next `goal`, or Infinity within `limit` steps. */
+/**
+ * Model seconds of holding `input` until the step that emits `goal`, stopping there as the
+ * scene's stepFrame does; Infinity if none within `limit` steps.
+ */
 function secondsToGoal(input: typeof UP, limit = STEPS * 2): number {
-  const run = collect(model, input, limit)
-  const [goal] = stepsWith(run, 'goal')
-  return goal === undefined ? Infinity : (goal + 1) * FIXED_DT
+  for (let step = 1; step <= limit; step += 1) {
+    if (model.step(input).some((event) => event.type === 'goal')) return step * FIXED_DT
+  }
+  return Infinity
 }
 
-// The e2e journey's budget (REENTRY_BUDGET_S): the scene stops stepping at the Goal, so the
-// journey resumes with the Puck in the net; leaving and re-entering fits the budget, the run from
-// the Hub's Reset point (where a Reset by R would have put it) does not.
+/** The journey after Escape: STAY_S with no key, DOWN for LEAVE_S, then UP until `goal`. */
+function journeyReentry(): number {
+  drive(model, NONE, Math.round(STAY_S / FIXED_DT))
+  drive(model, DOWN, Math.round(LEAVE_S / FIXED_DT))
+  return secondsToGoal(UP)
+}
+
+// The e2e journey's budget (REENTRY_BUDGET_S), replayed step for step: the scene stops stepping
+// at the Goal, so the journey resumes with the Puck in the net. A Reset by R while paused would
+// put it at rest at the Hub's Reset point instead, from where the same sequence takes far longer.
 describe('Re-entry budget of the e2e journey (AC-12.3, 14.2)', () => {
-  it('is about 1.5× the time a Puck in the Goal takes to leave and score again', () => {
-    create(at(layout, ZONE_CENTRE))
+  it('is about 1.5× the replayed journey from the Goal to the next Goal', () => {
+    create(layout)
     expect(secondsToGoal(UP)).toBeLessThan(Infinity)
-    drive(model, DOWN, Math.round(LEAVE_S / FIXED_DT))
-    // Measured 1.45 s; toBeCloseTo(1.5, 0) accepts a ratio between 1 and 2.
-    expect(REENTRY_BUDGET_S / secondsToGoal(UP)).toBeCloseTo(1.5, 0)
+    // Measured 1.68 s (budget 2.5 s); toBeCloseTo(1.5, 0) accepts a ratio between 1 and 2.
+    expect(REENTRY_BUDGET_S / journeyReentry()).toBeCloseTo(1.5, 0)
   })
 
-  it("is less than half the time from the Hub's Reset point to the Goal", () => {
+  it('is less than half the time a Puck reset by R needs for the same sequence', () => {
     create(layout)
-    expect(secondsToGoal(UP)).toBeGreaterThan(2 * REENTRY_BUDGET_S)
+    // Measured 6.43 s from rest at the Hub's Reset point.
+    expect(journeyReentry()).toBeGreaterThan(2 * REENTRY_BUDGET_S)
   })
 })
 

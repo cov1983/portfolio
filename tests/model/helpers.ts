@@ -24,12 +24,15 @@ export function oneZoneLayout(): WorldLayout {
 }
 
 /**
- * The e2e journey's bound on the re-entry (exhibit-panel.spec.ts): from the Goal, ArrowDown held
- * for 0.75 s, then ArrowUp for this much model time must score again. About 1.5× the model's
- * re-entry time and well below the run from the Hub's Reset point (goal.test.ts proves both), so
- * a Puck that is no longer in the Goal on resume cannot score within it (AC-12.3, 14.2).
+ * The e2e journey's bound on the re-entry (exhibit-panel.spec.ts): after the Goal, STAY_S with no
+ * key, ArrowDown for LEAVE_S, then ArrowUp for this much model time must score again. About 1.5×
+ * the replayed journey's 1.68 s, and less than half of the 6.43 s a Puck reset by R needs for the
+ * same sequence (goal.test.ts proves both), so a Reset while paused fails the journey (AC-12.3,
+ * 14.2).
  */
-export const REENTRY_BUDGET_S = 2.2
+export const REENTRY_BUDGET_S = 2.5
+/** How long the journey waits with no key after Escape: the Puck stays in the Goal (AC-14.2). */
+export const STAY_S = 0.5
 /** How long the journey holds ArrowDown to leave the Goal. */
 export const LEAVE_S = 0.75
 

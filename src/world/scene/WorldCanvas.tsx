@@ -1,8 +1,8 @@
-// The React Three Fiber mirror of the World model (plan §5, Scene loop ↔ model; ADR 0009): owns
-// the fixed-timestep accumulator, steps the model from the key state (the loop's rule is
-// stepFrame.ts), renders the Puck mesh and the camera goal from the state interpolated between
-// the last two steps, eases the Follow Camera and records `world-playable`. Nothing here steps physics outside `model.step`, and
-// nothing is fetched: the Banner's texture is drawn on a canvas, no font.
+// The React Three Fiber mirror of the World model (plan §5, Scene loop ↔ model; ADR 0009): owns the
+// fixed-timestep accumulator, steps the model from the key state (the loop's rule is stepFrame.ts),
+// renders the Puck mesh and the camera goal from the state interpolated between the last two steps,
+// eases the Follow Camera and records `world-playable`. Nothing here steps physics outside
+// `model.step`, and nothing is fetched: the Banner's texture is drawn on a canvas, no font.
 //
 // 'wasm-unsafe-eval' in the CSP (ADR 0012) exists for this import: the compat package inlines
 // Rapier's wasm and instantiates it in the page.
