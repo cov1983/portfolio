@@ -396,22 +396,22 @@ export type WorldCanvasProps = { layout: WorldLayout; paused: boolean; reducedMo
 export type WorldHandle = { reset(): void }                        // the overlay's Reset control reaches the same Reset as R
 ```
 
-**Corrected by T5b (#29, 2026-10-13; Owner's answers to Q2–Q4)**: `WorldCanvas` takes a
-`handle` through which the overlay's Reset control (AC-12.2) runs the same Reset as R; Reset stays
-the model's and never becomes an app action. `src/world/World.tsx` wraps the scene and the overlay
-in the World container (`section`, `tabIndex={-1}`, `inert` plus `visibility: hidden` while the
-Title Screen is shown: the canvas keeps its size, so the paused demand frame renders and the mark
-fires; `display: none` would leave React Three Fiber without a root) and takes
-`{ paused, hidden, containerRef, onReady, onEvent, onFailure }`; until T7 the World keeps the Goal
-events to itself (the reducer's `goal` branch would open the Panel's state with no Panel to show)
-and forwards `zone-entered` for the caption's place (corrected by T7, #31: `World` also takes
-`content`, and forwards every World event; the Goal's opens the Panel). Escape to the Title Screen moves focus nowhere:
-the spec's Focus handling names no target for World → Title Screen (Owner on #29, addition 1), the
-inert World drops focus to the body, where Enter and Space reach the key router. The reducer sets the Hub caption's
-place on `world-status: 'ready'`, readiness being the once-per-load trigger the way the model's
-single `zone-entered` is the Zone's. The World loader and the idle preload policy live in
-`src/app/preload.ts` (`createWorldLoader`, `idleScheduler` with a timeout fallback for WebKit, which
-has no `requestIdleCallback`, `shouldLoadOnEntry`).
+**Corrected by T5b (#29, 2026-10-13; Owner's answers to Q2–Q4)**: `WorldCanvas` takes a `handle`
+through which the overlay's Reset control (AC-12.2) runs the same Reset as R; Reset stays the
+model's and never becomes an app action. `src/world/World.tsx` wraps the scene and the overlay in
+the World container (`section`, `tabIndex={-1}`, `inert` plus `visibility: hidden` while the Title
+Screen is shown: the canvas keeps its size, so the paused demand frame renders and the mark fires;
+`display: none` would leave React Three Fiber without a root) and takes `{ paused, hidden,
+containerRef, onReady, onEvent, onFailure }`; until T7 the World keeps the Goal events to itself
+(the reducer's `goal` branch would open the Panel's state with no Panel to show) and forwards
+`zone-entered` for the caption's place (corrected by T7, #31: `World` also takes `content`, and
+forwards every World event; the Goal's opens the Panel). Escape to the Title Screen moves focus
+nowhere: the spec's Focus handling names no target for World → Title Screen (Owner on #29,
+addition 1), the inert World drops focus to the body, where Enter and Space reach the key router.
+The reducer sets the Hub caption's place on `world-status: 'ready'`, readiness being the
+once-per-load trigger the way the model's single `zone-entered` is the Zone's. The World loader
+and the idle preload policy live in `src/app/preload.ts` (`createWorldLoader`, `idleScheduler`
+with a timeout fallback for WebKit, which has no `requestIdleCallback`, `shouldLoadOnEntry`).
 
 ### Input (`src/world/input/keyboard.ts`)
 
@@ -526,11 +526,11 @@ cases use a context with `javaScriptEnabled: false`; reduced motion uses
 | 11.3 | model | `reducedMotion: true` → pose equals goal after one call | T1 |
 | 12.1 | model + unit | model: after `reset()` the Puck is at rest at `hub.resetPoint` · camera: `cameraFollow(goal, goal, …)` equals the goal (snap) · keyboard: `KeyR` yields `reset`; `routeKey` sends it to the World when no Panel is open | T1 |
 | 12.2 | e2e | click the Reset control → `activeElement` is the World container; keydown afterwards is routed to the World (reducer/unit) | T5b |
-| 12.3 | unit + e2e | `routeKey` with panel open → 'panel' · e2e: Panel open, press R → Panel still open (corrected by T7, #31: `routeKey` takes no code since T5a, so R's half is `keyAction('panel', 'KeyR') === null`; the e2e step is part of `exhibit-panel.spec`'s one Goal journey) | T7 |
+| 12.3 | unit + e2e | `routeKey` with panel open → 'panel' · e2e: Panel open, press R → Panel still open (corrected by T7, #31: `routeKey` takes no code since T5a, so R's half is `keyAction('panel', 'KeyR') === null`; the e2e step is part of `exhibit-panel.spec`'s one Goal journey, whose re-entry bounded in model time proves that R left the World alone) | T7 |
 | 13.1 | model + unit | model: `zone-entered` emitted once on first entry, not again on re-entry · reducer: `zone-entered` sets the caption to that Zone's text | T2, T8a |
 | 13.2 | unit | `layoutFromContent(content).zones[0].banner.text` equals title + hook from the real content | T7 |
 | 14.1 | model + unit | model: `goal` on crossing the line into the sensor · reducer: `goal` → `panel` set, `selectWorldPaused` true | T2, T7 |
-| 14.2 | model + unit | model: no second `goal` until `goal-left` · reducer: close-panel leaves screen 'world' (corrected by T7, #31: the Goal journey in `exhibit-panel.spec` adds the positive half, the Panel reopening after the Puck has left the net and re-entered; "does not reopen" stays the model's, the DOM cannot show an absence without waiting) | T2, T7 |
+| 14.2 | model + unit | model: no second `goal` until `goal-left` · reducer: close-panel leaves screen 'world' (corrected by T7, #31: the Goal journey in `exhibit-panel.spec` adds both halves in model time: no Panel during 0.5 s with no key after Escape, then the Panel again within `REENTRY_BUDGET_S` of leaving and re-entering, a budget `goal.test.ts` derives and keeps below the run from the Hub, so a Puck reset by R fails it) | T2, T7 |
 | 14.3 | model | brushing posts and the net's outside: no `goal`, Puck rebounds | T2 |
 | 15.1 | e2e | from the World: Escape, pick the entry → Panel with full content | T6 |
 | 16.1 | e2e | Panel shows title, hook, summary, role, tech, year, links, images (alt), video, "what I'd do differently"; no visibility text; values from `loadContent` | T6 |

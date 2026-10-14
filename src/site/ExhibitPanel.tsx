@@ -7,9 +7,10 @@ import { Exhibit } from './Exhibit'
 // Exhibit component in a native modal dialog (Owner, #30 Q1). showModal() puts it in the top layer
 // over the Title Screen, or over the World when the Goal opened it (T7), and makes everything else
 // inert, so Tab and the pointer reach the Panel only (AC-16.3); its title names it. Rendered only
-// while the store holds a Panel, so the pre-rendered Title Screen never contains it (tests/build/index-html.test.ts). The
-// store owns open and closed: Escape reaches the key router (src/app/keys.ts), and the dialog's own
-// cancel is turned into the same close, never left to close the element behind React's back.
+// while the store holds a Panel, so the pre-rendered Title Screen never contains it
+// (tests/build/index-html.test.ts). The store owns open and closed: Escape reaches the key router
+// (src/app/keys.ts), and the dialog's own cancel is turned into the same close, never left to
+// close the element behind React's back.
 // A modal dialog keeps Tab off the inert page, but Chromium and WebKit move it on past the last
 // control into the browser's own UI (exhibit-panel.spec.ts, red before this): `wrapTab` cycles
 // Tab and Shift+Tab between the first and the last control instead (AC-16.3; Firefox wraps itself).

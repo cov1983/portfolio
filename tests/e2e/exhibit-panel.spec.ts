@@ -94,8 +94,9 @@ test.describe('opening from the list', () => {
 })
 
 // One journey (Owner, #31: one driving test instead of four), since every step needs the Puck in
-// the Goal and the drive is the slow part (CI renders in software). It starts with the Hub → Path → Zone → Goal run without any loading
-// (AC-10.1, seam 1 half) and ends with a second Goal after the Puck has left the net (AC-14.2).
+// the Goal and the drive is the slow part (CI renders in software). It starts with the Hub → Path
+// → Zone → Goal run without any loading (AC-10.1, seam 1 half) and ends with a second Goal after
+// the Puck has left the net (AC-14.2).
 // Presence, wiring and focus only, never WebGL output.
 test('from the Goal: the Panel opens over the paused World, owns the keys and closes back into it', async ({
   page,
@@ -200,10 +201,10 @@ test.describe('reading (AC-16.1, 16.2)', () => {
       await expect(panel.getByRole('img', { name: image.alt })).toBeAttached()
     }
     await expect(panel).toContainText(textOf(exhibit.whatIdDoDifferentlyHtml))
-    // Never shown as a field: no element reads the value alone, and nothing names it. Body text that
-    // happens to use the word ("personal") is not the field.
+    // Never shown as a field: no element reads the value alone, and no label names it. Body text
+    // that happens to use either word ("personal", "visibility") is not the field.
     await expect(panel.getByText(exhibit.visibility, { exact: true })).toHaveCount(0)
-    await expect(panel.getByText(/visibility/i)).toHaveCount(0)
+    await expect(panel.getByText(/^\s*visibility\s*:?\s*$/i)).toHaveCount(0)
   })
 
   test('the Panel is named by the Exhibit’s title', async ({ page, content }) => {

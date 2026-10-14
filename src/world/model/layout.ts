@@ -201,7 +201,7 @@ export function worldLayout(
  * The World the site shows: the Zone of the first Exhibit, in content order. increment-1 has one
  * Path and exactly one Exhibit (spec, Further notes); how several Zones are placed is a later
  * increment's, and until then any further Exhibit is reached from the list (AC-15.1). No Exhibit:
- * the closed Hub (plan §5, corrected by T7, #31). Takes a Content, or any list of what a Zone needs.
+ * the closed Hub (plan §5, corrected by T7, #31).
  */
 export function layoutFromContent(
   content: { exhibits: readonly ZoneExhibit[] },

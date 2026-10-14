@@ -171,6 +171,7 @@ describe('layoutFromContent', () => {
   it("writes the real Exhibit's title and hook on its Zone's Banner (AC-13.2, 26.1)", async () => {
     const content = await loadContentFromDisk()
     const [exhibit] = content.exhibits
+    expect(exhibit).toBeDefined()
     expect(layoutFromContent(content).zones[0]?.banner.text).toBe(
       `${exhibit?.title ?? ''} — ${exhibit?.hook ?? ''}`,
     )

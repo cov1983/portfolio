@@ -48,7 +48,8 @@ function drawBanner(lines: BannerWords['lines'], place: BannerPlace): HTMLCanvas
     if (line === undefined) return
     const largest = Math.round(canvas.height * line.largest)
     context.font = font(line.weight, largest)
-    // Text width grows with the font size, so one measurement gives the size that fits.
+    // Text width grows ≈ linearly with the font size, so one measurement gives the size that
+    // fits; the padding absorbs the rounding.
     const width = context.measureText(text).width
     const px = width <= room ? largest : Math.floor((largest * room) / width)
     context.font = font(line.weight, px)
