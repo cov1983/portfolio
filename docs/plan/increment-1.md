@@ -321,7 +321,7 @@ export type Rect = { centre: Vec2; length: number; width: number } // length alo
 export type Segment = { a: Vec2; b: Vec2 }
 export type Rink = { id: 'hub' | ExhibitId; rect: Rect; boards: Segment[] }   // boards exclude openings
 export type Goal = { zoneId: ExhibitId; line: Segment; sensor: Rect; posts: Rect[] }
-export type Zone = Rink & { exhibitId: ExhibitId; goal: Goal; banner: { text: string }; captionPlace: Rect }
+export type Zone = Rink & { exhibitId: ExhibitId; goal: Goal; banner: { text: string; lines: [title: string, hook: string] }; captionPlace: Rect }
 export type WorldLayout = {
   hub: Rink & { captionPlace: Rect; resetPoint: Vec2 }
   path: { rect: Rect; boards: Segment[] }
@@ -332,6 +332,16 @@ export const DIMENSIONS = { hub: { length: 40, width: 20 }, path: { length: 15, 
 export function layoutFromContent(content: Content, dims = DIMENSIONS): WorldLayout
 // banner.text = `${exhibit.title} — ${exhibit.hook}` (AC-13.2); zone order = content.exhibits order
 ```
+
+**Corrected by T7 (#31, 2026-10-14; Owner's approval of Q2 and Q6)**: `banner` also carries
+`lines: [title, hook]`, the two lines the sign draws (one line clipped the real 129 characters; a
+split of `text` on " — " would break on a title that contains it). `layoutFromContent` builds the
+Zone of `content.exhibits[0]` only: increment-1 has one Path and exactly one Exhibit (spec, Further
+notes), how several Zones are placed is a later increment's, and a further Exhibit is reached from
+the list (AC-15.1); no Exhibit gives the closed Hub. It takes `{ exhibits: readonly ZoneExhibit[] }`
+(`ZoneExhibit = Pick<Exhibit, 'id' | 'title' | 'hook'>`), which a `Content` is. `World` takes the
+`content` the app holds as a prop and memoises the layout (Q1): no `virtual:content` import in the
+`world` chunk.
 
 ### Puck controller ↔ physics (`src/world/model/world.ts`)
 
@@ -392,7 +402,8 @@ Title Screen is shown: the canvas keeps its size, so the paused demand frame ren
 fires; `display: none` would leave React Three Fiber without a root) and takes
 `{ paused, hidden, containerRef, onReady, onEvent, onFailure }`; until T7 the World keeps the Goal
 events to itself (the reducer's `goal` branch would open the Panel's state with no Panel to show)
-and forwards `zone-entered` for the caption's place. Escape to the Title Screen moves focus nowhere:
+and forwards `zone-entered` for the caption's place (corrected by T7, #31: `World` also takes
+`content`, and forwards every World event; the Goal's opens the Panel). Escape to the Title Screen moves focus nowhere:
 the spec's Focus handling names no target for World → Title Screen (Owner on #29, addition 1), the
 inert World drops focus to the body, where Enter and Space reach the key router. The reducer sets the Hub caption's
 place on `world-status: 'ready'`, readiness being the once-per-load trigger the way the model's
@@ -513,17 +524,17 @@ cases use a context with `javaScriptEnabled: false`; reduced motion uses
 | 11.3 | model | `reducedMotion: true` → pose equals goal after one call | T1 |
 | 12.1 | model + unit | model: after `reset()` the Puck is at rest at `hub.resetPoint` · camera: `cameraFollow(goal, goal, …)` equals the goal (snap) · keyboard: `KeyR` yields `reset`; `routeKey` sends it to the World when no Panel is open | T1 |
 | 12.2 | e2e | click the Reset control → `activeElement` is the World container; keydown afterwards is routed to the World (reducer/unit) | T5b |
-| 12.3 | unit + e2e | `routeKey` with panel open → 'panel' · e2e: Panel open, press R → Panel still open | T7 |
+| 12.3 | unit + e2e | `routeKey` with panel open → 'panel' · e2e: Panel open, press R → Panel still open (corrected by T7, #31: `routeKey` takes no code since T5a, so R's half is `keyAction('panel', 'KeyR') === null`; the e2e step is part of `exhibit-panel.spec`'s one Goal journey) | T7 |
 | 13.1 | model + unit | model: `zone-entered` emitted once on first entry, not again on re-entry · reducer: `zone-entered` sets the caption to that Zone's text | T2, T8a |
 | 13.2 | unit | `layoutFromContent(content).zones[0].banner.text` equals title + hook from the real content | T7 |
 | 14.1 | model + unit | model: `goal` on crossing the line into the sensor · reducer: `goal` → `panel` set, `selectWorldPaused` true | T2, T7 |
-| 14.2 | model + unit | model: no second `goal` until `goal-left` · reducer: close-panel leaves screen 'world' | T2, T7 |
+| 14.2 | model + unit | model: no second `goal` until `goal-left` · reducer: close-panel leaves screen 'world' (corrected by T7, #31: the Goal journey in `exhibit-panel.spec` adds the positive half, the Panel reopening after the Puck has left the net and re-entered; "does not reopen" stays the model's, the DOM cannot show an absence without waiting) | T2, T7 |
 | 14.3 | model | brushing posts and the net's outside: no `goal`, Puck rebounds | T2 |
 | 15.1 | e2e | from the World: Escape, pick the entry → Panel with full content | T6 |
 | 16.1 | e2e | Panel shows title, hook, summary, role, tech, year, links, images (alt), video, "what I'd do differently"; no visibility text; values from `loadContent` | T6 |
 | 16.2 | e2e | viewport 320×568: Panel scrollable (`scrollHeight > clientHeight`), no horizontal overflow of the document | T6 |
 | 16.3 | e2e | Tab × (controls + 2): `activeElement` always inside the Panel | T6 |
-| 16.4 | unit | `routeKey` returns 'panel' for every steering code and R while a Panel is open; `selectWorldPaused` is true whenever `panel !== null` (the scene never calls `step` while paused, proven by the AC-6.1 model test) | T7 |
+| 16.4 | unit | `routeKey` returns 'panel' for every steering code and R while a Panel is open (corrected by T7, #31: `routeKey` takes no code since T5a; `keyAction('panel', code)` is null for every `DRIVE_CODES` code and R, and the scene ignores keydown while paused); `selectWorldPaused` is true whenever `panel !== null` (the scene never calls `step` while paused, proven by the AC-6.1 model test) | T7 |
 | 16.5 | e2e | Panel over the World: Escape → Panel gone, `activeElement` is the World container | T7 |
 | 17.1 | e2e | `privacy.spec`: request log from navigation to before any Panel has no request under `/media/exhibits/` (site images may live under `/media/site/`) | T6 |
 | 17.2 | build + e2e | `<video>` has `poster`, `controls`, no `autoplay`, `paused === true` after open (corrected by T6, #30 Q4: the real content has no video, so the markup is proven on the build seam, the open Panel's tree rendered with the `content-video` fixture; the browser half, `paused` after open, is hand-off #52 for the first Exhibit with a video) | T6, #52 |
