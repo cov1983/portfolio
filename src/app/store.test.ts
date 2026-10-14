@@ -145,6 +145,15 @@ describe('reduce', () => {
     )
   })
 
+  it('cancels a pending entry when a Panel opens, so the World does not switch in under it', () => {
+    const entering = state({ worldStatus: 'loading', entering: true })
+    const reading = reduce(entering, { type: 'open-panel', panel: panelFromList })
+    expect(reduce(reading, { type: 'world-status', status: 'ready' })).toMatchObject({
+      screen: 'title',
+      entering: false,
+    })
+  })
+
   it('closes the Panel', () => {
     expect(reduce(state({ panel: panelFromList }), { type: 'close-panel' }).panel).toBeNull()
   })

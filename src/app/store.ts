@@ -82,7 +82,9 @@ export function reduce(state: AppState, action: Action): AppState {
       if (state.screen === 'title') return state
       return { ...state, screen: 'title', entering: false }
     case 'open-panel':
-      return { ...state, panel: action.panel }
+      // Picking an Exhibit to read cancels an entry still waiting for the World (risk 7): it would
+      // otherwise switch in under the Panel, and closing would return focus to a hidden entry.
+      return { ...state, panel: action.panel, entering: false }
     case 'close-panel':
       return state.panel === null ? state : { ...state, panel: null }
     case 'world-event':

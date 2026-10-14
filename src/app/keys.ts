@@ -12,7 +12,8 @@ export const INTERACTIVE_SELECTOR = 'a, button, input, select, textarea, [conten
 /**
  * An open Panel owns every key (AC-12.3, 16.4). The Title Screen (and the failure screen, which
  * Escape leaves the same way, AC-22.2) owns a key only when the target is not a link or button,
- * so Enter on a focused list entry follows the link and Enter on the way-in is its click.
+ * so Enter on a focused list entry is its click (the Exhibit Panel opens, T6) and Enter on the
+ * way-in is its click.
  */
 export function routeKey(state: AppState, targetIsInteractive: boolean): KeyRoute {
   if (state.panel !== null) return 'panel'
@@ -35,4 +36,22 @@ export function keyAction(route: KeyRoute, code: string): Action | null {
     case 'none':
       return null
   }
+}
+
+/** The parts of a click that decide whether it is the page's or the browser's. */
+export type Activation = {
+  button: number
+  ctrlKey: boolean
+  metaKey: boolean
+  shiftKey: boolean
+  altKey: boolean
+}
+
+/**
+ * A list entry's activation opens the Exhibit Panel only when it is plain: the primary button (or
+ * Enter, which clicks with button 0) and no modifier. A modified or middle click stays the
+ * browser's, a new tab or window on the entry's `/exhibits#<id>` (AC-2.3's link, kept after hydration).
+ */
+export function isPlainActivation(event: Activation): boolean {
+  return event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey
 }

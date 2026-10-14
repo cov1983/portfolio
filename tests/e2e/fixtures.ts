@@ -113,6 +113,27 @@ export const worldContainer = (page: Page): Locator => page.locator('section[ari
 
 export const titleScreen = (page: Page): Locator => page.locator('main.title-screen')
 
+/** The Title Screen's list entry of the Exhibit titled `title`. */
+export const listEntry = (page: Page, title: string): Locator =>
+  page.getByRole('navigation', { name: 'Exhibits' }).getByRole('link', { name: title })
+
+/** The open Exhibit Panel: a modal dialog, absent from the page while closed. */
+export const exhibitPanel = (page: Page): Locator => page.getByRole('dialog')
+
+/** `/` hydrated, then the list entry of the Exhibit titled `title`: its Panel is open. */
+export async function opened(page: Page, title: string): Promise<void> {
+  await hydrated(page)
+  await listEntry(page, title).click()
+  await expect(exhibitPanel(page)).toBeVisible()
+}
+
+/** The first Exhibit of the content (the fixture guarantees one). */
+export function firstExhibit(content: Content): Content['exhibits'][number] {
+  const [exhibit] = content.exhibits
+  if (exhibit === undefined) throw new Error('the content has no Exhibit')
+  return exhibit
+}
+
 /** `/` with the Title Screen hydrated (the mark recorded): the handlers exist. */
 export async function hydrated(page: Page): Promise<void> {
   await page.goto('/')

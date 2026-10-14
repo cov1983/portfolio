@@ -5,7 +5,7 @@ Thomas's personal website: an immersive, interactive 3D portfolio in which visit
 puck through a playful virtual world to discover his projects and background. Physics, hockey-inspired
 challenges and light storytelling make exploring the portfolio an experience that itself demonstrates
 his development skills. Status: **Phase 3, increment-1 in progress** (plan `docs/plan/increment-1.md`;
-T5b #29 mounts the World paused behind the hydrated `/` and wires the way in and out; the perf gate reads four lines at `/`).
+T5b #29 mounts the World paused behind the hydrated `/` and wires the way in and out; the perf gate reads four lines at `/`; T6 #30 opens the Exhibit Panel, a native modal dialog, from the list).
 The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the model owns Rapier, the scene mirrors it.
 
 ## Environment
@@ -32,7 +32,7 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
 
 ## Commands (single entry points — use these, not ad-hoc variants)
 - Setup:   `make setup`         # pnpm install --frozen-lockfile, git hooks path, then `make browsers` (Playwright)
-- Verify:  `make verify`        # Prettier check + ESLint + tsc --noEmit + shellcheck + shell tests + Vitest with coverage; MUST pass before any commit
+- Verify:  `make verify`        # Prettier check + ESLint + tsc --noEmit + CLAUDE.md/AGENTS.md (identical, ≤ 150 lines) + shellcheck + shell tests + Vitest with coverage; MUST pass before any commit
 - Test:    `make test`          # Vitest projects `unit` (src), `model` (headless Rapier), `build` (spawned production build); ratchet in vitest.config.ts
 - E2E:     `make test-e2e`      # make build, then Playwright (Chromium, Firefox, WebKit, axe) against dist/
 - Build:   `make build`         # production build to dist/
@@ -40,7 +40,7 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
                                 # CHROME_PATH where none is installed system-wide, CHROME_NO_SANDBOX=1 inside a container
 - Run:     `make dev`           # Vite dev server on every interface (VS Code forwarding dials 127.0.0.1), under the ADR 0012 headers
                                 # plus a dev-only CSP nonce for Vite's injected tags; `make preview` serves dist/ under the headers as shipped
-- Single steps: `make format`, `make format-check`, `make lint`, `make typecheck`, `make shellcheck`, `make test-shell`
+- Single steps: `make format`, `make format-check`, `make lint`, `make typecheck`, `make agent-docs`, `make shellcheck`, `make test-shell`
 
 ## Repository map
 - `docs/workflow-guide.md`  the process this repo follows; templates in §7
@@ -63,7 +63,7 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
 - `.devcontainer/`          Dockerfile + devcontainer.json: the reference toolchain
 - `src/`                    application code: `main.tsx` (hydrates `/`), `entry-prerender.tsx`
                             (both documents as strings for `build/build.ts`), `site/` (the HTML surfaces: TitleScreen, FallbackPage,
-                            Exhibit, Picture, Contact, Meta, WorldOverlay, `site.css`; no three, Rapier or World model), `world/` (`model/`: layout, Rapier
+                            Exhibit, ExhibitPanel, Picture, Contact, Meta, WorldOverlay, `site.css`; no three, Rapier or World model), `world/` (`model/`: layout, Rapier
                             model, pure camera; `input/`: keys by physical code; `scene/`: the R3F mirror; `World.tsx`), `perf/` (the marks),
                             `content/` (ADR 0011: schema, types, `loadContent`, variant planner, `mailto.ts`), `app/` (plan §5: store, keys, focus, capability, preload; `App.tsx` the hydrated root)
 - `build/`                  the build's I/O (plan §2, ADR 0010): `build.ts` (`make build`: client build, SSR build, both documents),

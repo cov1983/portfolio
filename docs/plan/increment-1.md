@@ -526,7 +526,7 @@ cases use a context with `javaScriptEnabled: false`; reduced motion uses
 | 16.4 | unit | `routeKey` returns 'panel' for every steering code and R while a Panel is open; `selectWorldPaused` is true whenever `panel !== null` (the scene never calls `step` while paused, proven by the AC-6.1 model test) | T7 |
 | 16.5 | e2e | Panel over the World: Escape → Panel gone, `activeElement` is the World container | T7 |
 | 17.1 | e2e | `privacy.spec`: request log from navigation to before any Panel has no request under `/media/exhibits/` (site images may live under `/media/site/`) | T6 |
-| 17.2 | e2e | `<video>` has `poster`, `controls`, no `autoplay`, `paused === true` after open | T6 |
+| 17.2 | build + e2e | `<video>` has `poster`, `controls`, no `autoplay`, `paused === true` after open (corrected by T6, #30 Q4: the real content has no video, so the markup is proven on the build seam, the open Panel's tree rendered with the `content-video` fixture; the browser half, `paused` after open, is hand-off #52 for the first Exhibit with a video) | T6, #52 |
 | 17.3 | e2e | each `<picture>` source same origin, `srcset` with three widths, `sizes` present | T6 |
 | 18.1 | unit + e2e | validator: exactly two captions, each ending with `.`, `!` or `?` (fixture) · e2e: at most one caption element at a time | T8a |
 | 18.2 | e2e | caption is an element with `role="status"` and text, inside the overlay, not in the canvas | T8a |

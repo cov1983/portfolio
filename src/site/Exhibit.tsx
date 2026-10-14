@@ -5,13 +5,14 @@ import { Picture } from './Picture'
 // summary, role, tech, year, links, images with their alternative text, the video with its poster
 // and controls and no autoplay (AC-17.2), "what I'd do differently"; never the visibility. The
 // Markdown fields arrive as HTML the build rendered with raw HTML escaped (ADR 0011). Under its
-// id on the Fallback Page; T6's Panel renders the same component.
-type Props = { exhibit: ExhibitContent }
+// id on the Fallback Page; the Exhibit Panel (src/site/ExhibitPanel.tsx) renders the same
+// component and names its dialog by the heading (`headingId`, absent on the Fallback Page).
+type Props = { exhibit: ExhibitContent; headingId?: string }
 
-export function Exhibit({ exhibit }: Props) {
+export function Exhibit({ exhibit, headingId }: Props) {
   return (
     <article id={exhibit.id} className="exhibit">
-      <h2>{exhibit.title}</h2>
+      <h2 id={headingId}>{exhibit.title}</h2>
       <p className="hook">{exhibit.hook}</p>
       <div className="prose" dangerouslySetInnerHTML={{ __html: exhibit.summaryHtml }} />
       <dl className="facts">

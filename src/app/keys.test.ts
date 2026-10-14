@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { ExhibitId } from '../content/types.ts'
-import { keyAction, routeKey } from './keys.ts'
+import { isPlainActivation, keyAction, routeKey } from './keys.ts'
 import { INITIAL_STATE, type AppState } from './store.ts'
 
 const panel = { exhibitId: 'first' as ExhibitId, opener: 'list' } as const
@@ -68,5 +68,25 @@ describe('keyAction', () => {
   it('yields no action when the key was not routed', () => {
     expect(keyAction('none', 'Enter')).toBeNull()
     expect(keyAction('none', 'Escape')).toBeNull()
+  })
+})
+
+describe('isPlainActivation', () => {
+  const click = { button: 0, ctrlKey: false, metaKey: false, shiftKey: false, altKey: false }
+
+  it('takes a primary click or Enter without modifiers for the Panel', () => {
+    expect(isPlainActivation(click)).toBe(true)
+  })
+
+  it('leaves a modified or middle click to the link (a new tab or window on /exhibits#<id>)', () => {
+    for (const modified of [
+      { ...click, button: 1 },
+      { ...click, ctrlKey: true },
+      { ...click, metaKey: true },
+      { ...click, shiftKey: true },
+      { ...click, altKey: true },
+    ]) {
+      expect(isPlainActivation(modified), JSON.stringify(modified)).toBe(false)
+    }
   })
 })

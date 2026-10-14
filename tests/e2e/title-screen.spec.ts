@@ -120,16 +120,5 @@ test.describe('hydration', () => {
   // The way-in's loading state and Enter through the key router are world-entry.spec.ts's
   // AC-1.3 and AC-4.2 cases: once the World preloads, "loading" alone is a race with the chunk.
 
-  test('Enter with a list entry focused follows the link instead', async ({ page, content }) => {
-    const [exhibit] = content.exhibits
-    if (exhibit === undefined) throw new Error('the content has no Exhibit')
-    await page.goto('/')
-    await expect.poll(() => recorded(page, TITLE_SCREEN_INTERACTIVE_MARK)).toBe(1)
-    await page
-      .getByRole('navigation', { name: 'Exhibits' })
-      .getByRole('link', { name: exhibit.title })
-      .focus()
-    await page.keyboard.press('Enter')
-    await expect(page).toHaveURL(new RegExp(`/exhibits#${exhibit.id}$`))
-  })
+  // Enter on a focused list entry opens the Exhibit Panel after hydration (T6): exhibit-panel.spec.ts.
 })
