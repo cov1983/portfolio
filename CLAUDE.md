@@ -5,7 +5,8 @@ Thomas's personal website: an immersive, interactive 3D portfolio in which visit
 puck through a playful virtual world to discover his projects and background. Physics, hockey-inspired
 challenges and light storytelling make exploring the portfolio an experience that itself demonstrates
 his development skills. Status: **Phase 3, increment-1 in progress** (plan `docs/plan/increment-1.md`;
-T5b #29 mounts the World paused behind the hydrated `/` and wires the way in and out; the perf gate reads four lines at `/`).
+T5b #29 mounts the World paused behind the hydrated `/` and wires the way in and out; the perf gate reads four lines at `/`;
+T6 #30 opens the Exhibit Panel, a native modal dialog, from the Title Screen list).
 The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the model owns Rapier, the scene mirrors it.
 
 ## Environment
@@ -63,7 +64,7 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
 - `.devcontainer/`          Dockerfile + devcontainer.json: the reference toolchain
 - `src/`                    application code: `main.tsx` (hydrates `/`), `entry-prerender.tsx`
                             (both documents as strings for `build/build.ts`), `site/` (the HTML surfaces: TitleScreen, FallbackPage,
-                            Exhibit, Picture, Contact, Meta, WorldOverlay, `site.css`; no three, Rapier or World model), `world/` (`model/`: layout, Rapier
+                            Exhibit, ExhibitPanel, Picture, Contact, Meta, WorldOverlay, `site.css`; no three, Rapier or World model), `world/` (`model/`: layout, Rapier
                             model, pure camera; `input/`: keys by physical code; `scene/`: the R3F mirror; `World.tsx`), `perf/` (the marks),
                             `content/` (ADR 0011: schema, types, `loadContent`, variant planner, `mailto.ts`), `app/` (plan §5: store, keys, focus, capability, preload; `App.tsx` the hydrated root)
 - `build/`                  the build's I/O (plan §2, ADR 0010): `build.ts` (`make build`: client build, SSR build, both documents),
