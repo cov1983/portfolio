@@ -1,3 +1,7 @@
+import AxeBuilder from '@axe-core/playwright'
+import type { Page } from '@playwright/test'
+
+import type { Content } from '../../src/content/types.ts'
 import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks'
 import {
   entered,
@@ -18,6 +22,15 @@ import {
 // plan §6, T6): after hydration a list entry opens the Panel instead of navigating, before the
 // World has loaded too; Escape or the close control closes it and focus returns to the entry.
 // Without script the entry stays a link to /exhibits#<id> (title-screen.spec.ts, AC-2.3).
+
+type ExhibitContent = Content['exhibits'][number]
+
+/** `/` hydrated, then the Exhibit's list entry: its Panel is open. */
+async function opened(page: Page, exhibit: ExhibitContent): Promise<void> {
+  await hydrated(page)
+  await listEntry(page, exhibit.title).click()
+  await expect(exhibitPanel(page)).toBeVisible()
+}
 
 test.describe('opening from the list', () => {
   test('picking an entry while the World chunk is held opens its Panel over the Title Screen (AC-2.1)', async ({
@@ -103,5 +116,87 @@ test.describe('closing (AC-2.2)', () => {
     await expect(exhibitPanel(page)).toHaveCount(0)
     await expect(titleScreen(page)).toBeVisible()
     await expect(listEntry(page, exhibit.title)).toBeFocused()
+  })
+})
+
+test.describe('reading (AC-16.1, 16.2)', () => {
+  test('the Panel shows every field but the visibility, with the values loadContent read (AC-16.1, 26.1)', async ({
+    page,
+    content,
+  }) => {
+    const exhibit = firstExhibit(content)
+    await opened(page, exhibit)
+    const panel = exhibitPanel(page)
+    await expect(panel.getByRole('heading', { level: 2 })).toHaveText(exhibit.title)
+    await expect(panel).toContainText(exhibit.hook)
+    await expect(panel).toContainText(textOf(exhibit.summaryHtml))
+    await expect(panel).toContainText(exhibit.role)
+    for (const item of exhibit.tech) await expect(panel).toContainText(item)
+    await expect(panel).toContainText(exhibit.year)
+    for (const link of exhibit.links) {
+      await expect(panel.getByRole('link', { name: link.label })).toHaveAttribute('href', link.url)
+    }
+    for (const image of exhibit.images) {
+      await expect(panel.getByRole('img', { name: image.alt })).toBeAttached()
+    }
+    await expect(panel).toContainText(textOf(exhibit.whatIdDoDifferentlyHtml))
+    await expect(panel).not.toContainText(exhibit.visibility)
+  })
+
+  test('the Panel is named by the Exhibit’s title', async ({ page, content }) => {
+    const exhibit = firstExhibit(content)
+    await opened(page, exhibit)
+    await expect(page.getByRole('dialog', { name: exhibit.title })).toBeVisible()
+  })
+
+  test('its images are the built fallback, never the original file (AC-27.1)', async ({
+    page,
+    content,
+  }) => {
+    const exhibit = firstExhibit(content)
+    await opened(page, exhibit)
+    for (const image of exhibit.images) {
+      const img = exhibitPanel(page).getByRole('img', { name: image.alt })
+      await expect(img).toHaveAttribute('src', image.fallback)
+      // The built fallback carries its width (<name>-<w>.<ext>); the original's name has none.
+      expect(image.fallback).toMatch(/-\d+\.(png|jpe?g)$/)
+    }
+  })
+
+  test.describe('at 320 × 568', () => {
+    test.use({ viewport: { width: 320, height: 568 } })
+
+    test('long content scrolls inside the Panel (AC-16.2)', async ({ page, content }) => {
+      await opened(page, firstExhibit(content))
+      const overflows = await exhibitPanel(page).evaluate(
+        (panel) => panel.scrollHeight > panel.clientHeight,
+      )
+      expect(overflows).toBe(true)
+    })
+
+    test('the document does not overflow sideways (AC-16.2)', async ({ page, content }) => {
+      await opened(page, firstExhibit(content))
+      const sideways = await page.evaluate(
+        () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      )
+      expect(sideways).toBe(false)
+    })
+  })
+
+  test('the page behind does not scroll while the Panel is open (Owner, #30 Q3)', async ({
+    page,
+    content,
+  }) => {
+    await opened(page, firstExhibit(content))
+    const overflow = await page.evaluate(() => getComputedStyle(document.documentElement).overflowY)
+    expect(overflow).toBe('hidden')
+  })
+
+  test('the open Panel has no WCAG 2.2 AA violations', async ({ page, content }) => {
+    await opened(page, firstExhibit(content))
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+      .analyze()
+    expect(results.violations).toEqual([])
   })
 })

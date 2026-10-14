@@ -42,9 +42,11 @@ export function ExhibitPanel({ exhibit, closeRef, onClose }: Props) {
         onClose()
       }}
     >
-      <button type="button" className="close" ref={closeRef} onClick={onClose}>
-        Close
-      </button>
+      <div className="panel-bar">
+        <button type="button" className="close" ref={closeRef} onClick={onClose}>
+          Close
+        </button>
+      </div>
       <Exhibit exhibit={exhibit} headingId={headingId} />
     </dialog>
   )
