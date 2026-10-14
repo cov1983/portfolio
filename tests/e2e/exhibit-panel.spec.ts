@@ -2,8 +2,8 @@ import AxeBuilder from '@axe-core/playwright'
 import type { Page } from '@playwright/test'
 
 import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks'
+import { LEAVE_S, REENTRY_BUDGET_S } from '../model/helpers'
 import {
-  driveIntoGoal,
   entered,
   exhibitPanel,
   expect,
@@ -130,13 +130,23 @@ test('from the Goal: the Panel opens over the paused World, owns the keys and cl
   // (c) Escape closes the Panel only, back into the World (AC-16.5).
   await page.keyboard.press('Escape')
   await expectBackInTheWorld(page)
+  // No reopen while the Puck stays in the Goal (AC-14.2): half a second of model time, no key.
+  await modelTime(page, 0.5)
+  expect(await exhibitPanel(page).isVisible(), 'no Panel while the Puck stays in the Goal').toBe(
+    false,
+  )
 
-  // Out of the net and in again: the Panel reopens only after the Puck has left (AC-14.2).
+  // Out of the net and in again within a model-time budget (AC-14.2: the Puck is still in the
+  // Goal on resume; AC-12.3: R did nothing to the paused World). A Reset by R would have put the
+  // Puck at the Hub's Reset point, from where the budget cannot reach the Goal (goal.test.ts,
+  // REENTRY_BUDGET_S), so the Panel would still be closed when it is read.
   await page.keyboard.down('ArrowDown')
-  await modelTime(page, 0.75)
+  await modelTime(page, LEAVE_S)
   await page.keyboard.up('ArrowDown')
-  expect(await exhibitPanel(page).isVisible(), 'no Panel while leaving the Goal').toBe(false)
-  await driveIntoGoal(page)
+  await page.keyboard.down('ArrowUp')
+  await modelTime(page, REENTRY_BUDGET_S)
+  expect(await exhibitPanel(page).isVisible(), 'the Goal again within the budget').toBe(true)
+  await page.keyboard.up('ArrowUp')
 
   // (d) The close control does the same as Escape (AC-16.5).
   await exhibitPanel(page).getByRole('button', { name: 'Close' }).click()

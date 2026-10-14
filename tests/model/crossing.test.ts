@@ -18,7 +18,7 @@ import { at, collect, oneZoneLayout, distance, driveUntil, NONE, UP } from './he
 // scale (Owner decision on #25), and the glide distance agrees within a centimetre.
 const layout = oneZoneLayout()
 const zone = layout.zones[0]
-if (zone === undefined) throw new Error('the content layout has no Zone')
+if (zone === undefined) throw new Error('the one-Zone layout has no Zone')
 const ZONE_ID = zone.exhibitId
 const CAP = STANDARD.maxSpeed
 const RELATIVE_TOLERANCE = 1e-6

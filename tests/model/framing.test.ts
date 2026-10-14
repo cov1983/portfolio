@@ -23,7 +23,7 @@ import { oneZoneLayout, seededRandom } from './helpers'
 const ASPECTS = [21 / 9, 16 / 9, 3 / 2, 4 / 3]
 const layout = oneZoneLayout()
 const zone = layout.zones[0]
-if (zone === undefined) throw new Error('the content layout has no Zone')
+if (zone === undefined) throw new Error('the one-Zone layout has no Zone')
 const rects: Rect[] = [layout.hub.rect, layout.path.rect, zone.rect]
 
 function onIce(point: Vec2): Vec3 {

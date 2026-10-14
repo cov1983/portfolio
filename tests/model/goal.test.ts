@@ -2,15 +2,23 @@ import RAPIER from '@dimforge/rapier3d-compat'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 
 import { insideRect, type WorldLayout } from '../../src/world/model/layout'
-import { createWorldModel, PUCK, type Place, type WorldModel } from '../../src/world/model/world'
+import {
+  createWorldModel,
+  FIXED_DT,
+  PUCK,
+  type Place,
+  type WorldModel,
+} from '../../src/world/model/world'
 import {
   at,
   collect,
   oneZoneLayout,
   DOWN,
   drive,
+  LEAVE_S,
   NONE,
   reboundAt,
+  REENTRY_BUDGET_S,
   RIGHT,
   stepsWith,
   UP,
@@ -21,7 +29,7 @@ import {
 // (AC-14.3); the Zone reports its first entry once per page load (AC-13.1, model half).
 const layout = oneZoneLayout()
 const zone = layout.zones[0]
-if (zone === undefined) throw new Error('the content layout has no Zone')
+if (zone === undefined) throw new Error('the one-Zone layout has no Zone')
 const ZONE_ID = zone.exhibitId
 const ZONE_CENTRE = zone.rect.centre
 const LINE_Z = zone.goal.line.a.z
@@ -88,6 +96,31 @@ describe('Goal re-arm (AC-14.2)', () => {
     const [first] = collect(model, NONE, 1)
     expect(first?.events).toEqual([{ type: 'goal-left', zoneId: ZONE_ID }])
     expect(stepsWith(collect(model, UP, STEPS), 'goal')).toHaveLength(1)
+  })
+})
+
+/** Model seconds of holding `input` until the next `goal`, or Infinity within `limit` steps. */
+function secondsToGoal(input: typeof UP, limit = STEPS * 2): number {
+  const run = collect(model, input, limit)
+  const [goal] = stepsWith(run, 'goal')
+  return goal === undefined ? Infinity : (goal + 1) * FIXED_DT
+}
+
+// The e2e journey's budget (REENTRY_BUDGET_S): the scene stops stepping at the Goal, so the
+// journey resumes with the Puck in the net; leaving and re-entering fits the budget, the run from
+// the Hub's Reset point (where a Reset by R would have put it) does not.
+describe('Re-entry budget of the e2e journey (AC-12.3, 14.2)', () => {
+  it('is about 1.5× the time a Puck in the Goal takes to leave and score again', () => {
+    create(at(layout, ZONE_CENTRE))
+    expect(secondsToGoal(UP)).toBeLessThan(Infinity)
+    drive(model, DOWN, Math.round(LEAVE_S / FIXED_DT))
+    // Measured 1.45 s; toBeCloseTo(1.5, 0) accepts a ratio between 1 and 2.
+    expect(REENTRY_BUDGET_S / secondsToGoal(UP)).toBeCloseTo(1.5, 0)
+  })
+
+  it("is less than half the time from the Hub's Reset point to the Goal", () => {
+    create(layout)
+    expect(secondsToGoal(UP)).toBeGreaterThan(2 * REENTRY_BUDGET_S)
   })
 })
 

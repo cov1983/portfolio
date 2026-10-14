@@ -23,7 +23,7 @@ import {
 // side of it; the Zone's far board is approached beside the net.
 const layout = oneZoneLayout()
 const zone = layout.zones[0]
-if (zone === undefined) throw new Error('the content layout has no Zone')
+if (zone === undefined) throw new Error('the one-Zone layout has no Zone')
 const STEPS = 360 // 6 s: enough to reach any board at top speed and come back
 
 type Part = 'Hub' | 'Path' | 'Zone'
