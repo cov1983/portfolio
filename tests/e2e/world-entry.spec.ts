@@ -52,7 +52,7 @@ test.describe('entry (AC-1.3)', () => {
 
   // #46: when the preload has finished before the press, entry shows the World at once and the
   // Title Screen is hidden before the first check, so the way-in is gone from the page's roles.
-  test('the way-in control enters a World that is already ready', async ({ page }) => {
+  test('the way-in control begins entry into a World that is already ready', async ({ page }) => {
     await hydrated(page)
     await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
     await wayIn(page).click()

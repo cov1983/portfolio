@@ -33,8 +33,8 @@ export default defineConfig({
       },
       // #46: headed Firefox renders through Mesa's llvmpipe on the CI runner, and the World's first
       // frame (the world-playable mark) took 1.1–3.9 s in passing runs and over 5 s in two failing
-      // ones while other workers loaded the machine. Firefox's polls get 15 s; Chromium and WebKit
-      // keep the 5 s default.
+      // CI runs while other workers loaded the machine. Every Firefox expect gets 15 s; Chromium and
+      // WebKit keep the 5 s default.
       expect: { timeout: 15_000 },
     },
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
