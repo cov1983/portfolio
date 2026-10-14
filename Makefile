@@ -2,7 +2,7 @@
 # targets, so a green `make verify` locally means a green `lint` and `test` job.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup browsers format format-check lint typecheck shellcheck test-shell test coverage-ratchet test-e2e perf verify build dev preview
+.PHONY: help setup browsers format format-check lint typecheck agent-docs shellcheck test-shell test coverage-ratchet test-e2e perf verify build dev preview
 
 PNPM ?= pnpm
 # Headed Firefox (playwright.config.ts) needs a display: a virtual one where xvfb-run exists.
@@ -14,11 +14,12 @@ help:
 	@echo "Targets:"
 	@echo "  make setup         install dependencies, point git at .githooks, then make browsers"
 	@echo "  make browsers      Playwright browsers with their OS packages (sudo on a host); CI runs this too"
-	@echo "  make verify        format check + lint + typecheck + shellcheck + shell tests + unit, model and build tests; must pass before any commit"
+	@echo "  make verify        format check + lint + typecheck + agent docs + shellcheck + shell tests + unit, model and build tests; must pass before any commit"
 	@echo "  make format        rewrite files with Prettier"
 	@echo "  make format-check  fail on unformatted files"
 	@echo "  make lint          ESLint, warnings are errors"
 	@echo "  make typecheck     tsc --noEmit for src and for the config files"
+	@echo "  make agent-docs    CLAUDE.md and AGENTS.md identical and at most 150 lines, as CI's lint job checks"
 	@echo "  make shellcheck    shellcheck over every shell script (hooks, pre-commit, gates); needs the shellcheck binary"
 	@echo "  make test-shell    hook smoke tests (.claude/hooks/tests) and the spec-freeze gate test"
 	@echo "  make test          Vitest projects unit, model and build, with coverage against the thresholds in vitest.config.ts"
@@ -50,6 +51,13 @@ typecheck:
 	$(PNPM) exec tsc --noEmit -p tsconfig.json
 	$(PNPM) exec tsc --noEmit -p tsconfig.node.json
 
+# The same commands as the lint job's step in .github/workflows/ci.yml: AGENTS.md is a byte-for-byte
+# copy of CLAUDE.md, and CLAUDE.md stays within 150 lines (T6 #53: verify had passed a 151-line file).
+agent-docs:
+	cmp CLAUDE.md AGENTS.md
+	@lines=$$(wc -l < CLAUDE.md); \
+	if [ "$$lines" -gt 150 ]; then echo "CLAUDE.md has $$lines lines; the limit is 150"; exit 1; fi
+
 # Fails loudly without the binary: a silent skip would make a green verify mean less than a green lint job.
 shellcheck:
 	@command -v shellcheck >/dev/null 2>&1 || { echo "shellcheck is not installed: install it or run make through the devcontainer (.devcontainer/)" >&2; exit 1; }
@@ -73,7 +81,7 @@ test-e2e: build
 perf: build
 	node scripts/perf-budget.ts
 
-verify: format-check lint typecheck shellcheck test-shell test
+verify: format-check lint typecheck agent-docs shellcheck test-shell test
 
 # ADR 0010: the client build, the SSR build and both pre-rendered documents; vercel.json runs the same.
 build:
