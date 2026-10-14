@@ -200,3 +200,21 @@ test.describe('reading (AC-16.1, 16.2)', () => {
     expect(results.violations).toEqual([])
   })
 })
+
+// AC-16.3: Tab and Shift+Tab, two presses more than the Panel has controls, so focus has to pass
+// the last and the first control at least once; after every press it is inside the Panel.
+test.describe('focus stays inside the open Panel (AC-16.3)', () => {
+  for (const key of ['Tab', 'Shift+Tab']) {
+    test(`${key} never leaves the Panel`, async ({ page, content }) => {
+      await opened(page, firstExhibit(content))
+      const controls = await exhibitPanel(page).locator('a[href], button, video[controls]').count()
+      for (let press = 0; press < controls + 2; press += 1) {
+        await page.keyboard.press(key)
+        const inside = await page.evaluate(
+          () => document.activeElement?.closest('dialog.exhibit-panel') != null,
+        )
+        expect(inside, `after ${key} × ${String(press + 1)}`).toBe(true)
+      }
+    })
+  }
+})

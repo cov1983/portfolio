@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, type RefObject } from 'react'
+import { useId, useLayoutEffect, useRef, type KeyboardEvent, type RefObject } from 'react'
 
 import type { Exhibit as ExhibitContent } from '../content/types.ts'
 import { Exhibit } from './Exhibit'
@@ -10,9 +10,31 @@ import { Exhibit } from './Exhibit'
 // Panel, so the pre-rendered Title Screen never contains it (tests/build/index-html.test.ts). The
 // store owns open and closed: Escape reaches the key router (src/app/keys.ts), and the dialog's own
 // cancel is turned into the same close, never left to close the element behind React's back.
+// A modal dialog keeps Tab off the inert page, but Chromium and WebKit move it on past the last
+// control into the browser's own UI (exhibit-panel.spec.ts, red before this): `wrapTab` cycles
+// Tab and Shift+Tab between the first and the last control instead (AC-16.3; Firefox wraps itself).
 // The close control comes first, sticks to the top while the Panel scrolls and takes focus on open
 // (Owner, #30 Q2; src/app/focus.ts). A backdrop click does not close: the spec asks for Escape and
 // the control, and a stray click would lose the reading position.
+/** What Tab reaches in an Exhibit: the close control, the links, the video's controls. */
+const TABBABLE = 'a[href], button:not([disabled]), video[controls]'
+
+function wrapTab(event: KeyboardEvent<HTMLDialogElement>): void {
+  if (event.key !== 'Tab') return
+  const tabbable = event.currentTarget.querySelectorAll<HTMLElement>(TABBABLE)
+  const first = tabbable[0]
+  const last = tabbable[tabbable.length - 1]
+  if (first === undefined || last === undefined) return
+  const active = document.activeElement
+  if (event.shiftKey && (active === first || active === event.currentTarget)) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+
 type Props = {
   exhibit: ExhibitContent
   /** The close control, so the app can focus it on open (plan §5, focusAfter → 'panel'). */
@@ -37,6 +59,7 @@ export function ExhibitPanel({ exhibit, closeRef, onClose }: Props) {
       ref={dialogRef}
       className="exhibit-panel"
       aria-labelledby={headingId}
+      onKeyDown={wrapTab}
       onCancel={(event) => {
         event.preventDefault()
         onClose()
