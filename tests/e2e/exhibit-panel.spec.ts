@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright'
 import type { Page } from '@playwright/test'
 
 import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks'
-import { LEAVE_S, REENTRY_BUDGET_S, STAY_S } from '../model/helpers'
+import { LEAVE_S, REENTRY_BUDGET_S, STAY_S } from '../journey'
 import {
   entered,
   exhibitPanel,

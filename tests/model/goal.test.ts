@@ -15,15 +15,13 @@ import {
   oneZoneLayout,
   DOWN,
   drive,
-  LEAVE_S,
   NONE,
   reboundAt,
-  REENTRY_BUDGET_S,
   RIGHT,
-  STAY_S,
   stepsWith,
   UP,
 } from './helpers'
+import { LEAVE_S, REENTRY_BUDGET_S, STAY_S } from '../journey'
 
 // Spec seam 2, the Zone's events: the Goal is a sensor volume inside the net behind the goal line,
 // armed again only after the Puck has left it (AC-14.1, 14.2); posts and the net's outside are solid
