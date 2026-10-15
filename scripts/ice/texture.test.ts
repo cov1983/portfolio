@@ -4,6 +4,7 @@ import sharp from 'sharp'
 import { describe, expect, it } from 'vitest'
 
 import { contrastRatio, INK } from '../../src/world/scene/colours'
+import { ICE_PIXELS } from '../../src/world/scene/ice'
 import { percentilePixel } from './process'
 
 // The committed ice texture (`make ice-texture`, #55): what the World downloads before it is
@@ -29,9 +30,9 @@ describe('The ice texture', () => {
     expect((await readFile(TEXTURE)).length).toBeLessThanOrEqual(MAX_BYTES)
   })
 
-  it('is the seamless tile of the cropped photo: 1363 x 383 px', async () => {
+  it('is the size the World maps it at (ICE_PIXELS)', async () => {
     const { width, height } = await sharp(TEXTURE).metadata()
-    expect([width, height]).toEqual([1363, 383])
+    expect({ width, height }).toEqual(ICE_PIXELS)
   })
 
   it("keeps the Banner's ink at 7:1 or more on its darkest percentile (Q4 on #55)", async () => {
