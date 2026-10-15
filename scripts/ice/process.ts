@@ -28,6 +28,88 @@ function mean(values: Float64Array): number {
 }
 
 /**
+ * A box blur of `radius` along one line of `n` values (`at(i)` reads the i-th), written by `put`.
+ * Past each end the line is point-reflected through the mean of its first (last) 2·radius + 1
+ * values, placed at their centre: a linear trend stays linear, so a gradient blurs to itself up to
+ * the edges and is flattened there too, and pivoting on a mean rather than on the end pixel keeps
+ * the fine detail at the edge from shifting the whole extension.
+ */
+function boxLine(
+  n: number,
+  radius: number,
+  at: (i: number) => number,
+  put: (i: number, value: number) => void,
+): void {
+  const span = 2 * radius + 1
+  let head = 0
+  let tail = 0
+  for (let i = 0; i < span; i += 1) {
+    head += at(i)
+    tail += at(n - 1 - i)
+  }
+  head /= span
+  tail /= span
+  const value = (i: number): number =>
+    i < 0 ? 2 * head - at(2 * radius - i) : i >= n ? 2 * tail - at(2 * (n - 1 - radius) - i) : at(i)
+  let sum = 0
+  for (let i = -radius; i <= radius; i += 1) sum += value(i)
+  for (let i = 0; i < n; i += 1) {
+    put(i, sum / span)
+    sum += value(i + radius + 1) - value(i - radius)
+  }
+}
+
+/** Three box-blur passes along x and y: close to a Gaussian of σ ≈ radius (per pass √(r(r+1)/3)). */
+function blur(values: Float64Array, width: number, height: number, radius: number): Float64Array {
+  let current = values
+  for (let pass = 0; pass < 3; pass += 1) {
+    const rows = new Float64Array(current.length)
+    for (let y = 0; y < height; y += 1) {
+      const source = current
+      boxLine(
+        width,
+        radius,
+        (x) => source[y * width + x] ?? 0,
+        (x, v) => (rows[y * width + x] = v),
+      )
+    }
+    const columns = new Float64Array(current.length)
+    for (let x = 0; x < width; x += 1) {
+      boxLine(
+        height,
+        radius,
+        (y) => rows[y * width + x] ?? 0,
+        (y, v) => (columns[y * width + x] = v),
+      )
+    }
+    current = columns
+  }
+  return current
+}
+
+/**
+ * Low-frequency brightness removed: the luma blurred over `radius` is the photo's soft light (a
+ * gradient, broad shading), and each pixel loses that blur's departure from its mean in every
+ * channel. Fine detail, the skate marks a few pixels wide, is narrower than the blur and stays.
+ * Without this step the tile's soft bands show as a repeat pattern on the ice (Owner on #56).
+ */
+export function flatten(raster: Raster, radius: number): Raster {
+  if (radius < 1 || 4 * radius + 2 > Math.min(raster.width, raster.height)) {
+    throw new Error(`the blur radius ${String(radius)} does not fit the image`)
+  }
+  const soft = blur(lumas(raster), raster.width, raster.height, radius)
+  const centre = mean(soft)
+  const data = new Uint8Array(raster.data.length)
+  soft.forEach((s, p) => {
+    for (let c = 0; c < CHANNELS; c += 1) {
+      const value = (raster.data[p * CHANNELS + c] ?? 0) - (s - centre)
+      data[p * CHANNELS + c] = Math.min(255, Math.max(0, Math.round(value)))
+    }
+  })
+  return { data, width: raster.width, height: raster.height }
+}
+
+/**
  * Desaturated and pulled towards the ice colour: each pixel becomes `target + k·(luma − mean)` in
  * every channel, so the image keeps its skate marks as small departures from the ice's own tint,
  * with `k` < 1 lowering their contrast. Clamped to 0…255 and rounded.

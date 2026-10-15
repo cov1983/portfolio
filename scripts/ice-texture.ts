@@ -2,16 +2,18 @@
 // (assets/ice/SOURCE.md). The crop is not in the repository (Pexels License: no redistribution as a
 // stock image), only the result is: src/world/scene/ice.webp. Repeatable in the devcontainer:
 //   1. crop the top rows, which hold the faint specks at the top right;
-//   2. desaturate and pull towards the ice colour with lower contrast (scripts/ice/process.ts);
-//   3. blend the edges so the tile repeats without a seam;
-//   4. export WebP at a fixed quality and fail above the size limit.
+//   2. remove the low-frequency brightness (soft light, broad shading) that shows as bands where
+//      the tile repeats;
+//   3. desaturate and pull towards the ice colour with lower contrast (scripts/ice/process.ts);
+//   4. blend the edges so the tile repeats without a seam;
+//   5. export WebP at a fixed quality and fail above the size limit.
 // Runs under plain Node 24 (type stripping), so imports carry the .ts extension.
 import { access, stat } from 'node:fs/promises'
 
 import sharp from 'sharp'
 
 import { channels, ICE_COLOUR } from '../src/world/scene/colours.ts'
-import { MAX_BYTES, seamless, toIce } from './ice/process.ts'
+import { flatten, MAX_BYTES, seamless, toIce } from './ice/process.ts'
 
 const SOURCE = 'assets/ice/Ice-surface-2-reduced.jpg'
 const OUTPUT = 'src/world/scene/ice.webp'
@@ -23,6 +25,12 @@ const TOP_CROP = 24
  * photo's full contrast; 0.7 keeps them visible and quiet.
  */
 const CONTRAST = 0.7
+/**
+ * The blur radius of the brightness flattening, pixels: three box passes give σ ≈ 40 px, about
+ * 0.18 m of ice at 6 m per 1363 px. The skate marks are 1–6 px wide and stay; the soft bands the
+ * Owner saw repeat once per tile (1363 px) and span hundreds of pixels, so they go (#56).
+ */
+const FLATTEN_RADIUS = 40
 /** Pixels blended at the edges, on each axis. */
 const OVERLAP = 64
 /** Fixed: the quality is not tuned towards a size (Owner, A2 on #55). */
@@ -44,7 +52,8 @@ async function main(): Promise<void> {
     .raw()
     .toBuffer({ resolveWithObject: true })
   const raster = { data: new Uint8Array(data), width: info.width, height: info.height }
-  const ice = seamless(toIce(raster, channels(ICE_COLOUR), CONTRAST), OVERLAP)
+  const flat = flatten(raster, FLATTEN_RADIUS)
+  const ice = seamless(toIce(flat, channels(ICE_COLOUR), CONTRAST), OVERLAP)
   await sharp(Buffer.from(ice.data), {
     raw: { width: ice.width, height: ice.height, channels: 3 },
   })

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { channels, ICE_COLOUR } from '../../src/world/scene/colours'
-import { lumas, percentilePixel, seamless, toIce, type Raster } from './process'
+import { flatten, lumas, percentilePixel, seamless, toIce, type Raster } from './process'
 
 const ICE = channels(ICE_COLOUR)
 
@@ -109,5 +109,50 @@ describe('percentilePixel', () => {
       [0, 0, 0],
       [90, 90, 90],
     ])
+  })
+})
+
+describe('flatten', () => {
+  // A soft gradient across the tile (40 levels left to right, 20 top to bottom) under fine
+  // scratches: a diagonal pattern of ±10 levels with a 21-pixel period; 5 and 13 are coprime with 21
+  // and the sizes are multiples of 21, so every column and every row of it averages to zero and the
+  // means see only the gradient.
+  const WIDTH = 21 * 16
+  const HEIGHT = 21 * 8
+  const scratches = (x: number, y: number) => ((x * 5 + y * 13) % 21) - 10
+  const gradient = (x: number, y: number) => (40 * x) / (WIDTH - 1) + (20 * y) / (HEIGHT - 1)
+  const tile = raster(WIDTH, HEIGHT, (x, y) => Math.round(160 + gradient(x, y) + scratches(x, y)))
+  const flat = flatten(tile, 40)
+
+  function lineMeans(image: Raster, along: 'column' | 'row'): number[] {
+    const grey = lumas(image)
+    const count = along === 'column' ? image.width : image.height
+    const length = along === 'column' ? image.height : image.width
+    return Array.from({ length: count }, (_, i) => {
+      let sum = 0
+      for (let j = 0; j < length; j += 1) {
+        sum += grey[along === 'column' ? j * image.width + i : i * image.width + j] ?? 0
+      }
+      return sum / length
+    })
+  }
+
+  const range = (values: number[]) => Math.max(...values) - Math.min(...values)
+
+  it('leaves the column means within 1 level of each other', () => {
+    expect(range(lineMeans(flat, 'column'))).toBeLessThanOrEqual(1)
+  })
+
+  it('leaves the row means within 1 level of each other', () => {
+    expect(range(lineMeans(flat, 'row'))).toBeLessThanOrEqual(1)
+  })
+
+  it("keeps the fine scratches' spread", () => {
+    const detail = lumas(raster(WIDTH, HEIGHT, (x, y) => 160 + scratches(x, y)))
+    expect(spread(lumas(flat)) / spread(detail)).toBeCloseTo(1, 1)
+  })
+
+  it('rejects a blur radius that does not fit the image', () => {
+    expect(() => flatten(tile, 100)).toThrow('the blur radius 100 does not fit the image')
   })
 })
