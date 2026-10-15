@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { loadContentFromDisk } from '../../../build/content-plugin'
 import { exhibitIdSchema } from '../../content/schema'
 import {
-  bannerPlace,
+  centreLinePieces,
+  CENTRE_LINE_MARGIN,
   DIMENSIONS,
   hubLayout,
   insideRect,
@@ -129,11 +130,11 @@ describe('worldLayout', () => {
     ])
   })
 
-  it('writes the Banner as the title and the hook, one line each', () => {
-    expect(zone?.banner).toEqual({
-      text: 'Exhibit 1 — A fixture for the layout',
-      lines: ['Exhibit 1', 'A fixture for the layout'],
-    })
+  it("writes the Exhibit's title and hook on the Banner, unchanged", () => {
+    expect([zone?.banner.title, zone?.banner.hook]).toEqual([
+      'Exhibit 1',
+      'A fixture for the layout',
+    ])
   })
 
   it('uses the whole Zone as its caption place', () => {
@@ -172,9 +173,8 @@ describe('layoutFromContent', () => {
     const content = await loadContentFromDisk()
     const [exhibit] = content.exhibits
     expect(exhibit).toBeDefined()
-    expect(layoutFromContent(content).zones[0]?.banner.text).toBe(
-      `${exhibit?.title ?? ''} — ${exhibit?.hook ?? ''}`,
-    )
+    const banner = layoutFromContent(content).zones[0]?.banner
+    expect([banner?.title, banner?.hook]).toEqual([exhibit?.title, exhibit?.hook])
   })
 
   it("builds the first Exhibit's Zone: one Path, one Zone (Q6 on #31)", () => {
@@ -187,15 +187,67 @@ describe('layoutFromContent', () => {
   })
 })
 
-describe('bannerPlace', () => {
-  const zone = worldLayout(EXHIBIT).zones[0]
+describe("The Banner on the Zone's ice (AC-13.2)", () => {
+  const layout = worldLayout(EXHIBIT)
+  const zone = layout.zones[0]
+  if (zone === undefined) throw new Error('the one-Zone layout has no Zone')
+  const { rect } = zone.banner
+  const corners = rectEdges(rect).flatMap((edge) => [edge.a, edge.b])
 
-  it('stands the Banner on the ice against the end board, centred on the Goal', () => {
-    const place = zone === undefined ? undefined : bannerPlace(zone)
-    expect(place?.centre.x).toBe(0)
-    expect(place?.centre.y).toBeCloseTo((place?.height ?? 0) / 2, 9)
-    expect(place?.centre.z).toBeCloseTo(-65 + 0.02, 9)
-    expect(place?.width).toBe(8)
+  it("lies 14 m wide and 6 m deep on the Zone's centre", () => {
+    expect(rect).toEqual({ centre: zone.rect.centre, width: 14, length: 6 })
+  })
+
+  it('lies inside the Zone', () => {
+    expect(corners.map((corner) => insideRect(zone.rect, corner))).not.toContain(false)
+  })
+
+  it('ends at least 2 m before the goal line', () => {
+    const farEdge = rect.centre.z - rect.length / 2
+    expect(farEdge - zone.goal.line.a.z).toBeGreaterThanOrEqual(2)
+  })
+
+  it("overlaps none of the net's posts", () => {
+    const overlaps = (a: Rect, b: Rect) =>
+      Math.abs(a.centre.x - b.centre.x) < (a.width + b.width) / 2 &&
+      Math.abs(a.centre.z - b.centre.z) < (a.length + b.length) / 2
+    expect(zone.goal.posts.map((post) => overlaps(post, rect))).not.toContain(true)
+  })
+
+  it('points its text up along −z, the World\'s "up" under the fixed yaw', () => {
+    expect(zone.banner.up).toEqual({ x: 0, z: -1 })
+  })
+
+  it('points its text up away from the Hub, so it reads upright from the Hub side', () => {
+    const towardsZone = {
+      x: zone.rect.centre.x - layout.hub.resetPoint.x,
+      z: zone.rect.centre.z - layout.hub.resetPoint.z,
+    }
+    const { up } = zone.banner
+    expect(up.x * towardsZone.x + up.z * towardsZone.z).toBeGreaterThan(0)
+  })
+})
+
+describe('centreLinePieces', () => {
+  const zone = worldLayout(EXHIBIT).zones[0]
+  if (zone === undefined) throw new Error('the one-Zone layout has no Zone')
+  const banner = zone.banner.rect
+  const pieces = centreLinePieces(zone.rect, banner)
+
+  it("leaves the margin clear on each side of the Banner, along the Zone's centre", () => {
+    const gapLeft = banner.centre.x - banner.width / 2 - CENTRE_LINE_MARGIN
+    const gapRight = banner.centre.x + banner.width / 2 + CENTRE_LINE_MARGIN
+    expect(pieces).toEqual([
+      { a: { x: -10, z: -50 }, b: { x: gapLeft, z: -50 } },
+      { a: { x: gapRight, z: -50 }, b: { x: 10, z: -50 } },
+    ])
+  })
+
+  it("spans the Zone's width with the gap", () => {
+    const [left, right] = pieces
+    const covered = left.b.x - left.a.x + (right.b.x - right.a.x)
+    const gap = banner.width + 2 * CENTRE_LINE_MARGIN
+    expect(covered + gap).toBeCloseTo(zone.rect.width, 9)
   })
 })
 

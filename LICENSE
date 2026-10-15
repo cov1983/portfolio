@@ -1,10 +1,12 @@
 # License
 
-This repository is licensed in three parts. Each file falls under exactly one of them.
+This repository is licensed in four parts. Each file falls under exactly one of them.
 
 1. Code: MIT License (section 1).
 2. Vendored third-party components under `.agents/`: their own licenses (section 2).
 3. Content: all rights reserved (section 3).
+4. Third-party material: the ice texture `src/world/scene/ice.webp`, not licensed by this
+   repository (section 4).
 
 ## 1. Code: MIT License
 
@@ -83,3 +85,12 @@ not be copied, redistributed, modified, used to train or fine-tune machine-learn
 reused in any other way without written permission from the copyright holder. Copies that are
 made incidentally by cloning or forking the repository in order to build, run or contribute to
 the code are permitted; using those copies for anything beyond that is not.
+
+## 4. Third-party material: the ice texture
+
+Third-party material: the ice texture src/world/scene/ice.webp is derived from a photo by cottonbro
+studio on Pexels (https://www.pexels.com/photo/a-person-playing-hockey-6557325/), used by the
+repository owner under the Pexels License (https://www.pexels.com/license/). This repository grants
+no licence to it: neither the MIT terms nor the all-rights-reserved terms above apply to it. Anyone
+who wants to use the original can obtain it from Pexels under Pexels' own terms. Source and
+processing: assets/ice/SOURCE.md.

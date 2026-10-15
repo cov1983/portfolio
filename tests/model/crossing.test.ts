@@ -4,11 +4,12 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { hubLayout } from '../../src/world/model/layout'
 import {
   createWorldModel,
+  FIXED_DT,
   STANDARD,
   type PuckState,
   type WorldModel,
 } from '../../src/world/model/world'
-import { at, collect, oneZoneLayout, distance, driveUntil, NONE, UP } from './helpers'
+import { at, collect, oneZoneLayout, distance, driveUntil, NONE, reboundAt, UP } from './helpers'
 
 // Spec seam 2, AC-10.1 (model half): Hub → Path → Zone is one continuous ice. Held at top speed the
 // Puck crosses both openings without losing speed or direction; released, its glide across them
@@ -121,5 +122,43 @@ describe('Gliding across the openings (AC-10.1)', () => {
       closedStart?.position ?? { x: 0, z: 0 },
     )
     expect(Math.abs(openMetres - closedMetres)).toBeLessThan(0.01)
+  })
+})
+
+describe('Driving over the Banner (AC-13.2: a marking, no collider)', () => {
+  // A run-up on the Path brings the Puck to the Zone's near end at top speed; bounded by the run-up
+  // at top speed plus the time full acceleration needs to reach it. Then the drive key stays held
+  // for exactly the steps that cover the near end to the Banner's far edge at top speed, plus one.
+  const nearZ = zone.rect.centre.z + zone.rect.length / 2
+  const farEdge = zone.banner.rect.centre.z - zone.banner.rect.length / 2
+  const RUN_UP = 8
+
+  // The crossing is computed once; each test reads one aspect of it.
+  let arrival: PuckState
+  let samples: PuckState[] = []
+
+  beforeAll(() => {
+    const model = create(at(layout, { x: 0, z: nearZ + RUN_UP }))
+    const runUp =
+      Math.ceil(RUN_UP / CAP / FIXED_DT) + Math.ceil(CAP / STANDARD.acceleration / FIXED_DT)
+    arrival = driveUntil(model, UP, (s) => s.position.z <= nearZ, runUp).state
+    const steps = Math.ceil((nearZ - farEdge) / CAP / FIXED_DT) + 1
+    samples = collect(model, UP, steps).map((r) => r.state)
+  })
+
+  it("reaches the Zone's near end within the run-up's bound", () => {
+    expect(arrival.position.z).toBeLessThanOrEqual(nearZ)
+  })
+
+  it('arrives there at top speed', () => {
+    expect(arrival.speed).toBeGreaterThanOrEqual(CAP - 1e-6)
+  })
+
+  it("passes the Banner's far edge in the model time top speed needs", () => {
+    expect(samples[samples.length - 1]?.position.z).toBeLessThan(farEdge)
+  })
+
+  it('is never sent back on the way', () => {
+    expect(reboundAt(samples, 'z', -1)).toBe(-1)
   })
 })

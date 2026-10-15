@@ -11,3 +11,7 @@ playwright-report/
 test-results/
 .lighthouse/
 .pnpm-store/
+
+# the ice photo crop: Pexels License, not redistributed; only src/world/scene/ice.webp is committed (#55)
+assets/ice/*
+!assets/ice/SOURCE.md

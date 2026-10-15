@@ -17,10 +17,12 @@ export type Rink = { id: 'hub' | ExhibitId; rect: Rect; boards: Segment[] }
  */
 export type Goal = { zoneId: ExhibitId; line: Segment; sensor: Rect; posts: Rect[] }
 /**
- * The Banner's words: `text` is the Exhibit's title and hook as one string (AC-13.2), `lines` the
- * same two parts as the sign draws them, one line each (plan §5, corrected by T7, #31).
+ * The Banner: a marking on the Zone's ice, like a centre-ice logo, that shows the Exhibit's title
+ * and hook exactly as the content file has them (AC-13.2). `rect` is where it lies on the ice, `up`
+ * the direction the text's top points along the ice: away from the Hub, so it reads upright from the
+ * Hub side under the Follow Camera's fixed yaw (Owner decision on #55).
  */
-export type Banner = { text: string; lines: [title: string, hook: string] }
+export type Banner = { title: string; hook: string; rect: Rect; up: Vec2 }
 export type Zone = Rink & {
   exhibitId: ExhibitId
   goal: Goal
@@ -51,32 +53,45 @@ export type Dimensions = typeof DIMENSIONS
 export const PUCK = { radius: 0.5, height: 0.2 }
 
 /**
- * The Banner's sign: an upright plane standing on the ice against the Zone's end board, behind
- * the net, facing the Hub; `gap` keeps it just in front of the board's face, where the Puck never
- * passes through it. Metres. The Follow Camera's frame from the Zone's near end bounds the height
- * (measured on #42: 1.65 m at the end board, 1.95 m right behind the net; the Owner's 2 m fits
- * nowhere between); the framing proof in tests/model pins it.
+ * The Banner's size on the ice, metres: centred on the Zone's centre, it lies between the blue
+ * lines, 8 m before the goal line, with 3 m of ice to each side board (Owner decision on #55, Q3).
  */
-export const BANNER = { width: 8, height: 1.6, gap: 0.02 }
+export const MARKING = { width: 14, length: 6 }
 
-export type BannerPlace = { centre: Vec3; width: number; height: number }
-
-/** Where a Zone's Banner stands: centred on the Goal, bottom on the ice, against the end board. */
-export function bannerPlace(zone: Zone, size = BANNER): BannerPlace {
-  const endBoard = zone.rect.centre.z - zone.rect.length / 2
-  return {
-    centre: { x: zone.goal.sensor.centre.x, y: size.height / 2, z: endBoard + size.gap },
-    width: size.width,
-    height: size.height,
-  }
-}
+/** The gap the Zone's red centre line leaves on each side of the Banner, metres. */
+export const CENTRE_LINE_MARGIN = 0.5
 
 /** What the layout needs of an Exhibit: its id names the Zone, its title and hook make the Banner. */
 export type ZoneExhibit = Pick<Exhibit, 'id' | 'title' | 'hook'>
 
-/** The Banner of an Exhibit's Zone: title and hook (AC-13.2). */
-export function bannerOf(exhibit: ZoneExhibit): Banner {
-  return { text: `${exhibit.title} — ${exhibit.hook}`, lines: [exhibit.title, exhibit.hook] }
+/** The Banner of an Exhibit's Zone: its title and hook, unchanged (AC-13.2), at the Zone's centre. */
+export function bannerOf(exhibit: ZoneExhibit, zone: Rect): Banner {
+  return {
+    title: exhibit.title,
+    hook: exhibit.hook,
+    rect: { centre: { ...zone.centre }, width: MARKING.width, length: MARKING.length },
+    up: { x: 0, z: -1 },
+  }
+}
+
+/**
+ * The Zone's red centre line, across the Zone at its centre, as the pieces left and right of the
+ * Banner with `margin` to its sides, so no line runs through the ink (Owner decision on #55, Q3).
+ */
+export function centreLinePieces(
+  zone: Rect,
+  banner: Rect,
+  margin = CENTRE_LINE_MARGIN,
+): [Segment, Segment] {
+  const z = zone.centre.z
+  const left = zone.centre.x - zone.width / 2
+  const right = zone.centre.x + zone.width / 2
+  const gapLeft = banner.centre.x - banner.width / 2 - margin
+  const gapRight = banner.centre.x + banner.width / 2 + margin
+  return [
+    { a: { x: left, z }, b: { x: gapLeft, z } },
+    { a: { x: gapRight, z }, b: { x: right, z } },
+  ]
 }
 
 /** True when the point lies inside the rect, edges included. */
@@ -190,7 +205,7 @@ export function worldLayout(
         rect: zone,
         boards: [zoneFar, ...withOpening(zoneNear, path.width), zoneLeft, zoneRight],
         goal: goalOf(exhibit.id, zone, dims),
-        banner: bannerOf(exhibit),
+        banner: bannerOf(exhibit, zone),
         captionPlace: zone,
       },
     ],

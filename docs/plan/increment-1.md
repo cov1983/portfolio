@@ -343,6 +343,26 @@ the list (AC-15.1); no Exhibit gives the closed Hub. It takes `{ exhibits: reado
 `content` the app holds as a prop and memoises the layout (Q1): no `virtual:content` import in the
 `world` chunk.
 
+**Corrected by #55 (2026-10-15; Owner decision on #55, amend a8e8c3c of AC-13.2)**: the Banner is no
+longer a sign standing behind the net (it was not legible from the Zone) but a marking on the Zone's
+ice, like a centre-ice logo. `banner` is `{ title, hook, rect, up }`: the Exhibit's title and hook
+unchanged (no joined `text`, no `lines`), a rect of `MARKING` (14 m × 6 m) centred on the Zone's
+centre, between the blue lines and 8 m before the goal line, and `up`, the direction the text's top
+points along the ice, away from the Hub, so it reads upright from the Hub side under the fixed yaw.
+`BANNER`, `BannerPlace` and `bannerPlace` are gone. The marking has no collider. The Zone's red
+centre line is drawn as `centreLinePieces(zone, banner)`, the pieces left and right of the marking
+with 0.5 m clear. The scene lays the words out with the pure `bannerLines` (`src/world/scene/
+bannerLines.ts`, the width measured by the caller): the title on one line, the hook on one or two
+balanced lines, shrunk to fit, every word kept, drawn in `#0b1a2a` on a transparent canvas, the
+glyphs stretched twice along the depth like a road marking, since the view foreshortens them
+(`BANNER_TYPE.stretch = 2`, confirmed by the Owner on #56, 2026-10-15); the plane lies 2 mm above
+the painted lines with a polygon offset (`marking.ts`). The ice of the Hub, the Path and the Zone
+carries one texture (`src/world/scene/ice.webp`, `make ice-texture`, from a Pexels photo,
+`assets/ice/SOURCE.md`), its soft brightness flattened (σ ≈ 40 px) and its skate marks kept at
+k = 0.7 of the photo's contrast (the approved plan's ≈ 0.35 erased them; k = 0.7 confirmed by the
+Owner on #56, 2026-10-15), mapped in world space (`ice.ts`); the scene loads it with
+Rapier, before `world-playable` (§7 line 3).
+
 ### Puck controller ↔ physics (`src/world/model/world.ts`)
 
 ```ts
@@ -528,9 +548,9 @@ cases use a context with `javaScriptEnabled: false`; reduced motion uses
 | 12.2 | e2e | click the Reset control → `activeElement` is the World container; keydown afterwards is routed to the World (reducer/unit) | T5b |
 | 12.3 | unit + e2e | `routeKey` with panel open → 'panel' · e2e: Panel open, press R → Panel still open (corrected by T7, #31: `routeKey` takes no code since T5a, so R's half is `keyAction('panel', 'KeyR') === null`; the e2e step is part of `exhibit-panel.spec`'s one Goal journey, whose re-entry bounded in model time proves that R left the World alone) | T7 |
 | 13.1 | model + unit | model: `zone-entered` emitted once on first entry, not again on re-entry · reducer: `zone-entered` sets the caption to that Zone's text | T2, T8a |
-| 13.2 | unit | `layoutFromContent(content).zones[0].banner.text` equals title + hook from the real content | T7 |
+| 13.2 | unit + model | ~~`layoutFromContent(content).zones[0].banner.text` equals title + hook from the real content~~ (corrected by #55, amended AC-13.2: the Banner on the Zone's ice) · unit `layout.test`: the real content's title and hook on `zones[0].banner` unchanged, the marking inside the Zone, clear of the goal line and the net, `up` away from the Hub · unit `bannerLines.test`: every word drawn, the title on one line, the hook on one or two, within the room · unit `marking.test`: the rotation lays the plane face up with its text's top along `up` · model `framing.test`: the four corners framed from the Zone's near end at the goal pose (three entry points) and at the eased pose after a top-speed run, at four aspects · model `crossing.test`: the Puck drives over it with no rebound, in the model time top speed needs · unit `colours.test`, `scripts/ice/texture.test`: ink ≥ 7:1 on the ice colour and on the texture's darkest percentile | T7, #55 |
 | 14.1 | model + unit | model: `goal` on crossing the line into the sensor · reducer: `goal` → `panel` set, `selectWorldPaused` true | T2, T7 |
-| 14.2 | model + unit | model: no second `goal` until `goal-left` · reducer: close-panel leaves screen 'world' (corrected by T7, #31: the Goal journey in `exhibit-panel.spec` adds both halves in model time: no Panel during 0.5 s with no key after Escape, then the Panel again within `REENTRY_BUDGET_S` of leaving and re-entering, a budget `goal.test.ts` derives and keeps below the run from the Hub, so a Puck reset by R fails it) | T2, T7 |
+| 14.2 | model + unit | model: no second `goal` until `goal-left` · reducer: close-panel leaves screen 'world' (corrected by T7, #31: the Goal journey in `exhibit-panel.spec` adds both halves in model time: no Panel during `STAY_S` with no key after Escape, then the Panel again within `REENTRY_BUDGET_S` of leaving and re-entering, a budget `goal.test.ts` derives and keeps below half of a Puck reset by R running the same sequence, so such a Puck fails it; corrected by #55, review of #54: was "0.5 s" and "below the run from the Hub"; the three constants live in `tests/journey.ts`) | T2, T7 |
 | 14.3 | model | brushing posts and the net's outside: no `goal`, Puck rebounds | T2 |
 | 15.1 | e2e | from the World: Escape, pick the entry → Panel with full content | T6 |
 | 16.1 | e2e | Panel shows title, hook, summary, role, tech, year, links, images (alt), video, "what I'd do differently"; no visibility text; values from `loadContent` | T6 |
@@ -631,6 +651,9 @@ in increment-1; a later spec decides client metrics).
      (the Exhibit media the spec puts outside the budget), not by resource type: World textures, the
      preview image and icons loaded before playable count. T1 replaces the Phase 0b `Image`/`Media`
      type filter with the prefix rule when the real chunk arrives. Plan aim: about 2.5 MB; spike 1.2 MB.
+     (Corrected by #55: the ice texture `/assets/ice-<hash>.webp`, 11,058 B, loads with Rapier's init
+     and finishes before the mark, so it counts here; e2e `world.spec` proves it finishes before
+     `world-playable`. A failed load is a `'bundle'` failure, noted on #33 for AC-22.2.)
   `scripts/perf/budget.ts` gains the first line's two conditions, the prefix rule and the
   informational lines (`onlyAudits` adds `long-tasks`, `largest-contentful-paint`,
   `cumulative-layout-shift`, `total-blocking-time`); the evaluator stays pure and unit-tested; the

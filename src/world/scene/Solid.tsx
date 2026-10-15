@@ -1,9 +1,9 @@
 // The scene's two primitives: a solid box (boards, the net's frame and body) drawn from the same
 // box the model's collider uses, and a line painted on the ice. No texture, nothing fetched.
 import type { Box } from '../model/world'
+import { LINE_HEIGHT } from './marking'
 
 const LINE_WIDTH = 0.3
-const LINE_HEIGHT = 0.01
 
 export function Solid({
   box,
