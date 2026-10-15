@@ -208,6 +208,8 @@ function Scene({
       states.current = null
       material.map?.dispose()
       material.dispose()
+      // Nothing keeps the disposed model and material once this load is over.
+      setLoaded(null)
     }
   }, [layout, invalidate, gl])
 
@@ -325,6 +327,9 @@ function Scene({
     <>
       <ambientLight intensity={0.7} />
       <directionalLight position={[10, 20, 10]} intensity={1.2} />
+      {/* The ice waits for its loaded material; the Banner and the Goal render at once. No gating
+          is needed: nothing of the World is visible before world-playable, because the Title
+          Screen covers the paused World until then. */}
       {loaded !== null && (
         <>
           <Ice rect={layout.hub.rect} material={loaded.ice} markings />
