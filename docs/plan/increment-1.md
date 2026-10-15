@@ -354,10 +354,13 @@ centre line is drawn as `centreLinePieces(zone, banner)`, the pieces left and ri
 with 0.5 m clear. The scene lays the words out with the pure `bannerLines` (`src/world/scene/
 bannerLines.ts`, the width measured by the caller): the title on one line, the hook on one or two
 balanced lines, shrunk to fit, every word kept, drawn in `#0b1a2a` on a transparent canvas, the
-glyphs stretched twice along the depth like a road marking, since the view foreshortens them; the
-plane lies 2 mm above the painted lines with a polygon offset (`marking.ts`). The ice of the Hub,
-the Path and the Zone carries one texture (`src/world/scene/ice.webp`, `make ice-texture`, from a
-Pexels photo, `assets/ice/SOURCE.md`), mapped in world space (`ice.ts`); the scene loads it with
+glyphs stretched twice along the depth like a road marking, since the view foreshortens them
+(`BANNER_TYPE.stretch = 2`, confirmed by the Owner on #56, 2026-10-15); the plane lies 2 mm above
+the painted lines with a polygon offset (`marking.ts`). The ice of the Hub, the Path and the Zone
+carries one texture (`src/world/scene/ice.webp`, `make ice-texture`, from a Pexels photo,
+`assets/ice/SOURCE.md`), its soft brightness flattened (σ ≈ 40 px) and its skate marks kept at
+k = 0.7 of the photo's contrast (the approved plan's ≈ 0.35 erased them; k = 0.7 confirmed by the
+Owner on #56, 2026-10-15), mapped in world space (`ice.ts`); the scene loads it with
 Rapier, before `world-playable` (§7 line 3).
 
 ### Puck controller ↔ physics (`src/world/model/world.ts`)
