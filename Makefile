@@ -2,7 +2,7 @@
 # targets, so a green `make verify` locally means a green `lint` and `test` job.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup browsers format format-check lint typecheck agent-docs shellcheck test-shell test coverage-ratchet test-e2e perf verify build dev preview
+.PHONY: help setup browsers format format-check lint typecheck agent-docs shellcheck test-shell test coverage-ratchet test-e2e perf verify build dev preview ice-texture
 
 PNPM ?= pnpm
 # Headed Firefox (playwright.config.ts) needs a display: a virtual one where xvfb-run exists.
@@ -29,6 +29,7 @@ help:
 	@echo "  make build         production build to dist/ (node build/build.ts: client build, SSR build, the two pre-rendered documents)"
 	@echo "  make dev           Vite dev server on every interface, so VS Code port forwarding reaches it"
 	@echo "  make preview       serve dist/ as production would"
+	@echo "  make ice-texture   src/world/scene/ice.webp from the local photo crop (assets/ice/SOURCE.md)"
 
 setup:
 	$(PNPM) install --frozen-lockfile
@@ -93,3 +94,7 @@ dev:
 
 preview:
 	$(PNPM) exec vite preview
+
+# The World's ice texture from the Owner's local crop, which is not committed (assets/ice/SOURCE.md).
+ice-texture:
+	node scripts/ice-texture.ts
