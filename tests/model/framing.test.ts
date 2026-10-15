@@ -6,13 +6,7 @@ import {
   framesPoint,
   type CameraPose,
 } from '../../src/world/model/camera'
-import {
-  bannerPlace,
-  rectEdges,
-  type Rect,
-  type Vec2,
-  type Vec3,
-} from '../../src/world/model/layout'
+import { rectEdges, type Rect, type Vec2, type Vec3 } from '../../src/world/model/layout'
 import { FIXED_DT, PUCK, STANDARD } from '../../src/world/model/world'
 import { oneZoneLayout, seededRandom } from './helpers'
 
@@ -83,23 +77,40 @@ describe('The Puck is inside the frame anywhere in the World (AC-11.2)', () => {
   )
 })
 
-describe('The Banner is framed from the Zone', () => {
-  // The Puck at the Zone's near centre, just in from the Path: the camera's goal pose there must
-  // hold the whole sign standing behind the net (Owner finding on #42: a sign hung 3 m above the
-  // ice was above the frame's upper edge from here).
-  const nearCentre = { x: zone.rect.centre.x, z: zone.rect.centre.z + zone.rect.length / 2 }
-  const pose = cameraGoal(nearCentre)
-  const place = bannerPlace(zone)
-  const topEdge = [-1, 1].map((side) => ({
-    x: place.centre.x + (side * place.width) / 2,
-    y: place.centre.y + place.height / 2,
-    z: place.centre.z,
-  }))
+describe("The whole Banner is framed from the Zone's near end (AC-13.2)", () => {
+  // The Banner lies flat on the Zone's ice: all four corners must be inside the frame when the Puck
+  // is at the Zone's near end, where the Visitor first sees it on the way to the Goal.
+  const { rect } = zone.banner
+  const corners = rectEdges(rect).flatMap((edge) => [edge.a, edge.b].map(onIce))
+  const nearZ = zone.rect.centre.z + zone.rect.length / 2
+  // Where the Puck can cross the near end: the Path's opening, less the Puck's radius at each side.
+  const reach = layout.path.rect.width / 2 - PUCK.radius
+  const entries = [-reach, 0, reach].map((dx) => ({ x: zone.rect.centre.x + dx, z: nearZ }))
+
+  function unframed(pose: CameraPose, aspect: number): Vec3[] {
+    return corners.filter((corner) => !framesPoint(pose, corner, aspect))
+  }
 
   it.each(ASPECTS)(
-    "holds the Banner's top edge from the Zone's near centre at aspect %f",
+    'holds all four corners at the goal pose across the near end, at aspect %f',
     (aspect) => {
-      expect(topEdge.map((p) => framesPoint(pose, p, aspect))).toEqual([true, true])
+      expect(entries.flatMap((entry) => unframed(cameraGoal(entry), aspect))).toEqual([])
+    },
+  )
+
+  it.each(ASPECTS)(
+    'holds all four corners at the eased pose after a sprint from the Reset point, at aspect %f',
+    (aspect) => {
+      // The Puck point moves kinematically at top speed, as in the eight-direction test above, for
+      // exactly the model time the run from the Reset point to the near end takes at that speed.
+      const start = layout.hub.resetPoint
+      const steps = Math.ceil((start.z - nearZ) / STANDARD.maxSpeed / FIXED_DT)
+      let pose: CameraPose = cameraGoal(start)
+      for (let step = 1; step <= steps; step += 1) {
+        const point = { x: start.x, z: start.z - STANDARD.maxSpeed * FIXED_DT * step }
+        pose = cameraFollow(pose, cameraGoal(point), FIXED_DT, false)
+      }
+      expect(unframed(pose, aspect)).toEqual([])
     },
   )
 })
