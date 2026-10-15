@@ -91,7 +91,7 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
   non-null assertion, no `eslint-disable` without a comment naming the issue.
 - Coverage ratchet: raise the coverage floor with `make coverage-ratchet` and commit the result; it
   never moves on its own. Lowering one needs an ADR. Scope (plan §6) is `src/**/*.ts` and `build/**/*.ts`
-  minus `build/build.ts` and `build/content-plugin.ts` (glue), plus the perf evaluator `scripts/perf/budget.ts`;
+  minus `build/build.ts` and `build/content-plugin.ts` (glue), plus the perf evaluator `scripts/perf/budget.ts` and the ice steps `scripts/ice/process.ts`;
   no `*.tsx`: rendering is proven by the Playwright seam, the ratchet measures model code and instruments.
 - Dependencies: exact versions in `package.json`, lockfile committed; a new dependency is the newest
   version the whole toolchain's peer ranges accept, listed in the PR body with license and reason.

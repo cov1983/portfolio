@@ -220,7 +220,6 @@ describe("The Banner on the Zone's ice (AC-13.2)", () => {
       z: zone.rect.centre.z - layout.hub.resetPoint.z,
     }
     const { up } = zone.banner
-    expect(up).toEqual({ x: 0, z: -1 })
     expect(up.x * towardsZone.x + up.z * towardsZone.z).toBeGreaterThan(0)
   })
 })

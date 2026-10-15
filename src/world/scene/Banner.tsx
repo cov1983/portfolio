@@ -11,13 +11,11 @@ import { CanvasTexture, SRGBColorSpace } from 'three'
 import type { Banner as BannerLayout } from '../model/layout'
 import { BANNER_TYPE, bannerLines, type Line, type Weight } from './bannerLines'
 import { INK } from './colours'
-import { MARKING_LIFT, markingRotation } from './marking'
+import { MARKING_LIFT, MAX_ANISOTROPY, markingRotation } from './marking'
 
 /** The canvas is this wide, so small glyphs stay sharp; its height follows the marking's shape. */
 const PIXEL_WIDTH = 2048
 const PADDING_PX = 96
-/** Anisotropic filtering keeps the text sharp at the camera's grazing angle; most GPUs give 16. */
-const MAX_ANISOTROPY = 16
 
 function font(weight: Weight, px: number): string {
   return `${weight} ${String(px)}px system-ui, sans-serif`
@@ -52,13 +50,13 @@ function drawBanner(banner: BannerLayout): HTMLCanvasElement {
 }
 
 export function Banner({ banner }: { banner: BannerLayout }) {
-  const maxAnisotropy = useThree((state) => state.gl.capabilities.getMaxAnisotropy())
+  const gl = useThree((state) => state.gl)
   const texture = useMemo(() => {
     const canvasTexture = new CanvasTexture(drawBanner(banner))
     canvasTexture.colorSpace = SRGBColorSpace
-    canvasTexture.anisotropy = Math.min(maxAnisotropy, MAX_ANISOTROPY)
+    canvasTexture.anisotropy = Math.min(gl.capabilities.getMaxAnisotropy(), MAX_ANISOTROPY)
     return canvasTexture
-  }, [banner, maxAnisotropy])
+  }, [banner, gl])
   useEffect(
     () => () => {
       texture.dispose()

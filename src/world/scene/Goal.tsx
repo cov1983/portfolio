@@ -7,9 +7,10 @@ import { useMemo } from 'react'
 
 import type { Goal as GoalLayout, Rect, Zone } from '../model/layout'
 import { BOARD, frameBoxes, rectBox } from '../model/world'
+import { RED } from './colours'
 import { IceLine, Solid } from './Solid'
 
-const FRAME_COLOUR = '#c8102e'
+const FRAME_COLOUR = RED
 const NET_COLOUR = '#ffffff'
 const NET_OPACITY = 0.35
 

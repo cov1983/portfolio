@@ -142,9 +142,12 @@ describe('Driving over the Banner (AC-13.2: a marking, no collider)', () => {
     return { arrival, samples: collect(model, UP, steps).map((r) => r.state) }
   }
 
-  it("reaches the Zone's near end at top speed", () => {
-    const { arrival } = overTheBanner()
-    expect([arrival.position.z <= nearZ, arrival.speed >= CAP - 1e-6]).toEqual([true, true])
+  it("reaches the Zone's near end within the run-up's bound", () => {
+    expect(overTheBanner().arrival.position.z).toBeLessThanOrEqual(nearZ)
+  })
+
+  it('arrives there at top speed', () => {
+    expect(overTheBanner().arrival.speed).toBeGreaterThanOrEqual(CAP - 1e-6)
   })
 
   it("passes the Banner's far edge in the model time top speed needs", () => {

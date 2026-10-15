@@ -13,6 +13,12 @@ export const LINE_HEIGHT = 0.01
 export const MARKING_LIFT = LINE_HEIGHT + 0.002
 
 /**
+ * The anisotropic filtering the ice and the Banner ask for, capped at what most GPUs give: it keeps
+ * texture detail sharp at the Follow Camera's grazing view of the ice.
+ */
+export const MAX_ANISOTROPY = 16
+
+/**
  * The rotation that lays a plane (drawn in its local x–y, facing +z) flat on the ice facing up,
  * with its local +y, the top of its text, pointing along `up` on the ice. 'YXZ': the plane is first
  * laid down about x (its top then points to −z), then turned about the vertical.

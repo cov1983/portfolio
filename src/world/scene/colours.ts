@@ -4,11 +4,15 @@
 export const ICE_COLOUR = '#eef4f8'
 /** The Banner's ink: dark and solid on the light ice. */
 export const INK = '#0b1a2a'
+/** The red of the centre line, the goal line and the net's frame; the blue of the blue lines. */
+export const RED = '#c8102e'
+export const BLUE = '#1f5fbf'
 
 /** An sRGB colour as `#rrggbb` or as its three 8-bit channels. */
 export type Colour = string | readonly [r: number, g: number, b: number]
 
-function channels(colour: Colour): readonly [number, number, number] {
+/** The three 8-bit channels of a colour. */
+export function channels(colour: Colour): readonly [number, number, number] {
   if (typeof colour !== 'string') return colour
   if (!/^#[0-9a-f]{6}$/i.test(colour)) throw new Error(`not a #rrggbb colour: ${colour}`)
   const at = (i: number) => Number.parseInt(colour.slice(i, i + 2), 16)

@@ -10,12 +10,11 @@ import { access, stat } from 'node:fs/promises'
 
 import sharp from 'sharp'
 
-import { seamless, toIce, type Rgb } from './ice/process.ts'
+import { channels, ICE_COLOUR } from '../src/world/scene/colours.ts'
+import { MAX_BYTES, seamless, toIce } from './ice/process.ts'
 
 const SOURCE = 'assets/ice/Ice-surface-2-reduced.jpg'
 const OUTPUT = 'src/world/scene/ice.webp'
-/** The ice colour of src/world/scene/colours.ts, as 8-bit sRGB. */
-const ICE: Rgb = [0xee, 0xf4, 0xf8]
 /** Rows cropped from the top: the specks lie in the first 6 or so; 24 leaves a margin. */
 const TOP_CROP = 24
 /**
@@ -28,8 +27,6 @@ const CONTRAST = 0.7
 const OVERLAP = 64
 /** Fixed: the quality is not tuned towards a size (Owner, A2 on #55). */
 const WEBP = { quality: 80, effort: 6 }
-/** The only size requirement: at most this many bytes (download until playable, plan §7). */
-export const MAX_BYTES = 150_000
 
 async function main(): Promise<void> {
   try {
@@ -47,7 +44,7 @@ async function main(): Promise<void> {
     .raw()
     .toBuffer({ resolveWithObject: true })
   const raster = { data: new Uint8Array(data), width: info.width, height: info.height }
-  const ice = seamless(toIce(raster, ICE, CONTRAST), OVERLAP)
+  const ice = seamless(toIce(raster, channels(ICE_COLOUR), CONTRAST), OVERLAP)
   await sharp(Buffer.from(ice.data), {
     raw: { width: ice.width, height: ice.height, channels: 3 },
   })

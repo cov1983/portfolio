@@ -1,6 +1,9 @@
 // The ice texture's pixel steps (#55), pure, on raw interleaved 8-bit sRGB (3 channels): the values
 // the WebP file holds and the scene samples with SRGBColorSpace. scripts/ice-texture.ts does the I/O.
 
+/** The texture's only size requirement: at most this many bytes (Owner, A2 on #55). */
+export const MAX_BYTES = 150_000
+
 export type Raster = { data: Uint8Array; width: number; height: number }
 export type Rgb = readonly [r: number, g: number, b: number]
 

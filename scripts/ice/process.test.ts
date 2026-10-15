@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
+import { channels, ICE_COLOUR } from '../../src/world/scene/colours'
 import { lumas, percentilePixel, seamless, toIce, type Raster } from './process'
 
-const ICE = [0xee, 0xf4, 0xf8] as const
+const ICE = channels(ICE_COLOUR)
 
 /** A raster from a function of the pixel's position, the same value in all three channels. */
 function raster(width: number, height: number, value: (x: number, y: number) => number): Raster {

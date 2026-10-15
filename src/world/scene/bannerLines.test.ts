@@ -50,9 +50,15 @@ describe('bannerLines: the title on one line', () => {
     )
   })
 
-  it('shrinks a title too wide for the room so its one line fits', () => {
-    const title = 'This portfolio, built the way I would build it at work'
-    const line = bannerLines({ title, hook: 'h' }, measure, ROOM).title
+  const WIDE_TITLE = 'This portfolio, built the way I would build it at work'
+
+  it('shrinks a title too wide for the room below its largest size', () => {
+    const line = bannerLines({ title: WIDE_TITLE, hook: 'h' }, measure, ROOM).title
+    expect(line.px).toBeLessThan(Math.round(ROOM.height * BANNER_TYPE.title))
+  })
+
+  it('fits the shrunk title on its one line', () => {
+    const line = bannerLines({ title: WIDE_TITLE, hook: 'h' }, measure, ROOM).title
     expect(widthOf(line, 'bold')).toBeLessThanOrEqual(ROOM.width)
   })
 })
@@ -78,9 +84,15 @@ describe('bannerLines: the hook on one or two lines', () => {
     expect([first.text, second?.text]).toEqual(['aaaa bb', 'cc dd ee'])
   })
 
-  it('shrinks a hook too long for two lines at its largest size, still two lines', () => {
-    const hook = `${LONG_HOOK} ${LONG_HOOK} ${LONG_HOOK}`
-    const lines = bannerLines({ title: 'T', hook }, measure, ROOM).hook
+  const VERY_LONG_HOOK = `${LONG_HOOK} ${LONG_HOOK} ${LONG_HOOK}`
+
+  it('shrinks a hook too long for two lines below its largest size', () => {
+    const lines = bannerLines({ title: 'T', hook: VERY_LONG_HOOK }, measure, ROOM).hook
+    expect(lines[0].px).toBeLessThan(Math.round(ROOM.height * BANNER_TYPE.hook))
+  })
+
+  it('keeps the shrunk hook on two lines that fit', () => {
+    const lines = bannerLines({ title: 'T', hook: VERY_LONG_HOOK }, measure, ROOM).hook
     expect([lines.length, ...lines.map((line) => widthOf(line, 'normal') <= ROOM.width)]).toEqual([
       2,
       true,

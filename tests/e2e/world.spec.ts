@@ -89,34 +89,45 @@ test('the World requests only same-origin files and no Exhibit media', async ({ 
   expect(urls.filter((url) => new URL(url).pathname.startsWith('/media/exhibits/'))).toEqual([])
 })
 
+/** The ice texture's path: Vite's hashed file under /assets/. */
+const ICE_TEXTURE = /\/assets\/ice-[^/]*\.webp$/
+
 /** The end times (ms from navigation start) of the ice texture's requests, from resource timing. */
 function iceEndTimes(page: Page): Promise<number[]> {
-  return page.evaluate(() =>
-    performance
-      .getEntriesByType('resource')
-      .filter(
-        (entry): entry is PerformanceResourceTiming =>
-          entry instanceof PerformanceResourceTiming &&
-          /\/assets\/ice-[^/]*\.webp$/.test(new URL(entry.name).pathname),
-      )
-      .map((entry) => entry.responseEnd),
+  return page.evaluate(
+    (source) =>
+      performance
+        .getEntriesByType('resource')
+        .filter(
+          (entry): entry is PerformanceResourceTiming =>
+            entry instanceof PerformanceResourceTiming &&
+            new RegExp(source).test(new URL(entry.name).pathname),
+        )
+        .map((entry) => entry.responseEnd),
+    ICE_TEXTURE.source,
   )
 }
 
 // The ice texture (#55) is the World's one fetched file besides its chunks: same-origin under
 // /assets/, loaded with Rapier, so it counts in the download until playable (plan §7 line 3).
-test('the World loads its ice texture from the site before it is playable', async ({ page }) => {
-  const statuses: number[] = []
-  page.on('response', (response) => {
-    if (/\/assets\/ice-[^/]*\.webp$/.test(new URL(response.url()).pathname)) {
-      statuses.push(response.status())
-    }
+test.describe('the ice texture', () => {
+  test('is served once by the site, with 200', async ({ page }) => {
+    const statuses: number[] = []
+    page.on('response', (response) => {
+      if (ICE_TEXTURE.test(new URL(response.url()).pathname)) statuses.push(response.status())
+    })
+    await page.goto('/')
+    await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
+    expect(statuses).toEqual([200])
   })
-  await page.goto('/')
-  await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
-  const playable = await markStart(page, WORLD_PLAYABLE_MARK)
-  const ends = await iceEndTimes(page)
-  expect([statuses, ends.length === 1 && (ends[0] ?? Infinity) <= playable]).toEqual([[200], true])
+
+  test('has finished loading before the World is playable', async ({ page }) => {
+    await page.goto('/')
+    await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
+    const playable = await markStart(page, WORLD_PLAYABLE_MARK)
+    const [end] = await iceEndTimes(page)
+    expect(end).toBeLessThanOrEqual(playable)
+  })
 })
 
 // AC-10.1's seam 1 half (the run Hub → Path → Zone → Goal without any loading) is the start of

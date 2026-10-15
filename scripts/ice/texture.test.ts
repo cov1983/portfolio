@@ -5,13 +5,12 @@ import { describe, expect, it } from 'vitest'
 
 import { contrastRatio, INK } from '../../src/world/scene/colours'
 import { ICE_PIXELS } from '../../src/world/scene/ice'
-import { percentilePixel } from './process'
+import { MAX_BYTES, percentilePixel } from './process'
 
 // The committed ice texture (`make ice-texture`, #55): what the World downloads before it is
 // playable and what the Banner's ink lies on. Byte equality across machines is not asserted:
 // libvips' WebP output may differ by version.
 const TEXTURE = 'src/world/scene/ice.webp'
-const MAX_BYTES = 150_000
 
 async function pixels() {
   const { data, info } = await sharp(TEXTURE)
