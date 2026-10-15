@@ -151,14 +151,11 @@ function Scene({
   const callbacks = useRef({ onEvent, onReady, onFailure })
   const invalidate = useThree((state) => state.invalidate)
   const gl = useThree((state) => state.gl)
-  // One material for all the ice: plain ice colour until the texture is in, then the texture.
-  const iceMaterial = useMemo(() => new MeshStandardMaterial({ color: ICE_COLOUR }), [])
-  useEffect(
-    () => () => {
-      iceMaterial.map?.dispose()
-      iceMaterial.dispose()
-    },
-    [iceMaterial],
+  // What the load effect hands over once Rapier and the ice texture are in: the World model and the
+  // one material all the ice shares. The effect creates and disposes both, so a remount (React's
+  // strict mode) never reuses a disposed one.
+  const [loaded, setLoaded] = useState<{ model: WorldModel; ice: MeshStandardMaterial } | null>(
+    null,
   )
 
   useEffect(() => {
@@ -172,6 +169,8 @@ function Scene({
   // a ref: the frame that invalidate() schedules must see it (ADR 0010).
   useEffect(() => {
     let live = true
+    let created: WorldModel | null = null
+    const material = new MeshStandardMaterial({ color: ICE_COLOUR })
     const ice = new TextureLoader().loadAsync(iceUrl)
     Promise.all([
       RAPIER.init().catch(failAs('physics')),
@@ -182,13 +181,9 @@ function Scene({
           texture.dispose()
           return
         }
-        iceMaterial.map?.dispose()
-        dressIce(iceMaterial, texture, gl.capabilities.getMaxAnisotropy())
-        const created = createWorldModel(RAPIER, layout)
-        model.current = created
-        states.current = snapTo(created)
-        pose.current = cameraGoal(created.puck().position)
-        invalidate()
+        dressIce(material, texture, gl.capabilities.getMaxAnisotropy())
+        created = createWorldModel(RAPIER, layout)
+        setLoaded({ model: created, ice: material })
       })
       .catch((error: unknown) => {
         // A texture that loaded while Rapier failed is not used: free it. Its own failure is the
@@ -208,11 +203,23 @@ function Scene({
       })
     return () => {
       live = false
-      model.current?.dispose()
+      created?.dispose()
       model.current = null
       states.current = null
+      material.map?.dispose()
+      material.dispose()
     }
-  }, [layout, invalidate, iceMaterial, gl])
+  }, [layout, invalidate, gl])
+
+  // The model is published to the frame loop only after React has committed the ice that uses the
+  // loaded material, so the frame that records `world-playable` draws the textured ice.
+  useEffect(() => {
+    if (loaded === null) return
+    model.current = loaded.model
+    states.current = snapTo(loaded.model)
+    pose.current = cameraGoal(loaded.model.puck().position)
+    invalidate()
+  }, [loaded, invalidate])
 
   // Reset (AC-12.1): the model's, then a snap of both render states so nothing is blended, and
   // the camera at its goal; R and the overlay's control (AC-12.2) both end here.
@@ -318,11 +325,23 @@ function Scene({
     <>
       <ambientLight intensity={0.7} />
       <directionalLight position={[10, 20, 10]} intensity={1.2} />
-      <Ice rect={layout.hub.rect} material={iceMaterial} markings />
-      <Ice rect={layout.path.rect} material={iceMaterial} />
+      {loaded !== null && (
+        <>
+          <Ice rect={layout.hub.rect} material={loaded.ice} markings />
+          <Ice rect={layout.path.rect} material={loaded.ice} />
+          {layout.zones.map((zone) => (
+            <Ice
+              key={zone.exhibitId}
+              rect={zone.rect}
+              material={loaded.ice}
+              markings
+              around={zone.banner.rect}
+            />
+          ))}
+        </>
+      )}
       {layout.zones.map((zone) => (
         <group key={zone.exhibitId}>
-          <Ice rect={zone.rect} material={iceMaterial} markings around={zone.banner.rect} />
           <Banner banner={zone.banner} />
           <Goal zone={zone} />
         </group>

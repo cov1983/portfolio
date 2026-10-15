@@ -11,6 +11,8 @@ import { MAX_BYTES, percentilePixel } from './process'
 // playable and what the Banner's ink lies on. Byte equality across machines is not asserted:
 // libvips' WebP output may differ by version.
 const TEXTURE = 'src/world/scene/ice.webp'
+/** Vite's default `build.assetsInlineLimit`; vite.config.ts does not change it. */
+const VITE_INLINE_LIMIT = 4096
 
 async function pixels() {
   const { data, info } = await sharp(TEXTURE)
@@ -23,6 +25,15 @@ async function pixels() {
 describe('The ice texture', () => {
   it('is a WebP image', async () => {
     expect((await sharp(TEXTURE).metadata()).format).toBe('webp')
+  })
+
+  it("is larger than Vite's inline limit, so it stays a file the CSP allows", async () => {
+    // Below assetsInlineLimit (Vite's default, 4096 B) the import becomes a data: URL, which the
+    // CSP's img-src 'self' blocks (ADR 0012): the World would fail to load its ice.
+    expect(
+      (await readFile(TEXTURE)).length,
+      "ice.webp under Vite's 4096 B inline limit would be a data: URL, blocked by the CSP (img-src 'self')",
+    ).toBeGreaterThan(VITE_INLINE_LIMIT)
   })
 
   it('is at most 150,000 bytes', async () => {

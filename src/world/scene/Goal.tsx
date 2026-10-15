@@ -10,7 +10,6 @@ import { BOARD, frameBoxes, rectBox } from '../model/world'
 import { RED } from './colours'
 import { IceLine, Solid } from './Solid'
 
-const FRAME_COLOUR = RED
 const NET_COLOUR = '#ffffff'
 const NET_OPACITY = 0.35
 
@@ -34,10 +33,10 @@ export function Goal({ zone }: { zone: Zone }) {
   return (
     <group>
       {geometry.frame.map((box, i) => (
-        <Solid key={i} box={box} colour={FRAME_COLOUR} />
+        <Solid key={i} box={box} colour={RED} />
       ))}
       <Solid box={geometry.net} colour={NET_COLOUR} opacity={NET_OPACITY} />
-      <IceLine x={rect.centre.x} z={goal.line.a.z} width={rect.width} colour={FRAME_COLOUR} />
+      <IceLine x={rect.centre.x} z={goal.line.a.z} width={rect.width} colour={RED} />
     </group>
   )
 }

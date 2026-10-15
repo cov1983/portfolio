@@ -133,30 +133,32 @@ describe('Driving over the Banner (AC-13.2: a marking, no collider)', () => {
   const farEdge = zone.banner.rect.centre.z - zone.banner.rect.length / 2
   const RUN_UP = 8
 
-  function overTheBanner(): { arrival: PuckState; samples: PuckState[] } {
+  // The crossing is computed once; each test reads one aspect of it.
+  let arrival: PuckState
+  let samples: PuckState[] = []
+
+  beforeAll(() => {
     const model = create(at(layout, { x: 0, z: nearZ + RUN_UP }))
     const runUp =
       Math.ceil(RUN_UP / CAP / FIXED_DT) + Math.ceil(CAP / STANDARD.acceleration / FIXED_DT)
-    const { state: arrival } = driveUntil(model, UP, (s) => s.position.z <= nearZ, runUp)
+    arrival = driveUntil(model, UP, (s) => s.position.z <= nearZ, runUp).state
     const steps = Math.ceil((nearZ - farEdge) / CAP / FIXED_DT) + 1
-    return { arrival, samples: collect(model, UP, steps).map((r) => r.state) }
-  }
+    samples = collect(model, UP, steps).map((r) => r.state)
+  })
 
   it("reaches the Zone's near end within the run-up's bound", () => {
-    expect(overTheBanner().arrival.position.z).toBeLessThanOrEqual(nearZ)
+    expect(arrival.position.z).toBeLessThanOrEqual(nearZ)
   })
 
   it('arrives there at top speed', () => {
-    expect(overTheBanner().arrival.speed).toBeGreaterThanOrEqual(CAP - 1e-6)
+    expect(arrival.speed).toBeGreaterThanOrEqual(CAP - 1e-6)
   })
 
   it("passes the Banner's far edge in the model time top speed needs", () => {
-    const { samples } = overTheBanner()
     expect(samples[samples.length - 1]?.position.z).toBeLessThan(farEdge)
   })
 
   it('is never sent back on the way', () => {
-    const { samples } = overTheBanner()
     expect(reboundAt(samples, 'z', -1)).toBe(-1)
   })
 })

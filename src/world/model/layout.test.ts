@@ -214,6 +214,10 @@ describe("The Banner on the Zone's ice (AC-13.2)", () => {
     expect(zone.goal.posts.map((post) => overlaps(post, rect))).not.toContain(true)
   })
 
+  it('points its text up along −z, the World\'s "up" under the fixed yaw', () => {
+    expect(zone.banner.up).toEqual({ x: 0, z: -1 })
+  })
+
   it('points its text up away from the Hub, so it reads upright from the Hub side', () => {
     const towardsZone = {
       x: zone.rect.centre.x - layout.hub.resetPoint.x,

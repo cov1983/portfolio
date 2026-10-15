@@ -54,6 +54,9 @@ export function Banner({ banner }: { banner: BannerLayout }) {
   const texture = useMemo(() => {
     const canvasTexture = new CanvasTexture(drawBanner(banner))
     canvasTexture.colorSpace = SRGBColorSpace
+    // The canvas's top row maps to the plane's local +y (three's default, stated so it cannot
+    // change unseen): marking.test proves that +y, the text's top, points away from the Hub.
+    canvasTexture.flipY = true
     canvasTexture.anisotropy = Math.min(gl.capabilities.getMaxAnisotropy(), MAX_ANISOTROPY)
     return canvasTexture
   }, [banner, gl])

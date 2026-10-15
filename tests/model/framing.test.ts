@@ -99,18 +99,22 @@ describe("The whole Banner is framed from the Zone's near end (AC-13.2)", () => 
   )
 
   it.each(ASPECTS)(
-    'holds all four corners at the eased pose after a sprint from the Reset point, at aspect %f',
+    'holds all four corners at the eased pose after a sprint to each entry, at aspect %f',
     (aspect) => {
-      // The Puck point moves kinematically at top speed, as in the eight-direction test above, for
-      // exactly the model time the run from the Reset point to the near end takes at that speed.
+      // The Puck point moves kinematically at top speed, as in the eight-direction test above,
+      // straight up from the Reset point's line to each entry, for exactly the model time that run
+      // takes at that speed.
       const start = layout.hub.resetPoint
       const steps = Math.ceil((start.z - nearZ) / STANDARD.maxSpeed / FIXED_DT)
-      let pose: CameraPose = cameraGoal(start)
-      for (let step = 1; step <= steps; step += 1) {
-        const point = { x: start.x, z: start.z - STANDARD.maxSpeed * FIXED_DT * step }
-        pose = cameraFollow(pose, cameraGoal(point), FIXED_DT, false)
-      }
-      expect(unframed(pose, aspect)).toEqual([])
+      const unframedAtEntries = entries.flatMap((entry) => {
+        let pose: CameraPose = cameraGoal({ x: entry.x, z: start.z })
+        for (let step = 1; step <= steps; step += 1) {
+          const point = { x: entry.x, z: start.z - STANDARD.maxSpeed * FIXED_DT * step }
+          pose = cameraFollow(pose, cameraGoal(point), FIXED_DT, false)
+        }
+        return unframed(pose, aspect)
+      })
+      expect(unframedAtEntries).toEqual([])
     },
   )
 })
