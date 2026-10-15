@@ -183,8 +183,11 @@ tolerances for tests, not as requirements in themselves: the feel in words is th
   World tells me where I am.
   - AC-13.1 Given the World is playable, When the Puck first enters the Zone, Then one short text
     caption for the Zone is shown.
-  - AC-13.2 Given the Zone is built from the Exhibit's content file, When the Banner over the Goal is
-    inspected, Then the Banner's text equals the Exhibit's title and hook from the content file.
+  - AC-13.2 Given the Zone is built from the Exhibit's content file, When the Banner on the Zone's
+    ice is inspected, Then its text equals the Exhibit's title and hook from the content file, the
+    title on one line and the hook on one or two lines, upright for a Visitor looking from the Hub
+    side, and the whole Banner is inside the Follow Camera's frame when the Puck is at the Zone's
+    near end.
 - **US-14** As a Visitor, I want driving the Puck into the Goal to open the Exhibit, so that the
   hockey move is the way to the content.
   - AC-14.1 Given the Puck is in the Zone, When it crosses the goal line into the net, Then the World

@@ -46,8 +46,9 @@ The hockey net in a Zone. Driving the Puck into it opens that Zone's Exhibit Pan
 _Avoid_: trigger, portal, target
 
 **Banner**:
-The sign over a Goal that shows the Exhibit's title and Hook inside the World.
-_Avoid_: label, sign, billboard
+The marking on a Zone's ice, like a centre-ice logo, that shows the Exhibit's title and Hook
+inside the World.
+_Avoid_: label, sign, billboard, logo
 
 **Direct Drive**:
 The way the Visitor steers the Puck: pressing a direction accelerates the Puck that way and it
