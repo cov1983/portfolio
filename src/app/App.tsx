@@ -5,7 +5,7 @@ import { markOnce, TITLE_SCREEN_INTERACTIVE_MARK } from '../perf/marks.ts'
 import { ExhibitPanel } from '../site/ExhibitPanel'
 import { TitleScreen } from '../site/TitleScreen'
 import type { World as WorldComponent } from '../world/World'
-import { captionText, captionTimer } from './caption.ts'
+import { captionTimer } from './caption.ts'
 import { detectCapability } from './capability.ts'
 import { focusAfter } from './focus.ts'
 import { INTERACTIVE_SELECTOR, isPlainActivation, keyAction, routeKey } from './keys.ts'
@@ -188,11 +188,7 @@ export function App({ content, store }: Props) {
           content={content}
           paused={selectWorldPaused(state)}
           hidden={state.screen !== 'world'}
-          caption={
-            shownPlace === undefined
-              ? null
-              : { place: shownPlace, text: captionText(content.captions, shownPlace) }
-          }
+          captionPlace={shownPlace ?? null}
           containerRef={worldRef}
           onReady={() => {
             store.dispatch({ type: 'world-status', status: 'ready' })

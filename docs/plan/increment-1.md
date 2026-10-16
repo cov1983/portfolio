@@ -493,8 +493,11 @@ a new place and unmount stop it. Escape and re-entry restart the full ~5 s; that
 showing, interrupted, not a second one (AC-18.1, once per place per page load). The expiry carries
 its place, `{ type: 'caption-expired'; place: 'hub' | ExhibitId }`, and changes nothing when another
 place is on show, so a timer firing between a Zone entry and the effect's cleanup cannot clear the
-newer caption. The text is looked up in App.tsx (`captionText(content.captions, place)`) and handed
-to the overlay through `World`; the reducer stays Content-free.
+newer caption. App hands `World` the shown place; `World` looks the text up
+(`captionText(content.captions, place)`, moved there from App.tsx after ai-review on #57, so a
+missing caption fails in the World's code, not the hydrated root's) and gives it to the overlay a
+frame after the section leaves `inert`, so a screen reader announces it; the reducer stays
+Content-free.
 
 ### Focus (`src/app/focus.ts`)
 

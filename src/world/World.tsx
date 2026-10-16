@@ -14,11 +14,13 @@ import {
   type RefObject,
 } from 'react'
 
+import { captionText } from '../app/caption'
+import type { CaptionPlace } from '../app/store'
 import type { WorldFailure } from '../app/types'
 import type { Content } from '../content/types'
 import { layoutFromContent } from './model/layout'
 import type { WorldEvent } from './model/world'
-import { WorldOverlay, type OverlayCaption } from '../site/WorldOverlay'
+import { WorldOverlay } from '../site/WorldOverlay'
 import { WorldCanvas, type WorldHandle } from './scene/WorldCanvas'
 
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)'
@@ -30,8 +32,11 @@ export type WorldProps = {
   paused: boolean
   /** The Title Screen is shown over the World: inert and invisible, state preserved (AC-6.1). */
   hidden: boolean
-  /** The Announcer caption on show and its text, or null (the app times it, plan §5). */
-  caption: OverlayCaption | null
+  /**
+   * The place of the Announcer caption on show, or null (the app times it, plan §5). Its text is
+   * looked up here, so a missing caption is the World's failure, not the hydrated root's.
+   */
+  captionPlace: CaptionPlace | null
   /** The container, so the app can focus it (plan §5, focusAfter). */
   containerRef: RefObject<HTMLElement | null>
   onReady: () => void
@@ -56,7 +61,7 @@ export function World({
   content,
   paused,
   hidden,
-  caption,
+  captionPlace,
   containerRef,
   onReady,
   onEvent,
@@ -108,7 +113,14 @@ export function World({
         onFailure={onFailure}
         handle={handle}
       />
-      <WorldOverlay caption={announcing ? caption : null} onReset={onReset} />
+      <WorldOverlay
+        caption={
+          announcing && captionPlace !== null
+            ? { place: captionPlace, text: captionText(content.captions, captionPlace) }
+            : null
+        }
+        onReset={onReset}
+      />
     </section>
   )
 }
