@@ -220,6 +220,7 @@ describe('Drive budgets of the e2e journeys from the Hub (AC-13.1, 14.1, 25.1)',
   it('reaches the Goal within GOAL_BUDGET_S, between 1.2× and 1.5× the drive', () => {
     create(layout)
     const ratio = GOAL_BUDGET_S / secondsTo('goal', UP)
-    expect([ratio >= 1.2, ratio <= 1.5]).toEqual([true, true])
+    expect(ratio).toBeGreaterThanOrEqual(1.2)
+    expect(ratio).toBeLessThanOrEqual(1.5)
   })
 })
