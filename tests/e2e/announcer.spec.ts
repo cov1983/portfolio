@@ -53,6 +53,13 @@ test('the first entry into the Zone shows the Zone’s caption, one caption elem
   })
 })
 
+/**
+ * How long a "gone" read may wait for React to commit the expiry the fake clock fired: well under
+ * CAPTION_MS of real time, so a real 5 s timer can never satisfy it (the default 5 s expect
+ * timeout could, review of #57).
+ */
+const GONE_WITHIN_MS = 1000
+
 test.describe('about 5 s on show (spec, storytelling)', () => {
   // The real clock until the World is ready (page.clock's fake performance records no user-timing
   // marks), then a paused fake one: the Puck rests at the Hub's Reset point, no key is held, and
@@ -74,7 +81,7 @@ test.describe('about 5 s on show (spec, storytelling)', () => {
     await page.clock.fastForward(CAPTION_MS - 1)
     await expect(caption(page)).toHaveText(content.captions.hub)
     await page.clock.fastForward(1)
-    await expect(caption(page)).toHaveText('')
+    await expect(caption(page)).toHaveText('', { timeout: GONE_WITHIN_MS })
   })
 
   test('the welcome waits behind the Title Screen: its 5 s start on entry', async ({
@@ -101,6 +108,6 @@ test.describe('about 5 s on show (spec, storytelling)', () => {
     await page.clock.fastForward(CAPTION_MS - 1)
     await expect(caption(page)).toHaveText(content.captions.hub)
     await page.clock.fastForward(1)
-    await expect(caption(page)).toHaveText('')
+    await expect(caption(page)).toHaveText('', { timeout: GONE_WITHIN_MS })
   })
 })
