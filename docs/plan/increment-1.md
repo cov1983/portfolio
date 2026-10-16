@@ -549,7 +549,7 @@ cases use a context with `javaScriptEnabled: false`; reduced motion uses
 | 4.1 | perf | `world-playable` ≤ 5000 ms from a plain navigation (World mounts paused behind the Title Screen) | T5b |
 | 4.2 | e2e | delayed chunk; press Enter at once → way-in shows loading; World visible after the chunk, no second press | T5b |
 | 4.3 | perf | download until playable ≤ 4,000,000 B; excluded by URL prefix `/media/exhibits/<id>/` only, so World textures, the preview image and icons count | T1 (real bundle, prefix rule), T5b |
-| 5.1 | model + e2e | model: after `reset()` the Puck is at `hub.resetPoint`, `cameraGoal` frames it · e2e `world-entry.spec`: Hub caption text visible after entry (corrected by #32: and after a Panel opened from the list before entry, the reducer's pending caption, `selectShownCaption`; the ~5 s expiry with the injected timer host in unit `caption.test` and with `page.clock` while the Puck rests on the Hub in `announcer.spec`, installed after the `world-playable` mark and paused, not before `goto` as the approved plan said: its fake `performance` records no user-timing marks, so the readiness poll would never end; the reads that the caption is gone wait at most `GONE_WITHIN_MS` (1 s), well under `CAPTION_MS` of real time, because the default 5 s expect timeout let a real timer pass them (review of #57: the clock installed after the welcome stayed green in all three projects, red with the bound); the Goal's half is a unit proof, corrected by #32 per the Owner's decision on #32, https://github.com/cov1983/portfolio/issues/32#issuecomment-6223505338: the reducer clears the caption on `goal` and `selectShownCaption` shows none while a Panel is open, and the e2e drive to the Goal in `reduced-motion.spec` checks the overlay's caption is empty under the open Panel; no e2e times it, because with the real clock the 5 s timer races the 2.17 s of model time from the Zone's entry to its Goal on WebKit's ~0.4× software renderer, and `page.clock` may not move while the Puck is driven) | T1, T5b (wiring), T8a |
+| 5.1 | model + e2e | model: after `reset()` the Puck is at `hub.resetPoint`, `cameraGoal` frames it · e2e `world-entry.spec`: Hub caption text visible after entry (corrected by #32: see the note on row 5.1 below the table) | T1, T5b (wiring), T8a |
 | 5.2 | model | `framesPoint(cameraGoal(resetPoint), pathOpening)` for the real layout at aspects 21:9, 16:9, 3:2, 4:3 | T2 |
 | 6.1 | model + e2e | model: puck state identical across N skipped steps · e2e: Escape → Title Screen visible, World container hidden | T5b |
 | 6.2 | model + e2e | model: resume continues velocity · e2e: Enter → World visible again; reducer test: no reset action emitted | T5b |
@@ -609,6 +609,32 @@ cases use a context with `javaScriptEnabled: false`; reduced motion uses
 | 28.1 | e2e | full visit (Title Screen, Enter, Escape, Panel, `/exhibits`): every request URL has the site's origin | T9 |
 | 28.2 | e2e | after the visit: `document.cookie` empty, `localStorage`/`sessionStorage` length 0, `indexedDB.databases()` empty | T9 |
 | 28.3 | e2e + build | no `<audio>` element, no `AudioContext` constructed (init-script counter), no `Media` request of audio type; build: no audio file under `dist/` | T9 |
+
+**Note on row 5.1 (corrected by #32, T8a, 2026-10-16; Owner's answers and decisions on #32 and #57)**:
+- The welcome after entry is also proven after a Panel opened from the list before entry: the
+  reducer keeps the pending caption, and `selectShownCaption` shows it only with the World shown
+  and no Panel.
+- The ~5 s expiry is proven with the injected timer host in unit `caption.test` and with
+  `page.clock` in `announcer.spec` while the Puck rests on the Hub with no key held. The clock is
+  installed after the `world-playable` mark and paused, not before `goto` as the approved plan
+  said: its fake `performance` records no user-timing marks, so the readiness poll would never end.
+  `fastForward` moves it (a jump: one frame, due timers once); `runFor` rendered every frame in
+  software and ran past WebKit's test timeout.
+- The reads that the caption is gone wait at most `GONE_WITHIN_MS` (1 s), well under `CAPTION_MS`
+  of real time: the default 5 s expect timeout let a real timer pass them (review of #57, the
+  clock installed after the welcome stayed green in all three projects, red with the bound). "The
+  welcome waits behind the Title Screen" runs the full `CAPTION_MS` after Enter, so a timer
+  started at readiness turns it red (ai-review on #57).
+- The welcome's text arrives one animation frame after the World section leaves `inert`, so a
+  screen reader announces it (ai-review on #57); `announcer.spec` proves the order by DOM batch,
+  and the clock cases deliver the frame with `runFor` and count it against `CAPTION_MS`.
+- The Goal's half is a unit proof (Owner's decision on #32,
+  https://github.com/cov1983/portfolio/issues/32#issuecomment-6223505338): the reducer clears the
+  caption on `goal`, `selectShownCaption` shows none while a Panel is open, and the e2e drive to
+  the Goal in `reduced-motion.spec` checks the overlay's caption is empty under the open Panel. No
+  e2e times it: with the real clock the 5 s timer races the 2.17 s of model time from the Zone's
+  entry to its Goal on WebKit's ~0.4× software renderer, and `page.clock` may not move while the
+  Puck is driven.
 
 **What cannot be automated, and how it is verified**: frame rate (AC-23.1) and the browser pass
 (AC-24.2) are the spec's two Owner-measured criteria; the feel sign-off on the real Hub (ADR 0005
