@@ -34,7 +34,7 @@ test('the caption is HTML text in a status element inside the World overlay, not
   expect(placed).toEqual({ inCanvas: false, inOverlay: true })
 })
 
-test('the welcome arrives after the World leaves inert, so a screen reader announces it (AC-18.2)', async ({
+test('the welcome’s text arrives in a later DOM batch than the inert removal (AC-18.2)', async ({
   page,
   content,
 }) => {

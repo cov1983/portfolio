@@ -34,7 +34,8 @@ export type WorldProps = {
   hidden: boolean
   /**
    * The place of the Announcer caption on show, or null (the app times it, plan §5). Its text is
-   * looked up here, so a missing caption is the World's failure, not the hydrated root's.
+   * looked up here, so a missing caption fails in the World's code; containing that failure is
+   * T8b's error boundary for the World (#33): until then a throw still unmounts the root.
    */
   captionPlace: CaptionPlace | null
   /** The container, so the app can focus it (plan §5, focusAfter). */
@@ -84,7 +85,9 @@ export function World({
   // screen reader announces only text that arrives in a region already there: the section leaves
   // inert in one commit, the caption's text follows a frame later (AC-18.2; ai-review on #57).
   // Scheduled in a layout effect, so the frame is requested in the commit that shows the World;
-  // hiding it again (the cleanup) takes the text back, so every entry waits its frame.
+  // hiding it again (the cleanup) takes the text back, so every entry waits its frame. In a
+  // background tab the browser may not run the frame before the ~5 s timer expires, so a Visitor
+  // who enters and switches tabs at once can miss the caption: accepted for increment-1.
   const [announcing, setAnnouncing] = useState(false)
   useLayoutEffect(() => {
     if (hidden) return
