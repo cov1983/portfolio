@@ -92,6 +92,10 @@ test.describe('about 5 s on show (spec, storytelling)', () => {
     await page.keyboard.press('Enter')
     await expect(worldContainer(page)).toBeVisible()
     await expect(caption(page)).toHaveText(content.captions.hub)
+    await page.clock.fastForward(CAPTION_MS - 1)
+    await expect(caption(page)).toHaveText(content.captions.hub)
+    await page.clock.fastForward(1)
+    await expect(caption(page)).toHaveText('', { timeout: GONE_WITHIN_MS })
   })
 
   test('Escape and re-entry show the welcome again for the full 5 s (Owner, #32 Q2)', async ({
