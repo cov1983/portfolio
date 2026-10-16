@@ -71,6 +71,10 @@ test('nothing animates after the caption, Reset, the Goal and the Panel under re
   await expect(caption(page)).not.toHaveText('')
   expect(await runningAnimations(page), 'the caption').toEqual([])
 
+  // The Reset, Goal and Panel checkpoints hold by absence today: nothing but the caption's fade
+  // animates or transitions (D8, plan §6 row 25.1), so they would pass without the reduce rule as
+  // well. They guard against a future effect on these events, which must honour the preference;
+  // its own no-preference control belongs here once it exists (ai-review on #57).
   await page.getByRole('button', { name: 'Reset' }).click()
   await expect(worldContainer(page)).toBeFocused()
   expect(await runningAnimations(page), 'the Reset control').toEqual([])
