@@ -302,7 +302,12 @@ html:has(dialog.exhibit-panel[open]) {
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
-  *::after,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Its own rule: a selector a browser does not know drops the whole list it stands in. */
   ::backdrop {
     animation: none !important;
     transition: none !important;
