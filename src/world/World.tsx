@@ -4,7 +4,15 @@
 // invisible while the Title Screen is shown (`inert` hides it from assistive technology and the
 // tab order; world.css makes it `visibility: hidden`, never `display: none`, so the canvas keeps
 // its size and the paused demand frame that records world-playable still renders).
-import { useCallback, useMemo, useRef, useSyncExternalStore, type RefObject } from 'react'
+import {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type RefObject,
+} from 'react'
 
 import type { WorldFailure } from '../app/types'
 import type { Content } from '../content/types'
@@ -67,6 +75,22 @@ export function World({
     handle.current?.reset()
     containerRef.current?.focus()
   }, [containerRef])
+  // The caption's live region is out of the accessibility tree while the section is inert, and a
+  // screen reader announces only text that arrives in a region already there: the section leaves
+  // inert in one commit, the caption's text follows a frame later (AC-18.2; ai-review on #57).
+  // Scheduled in a layout effect, so the frame is requested in the commit that shows the World;
+  // hiding it again (the cleanup) takes the text back, so every entry waits its frame.
+  const [announcing, setAnnouncing] = useState(false)
+  useLayoutEffect(() => {
+    if (hidden) return
+    const frame = requestAnimationFrame(() => {
+      setAnnouncing(true)
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      setAnnouncing(false)
+    }
+  }, [hidden])
   return (
     <section
       className="world-container"
@@ -84,7 +108,7 @@ export function World({
         onFailure={onFailure}
         handle={handle}
       />
-      <WorldOverlay caption={caption} onReset={onReset} />
+      <WorldOverlay caption={announcing ? caption : null} onReset={onReset} />
     </section>
   )
 }
