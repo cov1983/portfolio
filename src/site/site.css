@@ -267,3 +267,44 @@ html:has(dialog.exhibit-panel[open]) {
   color: #ffffff;
   text-align: right;
 }
+
+/* The Announcer caption (WorldOverlay): one line at the top centre of the World, readable on any
+   frame of the scene behind it; it fades in, except under reduced motion (rule below). */
+.world-overlay .caption {
+  position: fixed;
+  top: 1.5rem;
+  right: 1rem;
+  left: 1rem;
+  margin: 0;
+  text-align: center;
+}
+
+.world-overlay .caption > span {
+  display: inline-block;
+  max-width: 40rem;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: rgb(11 26 42 / 85%);
+  border-radius: 0.375rem;
+  animation: caption-in 200ms ease-out;
+}
+
+@keyframes caption-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Reduced motion (spec, US-18 and US-25): no animation and no transition anywhere on the site,
+   the caption, the Panel and the overlay included; the Follow Camera's easing is the scene's
+   (src/world/World.tsx reads the same preference). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after,
+  ::backdrop {
+    animation: none !important;
+    transition: none !important;
+  }
+}

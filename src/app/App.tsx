@@ -5,6 +5,7 @@ import { markOnce, TITLE_SCREEN_INTERACTIVE_MARK } from '../perf/marks.ts'
 import { ExhibitPanel } from '../site/ExhibitPanel'
 import { TitleScreen } from '../site/TitleScreen'
 import type { World as WorldComponent } from '../world/World'
+import { captionText, captionTimer } from './caption.ts'
 import { detectCapability } from './capability.ts'
 import { focusAfter } from './focus.ts'
 import { INTERACTIVE_SELECTOR, isPlainActivation, keyAction, routeKey } from './keys.ts'
@@ -15,7 +16,7 @@ import {
   shouldPreload,
   type WorldLoader,
 } from './preload.ts'
-import { selectWorldPaused, type Store } from './store.ts'
+import { selectShownCaption, selectWorldPaused, type Store } from './store.ts'
 import type { WorldFailure } from './types.ts'
 
 // The hydrated root (plan §2, module app; ADR 0010): the one tree both src/entry-prerender.tsx
@@ -138,6 +139,17 @@ export function App({ content, store }: Props) {
     }
   }, [state])
 
+  // The Announcer caption's ~5 s run from when it is shown (plan §5, corrected by #32): Escape,
+  // the Goal's Panel, a new place and unmount cancel the timer; re-entry starts it again. The
+  // expiry names its place, so a timer that fires after a newer caption arrived changes nothing.
+  const shownPlace = selectShownCaption(state)?.place
+  useEffect(() => {
+    if (shownPlace === undefined) return
+    return captionTimer(window)(() => {
+      store.dispatch({ type: 'caption-expired', place: shownPlace })
+    })
+  }, [shownPlace, store])
+
   const panelExhibit =
     state.panel === null
       ? undefined
@@ -176,6 +188,11 @@ export function App({ content, store }: Props) {
           content={content}
           paused={selectWorldPaused(state)}
           hidden={state.screen !== 'world'}
+          caption={
+            shownPlace === undefined
+              ? null
+              : { place: shownPlace, text: captionText(content.captions, shownPlace) }
+          }
           containerRef={worldRef}
           onReady={() => {
             store.dispatch({ type: 'world-status', status: 'ready' })
