@@ -21,7 +21,7 @@ import {
   stepsWith,
   UP,
 } from './helpers'
-import { LEAVE_S, REENTRY_BUDGET_S, STAY_S } from '../journey'
+import { GOAL_BUDGET_S, LEAVE_S, REENTRY_BUDGET_S, STAY_S, ZONE_ENTRY_BUDGET_S } from '../journey'
 
 // Spec seam 2, the Zone's events: the Goal is a sensor volume inside the net behind the goal line,
 // armed again only after the Puck has left it (AC-14.1, 14.2); posts and the net's outside are solid
@@ -99,14 +99,18 @@ describe('Goal re-arm (AC-14.2)', () => {
 })
 
 /**
- * Model seconds of holding `input` until the step that emits `goal`, stopping there as the
- * scene's stepFrame does; Infinity if none within `limit` steps.
+ * Model seconds of holding `input` until the step that emits an event of `type`, stopping there
+ * as the scene's stepFrame does at a Goal; Infinity if none within `limit` steps.
  */
-function secondsToGoal(input: typeof UP, limit = STEPS * 2): number {
+function secondsTo(type: 'goal' | 'zone-entered', input: typeof UP, limit = STEPS * 2): number {
   for (let step = 1; step <= limit; step += 1) {
-    if (model.step(input).some((event) => event.type === 'goal')) return step * FIXED_DT
+    if (model.step(input).some((event) => event.type === type)) return step * FIXED_DT
   }
   return Infinity
+}
+
+function secondsToGoal(input: typeof UP): number {
+  return secondsTo('goal', input)
 }
 
 /** The journey after Escape: STAY_S with no key, DOWN for LEAVE_S, then UP until `goal`. */
@@ -198,5 +202,28 @@ describe('place() over the whole World', () => {
   ])('answers %s for a Puck resting there', (place, point) => {
     drive(create(at(layout, point)), NONE, 10)
     expect(model.place()).toBe(place)
+  })
+})
+
+// The e2e drives from rest at the Hub's Reset point (announcer.spec.ts, reduced-motion.spec.ts),
+// replayed step for step on the same layout: the literals in tests/journey.ts hold with their
+// margins, so a drive that misses its target fails at the bound instead of waiting it out.
+describe('Drive budgets of the e2e journeys from the Hub (AC-13.1, 14.1, 25.1)', () => {
+  it('reaches the Zone within ZONE_ENTRY_BUDGET_S with at least a 1.5× margin', () => {
+    create(layout)
+    // Measured 3.15 s (budget 5 s).
+    expect(ZONE_ENTRY_BUDGET_S / secondsTo('zone-entered', UP)).toBeGreaterThanOrEqual(1.5)
+  })
+
+  it('ends the Zone budget before the Goal, whose Panel would clear the Zone caption', () => {
+    create(layout)
+    // Measured 5.32 s.
+    expect(secondsToGoal(UP)).toBeGreaterThan(ZONE_ENTRY_BUDGET_S)
+  })
+
+  it('reaches the Goal within GOAL_BUDGET_S, between 1.2× and 1.5× the drive', () => {
+    create(layout)
+    const ratio = GOAL_BUDGET_S / secondsToGoal(UP)
+    expect([ratio >= 1.2, ratio <= 1.5]).toEqual([true, true])
   })
 })
