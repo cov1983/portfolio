@@ -37,6 +37,7 @@ test('the first entry into the Zone shows the Zone’s caption, one caption elem
   page,
   content,
 }) => {
+  // Harness time for a software renderer, not the claim's bound: that is ZONE_ENTRY_BUDGET_S.
   test.setTimeout(120_000)
   const zoneCaption = content.captions.zones[firstExhibit(content).id]
   if (zoneCaption === undefined) throw new Error('the first Exhibit has no Zone caption')

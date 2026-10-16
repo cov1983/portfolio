@@ -63,6 +63,7 @@ test.describe('the caption (AC-18.3)', () => {
 test('nothing animates after the caption, Reset, the Goal and the Panel under reduced motion (AC-25.1)', async ({
   page,
 }) => {
+  // Harness time for a software renderer, not the claim's bound: that is GOAL_BUDGET_S.
   test.setTimeout(120_000)
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await entered(page)
@@ -76,7 +77,9 @@ test('nothing animates after the caption, Reset, the Goal and the Panel under re
   await page.keyboard.press('KeyR')
   expect(await runningAnimations(page), 'Reset by R').toEqual([])
 
-  // From rest at the Reset point into the Goal within its model-time budget (goal.test.ts).
+  // From rest at the Reset point into the Goal within its model-time budget (goal.test.ts), read
+  // once right after the hold, as exhibit-panel.spec reads its re-entry: an auto-waiting read
+  // would let the gliding Puck score after the bound and pass.
   await page.keyboard.down('ArrowUp')
   await modelTime(page, GOAL_BUDGET_S)
   await page.keyboard.up('ArrowUp')

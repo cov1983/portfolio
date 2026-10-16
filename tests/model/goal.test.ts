@@ -109,15 +109,11 @@ function secondsTo(type: 'goal' | 'zone-entered', input: typeof UP, limit = STEP
   return Infinity
 }
 
-function secondsToGoal(input: typeof UP): number {
-  return secondsTo('goal', input)
-}
-
 /** The journey after Escape: STAY_S with no key, DOWN for LEAVE_S, then UP until `goal`. */
 function journeyReentry(): number {
   drive(model, NONE, Math.round(STAY_S / FIXED_DT))
   drive(model, DOWN, Math.round(LEAVE_S / FIXED_DT))
-  return secondsToGoal(UP)
+  return secondsTo('goal', UP)
 }
 
 // The e2e journey's budget (REENTRY_BUDGET_S), replayed step for step: the scene stops stepping
@@ -126,7 +122,7 @@ function journeyReentry(): number {
 describe('Re-entry budget of the e2e journey (AC-12.3, 14.2)', () => {
   it('is about 1.5× the replayed journey from the Goal to the next Goal', () => {
     create(layout)
-    expect(secondsToGoal(UP)).toBeLessThan(Infinity)
+    expect(secondsTo('goal', UP)).toBeLessThan(Infinity)
     // Measured 1.68 s (budget 2.5 s); toBeCloseTo(1.5, 0) accepts a ratio between 1 and 2.
     expect(REENTRY_BUDGET_S / journeyReentry()).toBeCloseTo(1.5, 0)
   })
@@ -218,12 +214,12 @@ describe('Drive budgets of the e2e journeys from the Hub (AC-13.1, 14.1, 25.1)',
   it('ends the Zone budget before the Goal, whose Panel would clear the Zone caption', () => {
     create(layout)
     // Measured 5.32 s.
-    expect(secondsToGoal(UP)).toBeGreaterThan(ZONE_ENTRY_BUDGET_S)
+    expect(secondsTo('goal', UP)).toBeGreaterThan(ZONE_ENTRY_BUDGET_S)
   })
 
   it('reaches the Goal within GOAL_BUDGET_S, between 1.2× and 1.5× the drive', () => {
     create(layout)
-    const ratio = GOAL_BUDGET_S / secondsToGoal(UP)
+    const ratio = GOAL_BUDGET_S / secondsTo('goal', UP)
     expect([ratio >= 1.2, ratio <= 1.5]).toEqual([true, true])
   })
 })
