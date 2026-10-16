@@ -475,6 +475,29 @@ no placeholder values); `caption` holds the place only, the text is looked up in
 the caption renders (T8a), so the reducer stays Content-free; `routeKey(state, targetIsInteractive)`
 takes no key code (the route depends on the state and the target, the code decides the action in
 `keyAction(route, code): Action | null`, also `src/app/keys.ts`). The modules carry the same note.
+(Corrected by #32, 2026-10-16; Owner's answer to Q4 on #32: T8a adds no `reducedMotion` to
+`Capability`: nothing in the store reads it, and `src/world/World.tsx` has read
+`(prefers-reduced-motion: reduce)` live since T5b, passing it to `WorldCanvas` and `cameraFollow`;
+CSS media queries follow a change of the preference by themselves.)
+
+**Corrected by #32 (T8a, 2026-10-16; Owner's answers to Q1–Q3 on #32)**: the caption in the store
+is the caption due, set for the Hub on `world-status: 'ready'` (usually behind the Title Screen,
+during the idle preload) and for the Zone on its `zone-entered`. It is **shown** only while the
+World is shown with no Panel: `selectShownCaption(s) = s.screen === 'world' && s.panel === null ?
+s.caption : null`. A Panel over the shown World, which only the Goal opens (`world-event: goal`),
+clears it; `open-panel` comes from the Title Screen list and leaves a pending caption alone, so a
+Visitor who reads an Exhibit before entering still gets the welcome (AC-5.1). The ~5 s
+(`CAPTION_MS`, `src/app/caption.ts`) run from when it is shown: an effect in `src/app/App.tsx`
+keyed on the shown place starts `captionTimer(window)` and returns its cancel, so Escape, the Goal,
+a new place and unmount stop it. Escape and re-entry restart the full ~5 s; that is the same
+showing, interrupted, not a second one (AC-18.1, once per place per page load). The expiry carries
+its place, `{ type: 'caption-expired'; place: 'hub' | ExhibitId }`, and changes nothing when another
+place is on show, so a timer firing between a Zone entry and the effect's cleanup cannot clear the
+newer caption. App hands `World` the shown place; `World` looks the text up
+(`captionText(content.captions, place)`, moved there from App.tsx after ai-review on #57, so a
+missing caption fails in the World's code, not the hydrated root's) and gives it to the overlay a
+frame after the section leaves `inert`, so a screen reader announces it; the reducer stays
+Content-free.
 
 ### Focus (`src/app/focus.ts`)
 
@@ -526,7 +549,7 @@ cases use a context with `javaScriptEnabled: false`; reduced motion uses
 | 4.1 | perf | `world-playable` ≤ 5000 ms from a plain navigation (World mounts paused behind the Title Screen) | T5b |
 | 4.2 | e2e | delayed chunk; press Enter at once → way-in shows loading; World visible after the chunk, no second press | T5b |
 | 4.3 | perf | download until playable ≤ 4,000,000 B; excluded by URL prefix `/media/exhibits/<id>/` only, so World textures, the preview image and icons count | T1 (real bundle, prefix rule), T5b |
-| 5.1 | model + e2e | model: after `reset()` the Puck is at `hub.resetPoint`, `cameraGoal` frames it · e2e `world-entry.spec`: Hub caption text visible after entry | T1, T5b (wiring), T8a |
+| 5.1 | model + e2e | model: after `reset()` the Puck is at `hub.resetPoint`, `cameraGoal` frames it · e2e `world-entry.spec`: Hub caption text visible after entry (corrected by #32: see the note on row 5.1 below the table) | T1, T5b (wiring), T8a |
 | 5.2 | model | `framesPoint(cameraGoal(resetPoint), pathOpening)` for the real layout at aspects 21:9, 16:9, 3:2, 4:3 | T2 |
 | 6.1 | model + e2e | model: puck state identical across N skipped steps · e2e: Escape → Title Screen visible, World container hidden | T5b |
 | 6.2 | model + e2e | model: resume continues velocity · e2e: Enter → World visible again; reducer test: no reset action emitted | T5b |
@@ -543,11 +566,11 @@ cases use a context with `javaScriptEnabled: false`; reduced motion uses
 | 10.1 | model + e2e | model: crossing Hub→Path→Zone keeps speed within damping · e2e: no loading element appears in the World (presence check of overlay contents) | T2 |
 | 11.1 | model | `cameraFollow` approaches goal monotonically; position − target offset has constant yaw | T1 |
 | 11.2 | model | `framesPoint` true for the Puck at 200 sampled positions over all three rects, at aspects 21:9, 16:9, 3:2, 4:3 | T2 |
-| 11.3 | model | `reducedMotion: true` → pose equals goal after one call | T1 |
+| 11.3 | unit | `reducedMotion: true` → pose equals goal after one call (corrected by #32: the proof is unit `src/world/model/camera.test.ts`, pure, no Rapier) | T1 |
 | 12.1 | model + unit | model: after `reset()` the Puck is at rest at `hub.resetPoint` · camera: `cameraFollow(goal, goal, …)` equals the goal (snap) · keyboard: `KeyR` yields `reset`; `routeKey` sends it to the World when no Panel is open | T1 |
 | 12.2 | e2e | click the Reset control → `activeElement` is the World container; keydown afterwards is routed to the World (reducer/unit) | T5b |
 | 12.3 | unit + e2e | `routeKey` with panel open → 'panel' · e2e: Panel open, press R → Panel still open (corrected by T7, #31: `routeKey` takes no code since T5a, so R's half is `keyAction('panel', 'KeyR') === null`; the e2e step is part of `exhibit-panel.spec`'s one Goal journey, whose re-entry bounded in model time proves that R left the World alone) | T7 |
-| 13.1 | model + unit | model: `zone-entered` emitted once on first entry, not again on re-entry · reducer: `zone-entered` sets the caption to that Zone's text | T2, T8a |
+| 13.1 | model + unit | model: `zone-entered` emitted once on first entry, not again on re-entry · reducer: `zone-entered` sets the caption to that Zone's text (corrected by #32: the reducer sets the place, unit `captionText` gives the text; e2e `announcer.spec`: ArrowUp from the Hub shows the Zone's text within `ZONE_ENTRY_BUDGET_S` of model time, a literal in `tests/journey.ts` that `goal.test.ts` proves at least 1.5× the real-layout drive and below its Goal) | T2, T8a |
 | 13.2 | unit + model | ~~`layoutFromContent(content).zones[0].banner.text` equals title + hook from the real content~~ (corrected by #55, amended AC-13.2: the Banner on the Zone's ice) · unit `layout.test`: the real content's title and hook on `zones[0].banner` unchanged, the marking inside the Zone, clear of the goal line and the net, `up` away from the Hub · unit `bannerLines.test`: every word drawn, the title on one line, the hook on one or two, within the room · unit `marking.test`: the rotation lays the plane face up with its text's top along `up` · model `framing.test`: the four corners framed from the Zone's near end at the goal pose (three entry points) and at the eased pose after a top-speed run, at four aspects · model `crossing.test`: the Puck drives over it with no rebound, in the model time top speed needs · unit `colours.test`, `scripts/ice/texture.test`: ink ≥ 7:1 on the ice colour and on the texture's darkest percentile | T7, #55 |
 | 14.1 | model + unit | model: `goal` on crossing the line into the sensor · reducer: `goal` → `panel` set, `selectWorldPaused` true | T2, T7 |
 | 14.2 | model + unit | model: no second `goal` until `goal-left` · reducer: close-panel leaves screen 'world' (corrected by T7, #31: the Goal journey in `exhibit-panel.spec` adds both halves in model time: no Panel during `STAY_S` with no key after Escape, then the Panel again within `REENTRY_BUDGET_S` of leaving and re-entering, a budget `goal.test.ts` derives and keeps below half of a Puck reset by R running the same sequence, so such a Puck fails it; corrected by #55, review of #54: was "0.5 s" and "below the run from the Hub"; the three constants live in `tests/journey.ts`) | T2, T7 |
@@ -561,9 +584,9 @@ cases use a context with `javaScriptEnabled: false`; reduced motion uses
 | 17.1 | e2e | `privacy.spec`: request log from navigation to before any Panel has no request under `/media/exhibits/` (site images may live under `/media/site/`) | T6 |
 | 17.2 | build + e2e | `<video>` has `poster`, `controls`, no `autoplay`, `paused === true` after open (corrected by T6, #30 Q4: the real content has no video, so the markup is proven on the build seam, the open Panel's tree rendered with the `content-video` fixture; the browser half, `paused` after open, is hand-off #52 for the first Exhibit with a video) | T6, #52 |
 | 17.3 | e2e | each `<picture>` source same origin, `srcset` with three widths, `sizes` present | T6 |
-| 18.1 | unit + e2e | validator: exactly two captions, each ending with `.`, `!` or `?` (fixture) · e2e: at most one caption element at a time | T8a |
+| 18.1 | unit + e2e | validator: exactly two captions, each ending with `.`, `!` or `?` (fixture) · e2e: at most one caption element at a time (corrected by #32: no new fixture, T3's unit cases of check 6 in `validate.test.ts` prove the rule and the real content's build proves its two captions; the e2e counts the status elements inside the World overlay, not every live region on the page) | T8a |
 | 18.2 | e2e | caption is an element with `role="status"` and text, inside the overlay, not in the canvas | T8a |
-| 18.3 | e2e | reduced motion: caption computed `animation-name: none`, `transition-duration: 0s` | T8a |
+| 18.3 | e2e | reduced motion: caption computed `animation-name: none`, `transition-duration: 0s` (corrected by #32: with a control: without the preference the caption's fade-in `caption-in` is its `animation-name`) | T8a |
 | 19.1 | e2e | `fallback-page.spec`, no-script: every Exhibit under `id=<id>` with the Panel's fields, Bio, Contact, link to `/` | T4 |
 | 19.2 | e2e | axe on `/exhibits`; headings h1 > h2 per Exhibit/Bio/Contact; `main`/`nav` landmarks; every `img` has non-empty alt | T4 |
 | 19.3 | e2e | ids of the Title Screen list entries equal the anchors on `/exhibits` | T4 |
@@ -577,7 +600,7 @@ cases use a context with `javaScriptEnabled: false`; reduced motion uses
 | 23.1 | Owner | EliteBook 840 G10, Edge, one minute across the World, Edge DevTools performance panel (frame rate chart); value in the PR body, every ticket that touches the World | T1, T2, T5b, T7, T8a, T10 |
 | 24.1 | e2e | the three Playwright projects run every spec (CI `e2e`) | all |
 | 24.2 | Owner | Title Screen, World, Fallback Page in current Chrome, Firefox, Edge; Safari via WebKit; recorded in T10's PR | T10 |
-| 25.1 | e2e + model | reduced motion: no element with a running animation after Goal/Reset/caption/Panel events (computed styles); model AC-11.3 | T8a |
+| 25.1 | e2e + model | reduced motion: no element with a running animation after Goal/Reset/caption/Panel events (computed styles); model AC-11.3 (corrected by #32: running animations read with `document.getAnimations()`, which covers CSS animations and transitions; the Goal is reached within `GOAL_BUDGET_S` of model time, proven in `goal.test.ts`; screen shake and a scoring celebration do not exist in increment-1; AC-11.3 is unit) | T8a |
 | 26.1 | build + e2e | `content-build.test`: the real content builds; e2e: the Exhibit appears in list, Panel, Fallback; unit: Banner text | T3, T4, T6, T7 |
 | 26.2 | build | fixtures `missing-field`, `bad-visibility`: exit 1, message names file and field; fixture `html-in-summary`: builds, and `<script>` in the summary appears escaped as text in the output | T3 |
 | 26.3 | build | fixtures `missing-image`, `missing-poster`, `bad-internal-link`: exit 1, message names file and reference | T3 |
@@ -586,6 +609,32 @@ cases use a context with `javaScriptEnabled: false`; reduced motion uses
 | 28.1 | e2e | full visit (Title Screen, Enter, Escape, Panel, `/exhibits`): every request URL has the site's origin | T9 |
 | 28.2 | e2e | after the visit: `document.cookie` empty, `localStorage`/`sessionStorage` length 0, `indexedDB.databases()` empty | T9 |
 | 28.3 | e2e + build | no `<audio>` element, no `AudioContext` constructed (init-script counter), no `Media` request of audio type; build: no audio file under `dist/` | T9 |
+
+**Note on row 5.1 (corrected by #32, T8a, 2026-10-16; Owner's answers and decisions on #32 and #57)**:
+- The welcome after entry is also proven after a Panel opened from the list before entry: the
+  reducer keeps the pending caption, and `selectShownCaption` shows it only with the World shown
+  and no Panel.
+- The ~5 s expiry is proven with the injected timer host in unit `caption.test` and with
+  `page.clock` in `announcer.spec` while the Puck rests on the Hub with no key held. The clock is
+  installed after the `world-playable` mark and paused, not before `goto` as the approved plan
+  said: its fake `performance` records no user-timing marks, so the readiness poll would never end.
+  `fastForward` moves it (a jump: one frame, due timers once); `runFor` rendered every frame in
+  software and ran past WebKit's test timeout.
+- The reads that the caption is gone wait at most `GONE_WITHIN_MS` (1 s), well under `CAPTION_MS`
+  of real time: the default 5 s expect timeout let a real timer pass them (review of #57, the
+  clock installed after the welcome stayed green in all three projects, red with the bound). "The
+  welcome waits behind the Title Screen" runs the full `CAPTION_MS` after Enter, so a timer
+  started at readiness turns it red (ai-review on #57).
+- The welcome's text arrives one animation frame after the World section leaves `inert`, so a
+  screen reader announces it (ai-review on #57); `announcer.spec` proves the order by DOM batch,
+  and the clock cases deliver the frame with `runFor` and count it against `CAPTION_MS`.
+- The Goal's half is a unit proof (Owner's decision on #32,
+  https://github.com/cov1983/portfolio/issues/32#issuecomment-6223505338): the reducer clears the
+  caption on `goal`, `selectShownCaption` shows none while a Panel is open, and the e2e drive to
+  the Goal in `reduced-motion.spec` checks the overlay's caption is empty under the open Panel. No
+  e2e times it: with the real clock the 5 s timer races the 2.17 s of model time from the Zone's
+  entry to its Goal on WebKit's ~0.4× software renderer, and `page.clock` may not move while the
+  Puck is driven.
 
 **What cannot be automated, and how it is verified**: frame rate (AC-23.1) and the browser pass
 (AC-24.2) are the spec's two Owner-measured criteria; the feel sign-off on the real Hub (ADR 0005

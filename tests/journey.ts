@@ -14,3 +14,16 @@ export const REENTRY_BUDGET_S = 2.5
 export const STAY_S = 0.5
 /** How long the journey holds ArrowDown to leave the Goal. */
 export const LEAVE_S = 0.75
+
+/**
+ * The Announcer journey's bound (announcer.spec.ts): ArrowUp held from rest at the Hub's Reset
+ * point shows the Zone's caption within this much model time. At least 1.5× the replayed drive's
+ * 3.15 s and below its Goal at 5.32 s, whose Panel would clear the caption (goal.test.ts proves
+ * both, AC-13.1).
+ */
+export const ZONE_ENTRY_BUDGET_S = 5
+/**
+ * The bound on the drive from rest at the Hub's Reset point into the Goal (reduced-motion.spec.ts):
+ * between 1.2× and 1.5× the replayed drive's 5.32 s (goal.test.ts, AC-14.1, 25.1).
+ */
+export const GOAL_BUDGET_S = 6.5

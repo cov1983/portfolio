@@ -5,6 +5,7 @@ import {
   createStore,
   INITIAL_STATE,
   reduce,
+  selectShownCaption,
   selectWorldPaused,
   selectWorldPreload,
   type AppState,
@@ -215,12 +216,36 @@ describe('reduce', () => {
 
   it('clears the caption when it expires', () => {
     const shown = state({ caption: { place: 'hub' } })
-    expect(reduce(shown, { type: 'caption-expired' }).caption).toBeNull()
+    expect(reduce(shown, { type: 'caption-expired', place: 'hub' }).caption).toBeNull()
+  })
+
+  it('keeps a newer caption when the expiry was timed for another place', () => {
+    const zone = state({ screen: 'world', worldStatus: 'ready', caption: { place: first } })
+    expect(reduce(zone, { type: 'caption-expired', place: 'hub' })).toBe(zone)
+  })
+
+  it('clears the caption when the Goal opens the Panel (spec: a caption disappears when a Panel opens)', () => {
+    const next = reduce(
+      state({ screen: 'world', worldStatus: 'ready', caption: { place: first } }),
+      { type: 'world-event', event: { type: 'goal', zoneId: first } },
+    )
+    expect(next.caption).toBeNull()
+  })
+
+  it('keeps the pending Hub caption when a Panel opens from the Title Screen list (AC-5.1)', () => {
+    const ready = state({ worldStatus: 'ready', caption: { place: 'hub' } })
+    const read = reduce(reduce(ready, { type: 'open-panel', panel: panelFromList }), {
+      type: 'close-panel',
+    })
+    expect(reduce(read, { type: 'enter' })).toMatchObject({
+      screen: 'world',
+      caption: { place: 'hub' },
+    })
   })
 
   it('returns the same state object when an action changes nothing', () => {
     const before = state()
-    expect(reduce(before, { type: 'caption-expired' })).toBe(before)
+    expect(reduce(before, { type: 'caption-expired', place: 'hub' })).toBe(before)
     expect(reduce(before, { type: 'close-panel' })).toBe(before)
     expect(reduce(before, { type: 'world-status', status: 'idle' })).toBe(before)
   })
@@ -239,6 +264,22 @@ describe('selectWorldPaused', () => {
 
   it('runs the World when it is shown without a Panel', () => {
     expect(selectWorldPaused(state({ screen: 'world', worldStatus: 'ready' }))).toBe(false)
+  })
+})
+
+describe('selectShownCaption', () => {
+  const due = { caption: { place: 'hub' }, worldStatus: 'ready' } as const
+
+  it('shows the caption due while the World is shown without a Panel (AC-5.1)', () => {
+    expect(selectShownCaption(state({ ...due, screen: 'world' }))).toEqual({ place: 'hub' })
+  })
+
+  it('shows none behind the Title Screen, where readiness usually sets it', () => {
+    expect(selectShownCaption(state(due))).toBeNull()
+  })
+
+  it('shows none while a Panel is open over the World', () => {
+    expect(selectShownCaption(state({ ...due, screen: 'world', panel: panelFromGoal }))).toBeNull()
   })
 })
 
@@ -273,7 +314,7 @@ describe('createStore', () => {
     store.subscribe(() => {
       calls += 1
     })
-    store.dispatch({ type: 'caption-expired' })
+    store.dispatch({ type: 'caption-expired', place: 'hub' })
     store.dispatch({ type: 'enter' })
     expect(calls).toBe(1)
   })

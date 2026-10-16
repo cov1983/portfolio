@@ -207,4 +207,46 @@ export function modelTime(page: Page, seconds: number): Promise<void> {
   )
 }
 
+/** The Announcer caption: the status element inside the World overlay, never another live region. */
+export const CAPTION_SELECTOR = 'section[aria-label="World"] .world-overlay [role="status"]'
+export const caption = (page: Page): Locator => page.locator(CAPTION_SELECTOR)
+
+/** What captionWithin saw: the overlay's caption text and how many caption elements it had. */
+export type CaptionSeen = { text: string; count: number; withinBound: boolean }
+
+/**
+ * Watches the caption frame by frame, counting model time as `modelTime` does, until its text
+ * becomes `expected` (`withinBound: true`) or `seconds` of model time have passed
+ * (`withinBound: false`, which the caller's assertion turns into a failure). A text already on
+ * show when it starts must first change, so the result never rests on the caption it began with.
+ */
+export function captionWithin(page: Page, seconds: number, expected: string): Promise<CaptionSeen> {
+  return page.evaluate(
+    ({ seconds, cap, selector, expected }) =>
+      new Promise<CaptionSeen>((resolve) => {
+        const read = (): { text: string; count: number } => {
+          const elements = document.querySelectorAll(selector)
+          return { text: elements[0]?.textContent ?? '', count: elements.length }
+        }
+        let armed = read().text !== expected
+        let total = 0
+        let last = performance.now()
+        const frame = (now: number): void => {
+          total += Math.min((now - last) / 1000, cap)
+          last = now
+          const seen = read()
+          if (seen.text !== expected) armed = true
+          else if (armed) {
+            resolve({ ...seen, withinBound: true })
+            return
+          }
+          if (total >= seconds) resolve({ ...seen, withinBound: false })
+          else requestAnimationFrame(frame)
+        }
+        requestAnimationFrame(frame)
+      }),
+    { seconds, cap: MAX_STEPS_PER_FRAME * FIXED_DT, selector: CAPTION_SELECTOR, expected },
+  )
+}
+
 export { expect }

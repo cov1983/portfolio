@@ -3,9 +3,13 @@ import type { Page } from '@playwright/test'
 
 import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks'
 import {
+  caption,
   entered,
+  exhibitPanel,
   expect,
+  firstExhibit,
   hydrated,
+  listEntry,
   recorded,
   test,
   titleScreen,
@@ -88,6 +92,29 @@ test('after entry the World container is visible and focused, the Title Screen h
   await entered(page)
   await expect(worldContainer(page)).toBeFocused()
   await expect(titleScreen(page)).toBeHidden()
+})
+
+test('after entry the Hub’s caption, the welcome, is shown as text (AC-5.1)', async ({
+  page,
+  content,
+}) => {
+  await entered(page)
+  await expect(caption(page)).toHaveText(content.captions.hub)
+})
+
+test('an Exhibit read from the list before entry leaves the welcome for the entry (AC-5.1; Owner, #32 Q1)', async ({
+  page,
+  content,
+}) => {
+  await hydrated(page)
+  await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
+  await listEntry(page, firstExhibit(content).title).click()
+  await expect(exhibitPanel(page)).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(exhibitPanel(page)).toHaveCount(0)
+  await wayIn(page).click()
+  await expect(worldContainer(page)).toBeVisible()
+  await expect(caption(page)).toHaveText(content.captions.hub)
 })
 
 test('Escape shows the Title Screen and hides the paused World, which stays mounted (AC-6.1)', async ({

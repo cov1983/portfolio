@@ -2,18 +2,20 @@
 // small store, the World model is never React state). Pure: no DOM, no React; src/app/App.tsx reads
 // the store with useSyncExternalStore. Three trims of the §5 contract, recorded there (T5a, #28):
 // Capability holds the coarse pointer only, the caption holds its place only, routeKey (keys.ts)
-// takes no key code.
+// takes no key code. Reduced motion is no Capability: src/world/World.tsx reads it live (T5b, #32 Q4).
 import type { ExhibitId } from '../content/types.ts'
 import type { WorldEvent } from '../world/model/world.ts'
 import type { WorldFailure } from './types.ts'
 
-/** What was detected after hydration (AC-21.2). T8a adds reducedMotion, T8b adds webgl. */
+/** What was detected after hydration (AC-21.2). T8b adds webgl. */
 export type Capability = { coarsePointer: boolean }
 
 /** An open Exhibit Panel and what opened it, which is where focus returns on close (AC-2.2, 16.5). */
 export type PanelRef = { exhibitId: ExhibitId; opener: 'list' | 'goal' }
 
 export type Screen = 'title' | 'world' | 'failed'
+/** Where an Announcer caption belongs: the Hub's welcome or a Zone's (AC-18.1). */
+export type CaptionPlace = 'hub' | ExhibitId
 export type WorldStatus = 'idle' | 'loading' | 'ready' | 'failed'
 
 export type AppState = {
@@ -22,8 +24,11 @@ export type AppState = {
   /** The Visitor started entry before the World was ready; the way-in shows loading (AC-4.2). */
   entering: boolean
   panel: PanelRef | null
-  /** The Announcer caption on show; its text is the Content's for that place (T8a). */
-  caption: { place: 'hub' | ExhibitId } | null
+  /**
+   * The Announcer caption due, shown only while selectShownCaption returns it; its text is the
+   * Content's for that place, looked up where it renders (T8a, plan §5 corrected by #32).
+   */
+  caption: { place: CaptionPlace } | null
   /** null until detected after hydration. */
   capability: Capability | null
   failure: WorldFailure | null
@@ -38,7 +43,7 @@ export type Action =
   | { type: 'close-panel' }
   | { type: 'world-event'; event: WorldEvent }
   | { type: 'world-failure'; failure: WorldFailure }
-  | { type: 'caption-expired' }
+  | { type: 'caption-expired'; place: CaptionPlace }
 
 export const INITIAL_STATE: AppState = {
   screen: 'title',
@@ -59,8 +64,8 @@ export function reduce(state: AppState, action: Action): AppState {
       if (action.status === 'ready') {
         // Readiness happens once per page load, so it is the Hub caption's once-per-place trigger
         // (AC-5.1, 18.1) the way the model's single zone-entered is the Zone's: the reducer keeps
-        // no history. T8a renders the caption and times it from when the World is shown. Entry
-        // started while loading switches here, no second press (AC-4.2).
+        // no history. The caption waits, usually behind the Title Screen, until selectShownCaption
+        // shows it. Entry started while loading switches here, no second press (AC-4.2).
         return {
           ...state,
           worldStatus: 'ready',
@@ -84,6 +89,7 @@ export function reduce(state: AppState, action: Action): AppState {
     case 'open-panel':
       // Picking an Exhibit to read cancels an entry still waiting for the World (risk 7): it would
       // otherwise switch in under the Panel, and closing would return focus to a hidden entry.
+      // The list is the Title Screen's, so no caption is on show: a pending one stays (#32 Q1).
       return { ...state, panel: action.panel, entering: false }
     case 'close-panel':
       return state.panel === null ? state : { ...state, panel: null }
@@ -99,7 +105,8 @@ export function reduce(state: AppState, action: Action): AppState {
         screen: state.screen === 'world' ? 'failed' : state.screen,
       }
     case 'caption-expired':
-      return state.caption === null ? state : { ...state, caption: null }
+      // Only the place it was timed for: a late timer must not clear a newer caption (#32 D7).
+      return state.caption?.place === action.place ? { ...state, caption: null } : state
   }
 }
 
@@ -109,7 +116,8 @@ function reduceWorldEvent(state: AppState, event: WorldEvent): AppState {
       return { ...state, caption: { place: event.zoneId } }
     case 'goal':
       // The Goal opens the Exhibit Panel over the paused World (AC-14.1); the Puck stays in the net.
-      return { ...state, panel: { exhibitId: event.zoneId, opener: 'goal' } }
+      // A caption disappears when a Panel opens (spec, storytelling).
+      return { ...state, panel: { exhibitId: event.zoneId, opener: 'goal' }, caption: null }
     case 'goal-left':
       return state
   }
@@ -117,6 +125,14 @@ function reduceWorldEvent(state: AppState, event: WorldEvent): AppState {
 
 /** The World steps only while it is shown with no HTML overlay owning the keyboard (AC-6.1, 16.4). */
 export const selectWorldPaused = (s: AppState): boolean => s.screen !== 'world' || s.panel !== null
+
+/**
+ * The caption on show: the one due, while the World is shown with no Panel over it. Its ~5 s run
+ * from here (src/app/App.tsx); Escape hides it and re-entry shows it again, the same showing
+ * (plan §5, corrected by #32).
+ */
+export const selectShownCaption = (s: AppState): AppState['caption'] =>
+  s.screen === 'world' && s.panel === null ? s.caption : null
 
 /** The World chunk is imported after hydration unless a coarse pointer was detected (spec, Architecture). */
 export const selectWorldPreload = (s: AppState): boolean =>
