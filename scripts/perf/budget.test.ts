@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { TITLE_SCREEN_INTERACTIVE_MARK, WORLD_PLAYABLE_MARK } from '../../src/perf/marks.ts'
 import {
+  AUDIT_IDS,
   BudgetFileError,
   combineRuns,
   diagnose,
@@ -9,8 +10,13 @@ import {
   failedReport,
   formatDiagnostics,
   formatReport,
+  formatRunSummary,
+  invalidReason,
   medianOf,
   parseBudget,
+  settleRun,
+  TTI_BEFORE_PLAYABLE_TOLERANCE_MS,
+  type Attempt,
   type Budget,
   type BudgetLineId,
   type InfoLineId,
@@ -741,6 +747,184 @@ describe('parseBudget', () => {
     const broken = { ...raw, limits: { ...budget.limits, worldPlayableMs: '5000' } }
     expect(() => parseBudget(broken)).toThrow(
       /"limits.worldPlayableMs" must be a non-negative number/,
+    )
+  })
+})
+
+// #58: a run that is not a measurement is retried once; its second failure is the worst reading.
+describe('invalidReason', () => {
+  /** A run as the CI runner reads it on a quiet pass: TTI just under the mark, one long task between the marks. */
+  const attempt = (opts: Readings = {}): Attempt => {
+    const result = lhr({ interactive: 2950, tasks: [{ startTime: 1000, duration: 60 }], ...opts })
+    return { report: evaluateBudget(result, budget), diagnostics: diagnose(result) }
+  }
+  const NO_NAVSTART =
+    'Something went wrong with recording the trace over your page load. Please run Lighthouse again. (NO_NAVSTART)'
+  /** The #57 run 2 on dd617d0: every trace audit errored, the network log alone survived. */
+  const traceless = (): Attempt => {
+    const result = {
+      audits: {
+        ...Object.fromEntries(
+          AUDIT_IDS.filter((id) => id !== 'network-requests').map((id) => [
+            id,
+            { scoreDisplayMode: 'error', errorMessage: NO_NAVSTART },
+          ]),
+        ),
+        'network-requests': { details: { items: [{ transferSize: 1, networkEndTime: 1 }] } },
+      },
+    }
+    return { report: evaluateBudget(result, budget), diagnostics: diagnose(result) }
+  }
+
+  it('is null for a run that measured every line', () => {
+    expect(invalidReason(attempt())).toBeNull()
+  })
+
+  it('a breaching run is never retried', () => {
+    const breach = attempt({ tasks: [{ startTime: 1000, duration: 250 }] })
+    expect(breach.report.pass).toBe(false)
+    expect(invalidReason(breach)).toBeNull()
+  })
+
+  it('names the audit error when every gated line is without a reading (NO_NAVSTART on every trace audit)', () => {
+    expect(invalidReason(traceless())).toBe(`no gated reading: audit "interactive": ${NO_NAVSTART}`)
+  })
+
+  it('carries the note of a run that produced no result', () => {
+    const failed = {
+      report: failedReport(budget, 'error: Chrome did not start'),
+      diagnostics: diagnose(undefined),
+    }
+    expect(invalidReason(failed)).toBe('no gated reading: error: Chrome did not start')
+  })
+
+  it('prefers the Lighthouse runtime error as the cause', () => {
+    const failed = {
+      report: failedReport(budget, 'error: Lighthouse runtime error: NO_FCP: no paint'),
+      diagnostics: diagnose({ runtimeError: { code: 'NO_FCP', message: 'no paint' } }),
+    }
+    expect(invalidReason(failed)).toBe('no gated reading: NO_FCP: no paint')
+  })
+
+  it('is null when one gated reading alone is missing (ADR 0013: the worst reading, not a retry)', () => {
+    expect(invalidReason(attempt({ tasks: null }))).toBeNull()
+  })
+
+  it('rejects the 2026-10-19 run 3: TTI 210 ms with world-playable at 1310 ms and no long task', () => {
+    expect(invalidReason(attempt({ interactive: 210, markAt: 1310, tasks: [] }))).toBe(
+      'TTI 210 ms is 1100 ms before world-playable 1310 ms',
+    )
+  })
+
+  it('accepts TTI below world-playable within the tolerance: the frame after the last long task', () => {
+    expect(invalidReason(attempt({ interactive: 1253, markAt: 1329 }))).toBeNull()
+  })
+
+  it('accepts TTI exactly at the tolerance and rejects it one ms beyond', () => {
+    const at = 3000 - TTI_BEFORE_PLAYABLE_TOLERANCE_MS
+    expect(invalidReason(attempt({ interactive: at, markAt: 3000 }))).toBeNull()
+    expect(invalidReason(attempt({ interactive: at - 1, markAt: 3000 }))).toMatch(/^TTI /)
+  })
+
+  it('rejects a long-task reading of 0 with a non-zero playable time', () => {
+    expect(invalidReason(attempt({ tasks: [] }))).toBe(
+      'no long task recorded between the marks with world-playable at 3000 ms',
+    )
+  })
+
+  it('falls through to the long-task rule without a TTI reading', () => {
+    const result = lhr({ markAt: 1310, tasks: [] }) as { audits: Record<string, unknown> }
+    result.audits['interactive'] = {}
+    expect(
+      invalidReason({ report: evaluateBudget(result, budget), diagnostics: diagnose(result) }),
+    ).toBe('no long task recorded between the marks with world-playable at 1310 ms')
+  })
+})
+
+describe('settleRun', () => {
+  const valid = { report: longTaskRun(73), invalid: null }
+  const invalid = (reason: string) => ({ report: longTaskRun(0), invalid: reason })
+
+  it('counts a valid first attempt as it came out, nothing retried', () => {
+    expect(settleRun([valid], budget)).toEqual({ report: valid.report, invalid: [] })
+  })
+
+  it('counts the retry after an invalid first attempt and keeps the reason', () => {
+    expect(settleRun([invalid('no gated reading: hung'), valid], budget)).toEqual({
+      report: valid.report,
+      invalid: ['no gated reading: hung'],
+    })
+  })
+
+  it('counts two invalid attempts as no reading at all, with both reasons (#50 Q1: the worst)', () => {
+    const outcome = settleRun([invalid('first'), invalid('second')], budget)
+    expect(outcome.invalid).toEqual(['first', 'second'])
+    expect(outcome.report.lines.map((l) => [l.measured, l.note])).toEqual([
+      [null, 'invalid twice: second'],
+      [null, 'invalid twice: second'],
+      [null, 'invalid twice: second'],
+      [null, 'invalid twice: second'],
+    ])
+  })
+})
+
+describe('combineRuns with a retried run', () => {
+  const lenient: Budget = { ...budget, limits: { ...budget.limits, longTaskBetweenMarksMs: 150 } }
+  const run = (duration: number) => longTaskRun(duration, lenient)
+  const longTask = (report: ReturnType<typeof combineRuns>) =>
+    lineById(report, 'long-task-between-marks')
+
+  it("measures the median on the retry's reading, never on the discarded attempt", () => {
+    const retried = settleRun(
+      [
+        { report: run(268), invalid: 'no gated reading: hung' },
+        { report: run(99), invalid: null },
+      ],
+      lenient,
+    )
+    expect(longTask(combineRuns([run(73), retried.report, run(85)], lenient))).toMatchObject({
+      readings: [73, 99, 85],
+      measured: 85,
+    })
+  })
+
+  it('counts a run invalid twice as the worst reading, never as its 0 ms', () => {
+    const worst = settleRun(
+      [
+        { report: run(0), invalid: 'no long task' },
+        { report: run(0), invalid: 'no long task' },
+      ],
+      lenient,
+    )
+    const report = combineRuns([run(73), worst.report, run(85)], lenient)
+    expect(longTask(report)).toMatchObject({ readings: [73, null, 85], measured: 85, pass: true })
+  })
+})
+
+describe('formatRunSummary', () => {
+  const clean = { report: longTaskRun(73), invalid: [] }
+
+  it('says the warm-up was discarded and no run retried', () => {
+    expect(formatRunSummary([clean, clean, clean])).toBe('warm-up discarded; no retry')
+  })
+
+  it('names the retried run and why', () => {
+    const retried = {
+      report: longTaskRun(99),
+      invalid: ['TTI 210 ms is 1100 ms before world-playable 1310 ms'],
+    }
+    expect(formatRunSummary([clean, retried, clean])).toBe(
+      'warm-up discarded; run 2 retried (TTI 210 ms is 1100 ms before world-playable 1310 ms)',
+    )
+  })
+
+  it('names a run counted as the worst reading with both reasons', () => {
+    const worst = {
+      report: failedReport(budget, 'invalid twice: hung'),
+      invalid: ['no gated reading: NO_NAVSTART', 'hung'],
+    }
+    expect(formatRunSummary([clean, clean, worst])).toBe(
+      'warm-up discarded; run 3 invalid twice (no gated reading: NO_NAVSTART, then hung), counted as the worst reading',
     )
   })
 })
