@@ -40,8 +40,10 @@ would have invalidated every run.
   3. the longest task between the marks reads **0 ms** with a non-zero playable time. No tolerance:
      Lighthouse's long-task floor is 50 ms, so a reading is 0 or ≥ 50, and every valid run read
      52 ms or more.
-  A breach is a measurement and is never retried. One missing gated reading alone is ADR 0013's
-  worst reading, not an invalid run.
+  The checks run in this order: rule 1; then a gated line that reads and breaches makes the run a
+  measurement, so a breach is never retried, whatever its TTI gap or long-task reading; then rules
+  2 and 3. One missing gated reading alone is ADR 0013's worst reading, not an invalid run. Rule 3's
+  reason names this ADR and #60, so a job that trips it after the chunk split explains itself.
 - An invalid run is **retried once** on its own; the retry counts as it came out. Invalid twice,
   the run **counts as the worst reading** (no reading on any line, sorted above every number by
   `medianOf`; #50 Q1 stands). The rule and the bookkeeping are pure (`settleRun`), unit-tested on

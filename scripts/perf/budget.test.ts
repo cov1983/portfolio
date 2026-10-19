@@ -781,7 +781,13 @@ describe('invalidReason', () => {
   })
 
   it('a breaching run is never retried', () => {
-    const breach = attempt({ tasks: [{ startTime: 1000, duration: 250 }] })
+    // A 250 ms task at 400 ms, then quiet: TTI 600 ms sits 710 ms before the mark, past the
+    // tolerance, yet the breach is the measurement (ai-review on #61).
+    const breach = attempt({
+      interactive: 600,
+      markAt: 1310,
+      tasks: [{ startTime: 400, duration: 250 }],
+    })
     expect(breach.report.pass).toBe(false)
     expect(invalidReason(breach)).toBeNull()
   })
@@ -830,15 +836,15 @@ describe('invalidReason', () => {
     expect(invalidReason(attempt({ interactive: atTolerance - 1, markAt: 3000 }))).toMatch(/^TTI /)
   })
 
-  it('rejects a long-task reading of 0 with a non-zero playable time', () => {
+  it('rejects a long-task reading of 0 with a non-zero playable time, naming ADR 0014 and #60', () => {
     expect(invalidReason(attempt({ tasks: [] }))).toBe(
-      'no long task recorded between the marks with world-playable at 3000 ms',
+      'no long task recorded between the marks with world-playable at 3000 ms (ADR 0014 rule 3; #60 re-bases it after the chunk split)',
     )
   })
 
   it('falls through to the long-task rule without a TTI reading', () => {
-    expect(invalidReason(attempt({ interactive: null, markAt: 1310, tasks: [] }))).toBe(
-      'no long task recorded between the marks with world-playable at 1310 ms',
+    expect(invalidReason(attempt({ interactive: null, markAt: 1310, tasks: [] }))).toMatch(
+      /^no long task recorded between the marks with world-playable at 1310 ms/,
     )
   })
 })

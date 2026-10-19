@@ -490,9 +490,11 @@ function readingOf(report: BudgetReport, id: BudgetLineId | InfoLineId): number 
  * the CI runner: (1) no gated line has a reading (NO_NAVSTART on every trace audit, a thrown error,
  * a Lighthouse runtimeError); (2) TTI more than the tolerance before world-playable and (3) no long
  * task between the marks at all, the two faces of a trace that lost the main thread after hydration
- * (both marks present, TTI about 210 ms, TBT 0). A breach is a measurement and is never retried;
- * one missing gated reading alone is the worst reading of ADR 0013, not an invalid run. Rules 2 and
- * 3 assume the World chunk's evaluation is a long task; #60 re-derives them after the chunk split.
+ * (both marks present, TTI about 210 ms, TBT 0). In that order, after a breach check: a gated line
+ * that reads and breaches makes the run a measurement, so a breach is never retried, whatever its
+ * TTI gap (ai-review on #61); one missing gated reading alone is the worst reading of ADR 0013, not
+ * an invalid run. Rules 2 and 3 assume the World chunk's evaluation is a long task; #60 re-derives
+ * them after the chunk split, and rule 3's reason says so for whoever trips it before then.
  */
 export function invalidReason({ report, diagnostics }: Attempt): string | null {
   if (report.lines.every((l) => l.measured === null)) {
@@ -503,13 +505,14 @@ export function invalidReason({ report, diagnostics }: Attempt): string | null {
       'no reason reported'
     return `no gated reading: ${cause}`
   }
+  if (report.lines.some((l) => l.gated && l.measured !== null && !l.pass)) return null
   const playable = readingOf(report, 'world-playable')
   const tti = readingOf(report, 'tti')
   if (playable !== null && tti !== null && playable - tti > TTI_BEFORE_PLAYABLE_TOLERANCE_MS) {
     return `TTI ${amount(tti, 'ms')} is ${amount(playable - tti, 'ms')} before world-playable ${amount(playable, 'ms')}`
   }
   if (playable !== null && playable > 0 && readingOf(report, 'long-task-between-marks') === 0) {
-    return `no long task recorded between the marks with world-playable at ${amount(playable, 'ms')}`
+    return `no long task recorded between the marks with world-playable at ${amount(playable, 'ms')} (ADR 0014 rule 3; #60 re-bases it after the chunk split)`
   }
   return null
 }
