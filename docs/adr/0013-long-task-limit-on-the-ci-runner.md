@@ -1,6 +1,7 @@
 # ADR 0013 — The long-task limit is 150 ms on the CI runner, judged on the median of three runs
 
-Status: Accepted (2026-10-13)
+Status: Accepted (2026-10-13); the retry sentence of the Decision ("A run that errors … is retried
+once on its own") is superseded by ADR 0014 (#58): an invalid run, after a warm-up navigation.
 
 ## Context
 
