@@ -133,32 +133,44 @@ async function warmUp(budget: Budget): Promise<void> {
   printDiagnosticsIfNeeded(attempt)
 }
 
+/** An attempt with `invalidReason`'s answer: null for a measurement. */
+type Judged = { attempt: Attempt; reason: string | null }
+
+async function judge(budget: Budget, file: string): Promise<Judged> {
+  const attempt = await measure(budget, file)
+  return { attempt, reason: invalidReason(attempt) }
+}
+
+/**
+ * `done`, with Lighthouse's account when a line failed or lacks a value (#41); an invalid attempt
+ * with its readings and that account, since neither reaches the median (#58).
+ */
+function printJudged(label: string, { attempt, reason }: Judged, whenInvalid: string): void {
+  if (reason === null) {
+    console.log(`${label}: done`)
+    printDiagnosticsIfNeeded(attempt)
+    return
+  }
+  console.log(`${label}: invalid (${reason}), ${whenInvalid}; its readings, discarded:`)
+  printLines(attempt.report)
+  printDiagnostics(attempt.diagnostics)
+}
+
 /** Run `run` of RUNS: an attempt that is not a measurement is retried once; `settleRun` says what counts (#58). */
 async function measureRun(run: number, budget: Budget): Promise<RunOutcome> {
   const heading = `perf budget, run ${String(run)} of ${String(RUNS)}`
-  const judged: JudgedAttempt[] = []
-  let attempt = await measure(budget, `lhr-${String(run)}.json`)
-  let invalid = invalidReason(attempt)
-  judged.push({ report: attempt.report, invalid })
-  let label = heading
-  if (invalid !== null) {
-    console.log(`${heading}: invalid (${invalid}), retrying once; its readings, discarded:`)
-    printLines(attempt.report)
-    printDiagnosticsIfNeeded(attempt)
-    attempt = await measure(budget, `lhr-${String(run)}-retry.json`)
-    invalid = invalidReason(attempt)
-    judged.push({ report: attempt.report, invalid })
-    label = `${heading} (retry)`
+  const first = await judge(budget, `lhr-${String(run)}.json`)
+  printJudged(heading, first, 'retrying once')
+  const attempts = [first]
+  if (first.reason !== null) {
+    const retry = await judge(budget, `lhr-${String(run)}-retry.json`)
+    printJudged(`${heading} (retry)`, retry, 'counted as the worst reading')
+    attempts.push(retry)
   }
-  if (invalid === null) {
-    console.log(`${label}: done`)
-  } else {
-    console.log(
-      `${label}: invalid again (${invalid}), counted as the worst reading; its readings, discarded:`,
-    )
-    printLines(attempt.report)
-  }
-  printDiagnosticsIfNeeded(attempt)
+  const judged: JudgedAttempt[] = attempts.map((j) => ({
+    report: j.attempt.report,
+    reason: j.reason,
+  }))
   return settleRun(judged, budget)
 }
 
@@ -185,7 +197,7 @@ async function main(): Promise<number> {
       budget,
     )
     console.log(`perf budget, median of ${String(RUNS)} runs: ${report.pass ? 'pass' : 'FAIL'}`)
-    console.log(`  ${formatRunSummary(outcomes)}`)
+    console.log(formatRunSummary(outcomes))
     printLines(report)
     return report.pass ? 0 : 1
   } finally {

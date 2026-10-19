@@ -417,15 +417,23 @@ export function medianOf(readings: readonly (number | null)[]): number | null {
   return sorted[Math.floor(sorted.length / 2)] ?? null
 }
 
+/** The budget or informational line `id` of a report; the two id sets never collide. */
+function lineOf(
+  report: BudgetReport,
+  id: BudgetLineId | InfoLineId,
+): BudgetLine | InfoLine | undefined {
+  return [...report.lines, ...report.info].find((l) => l.id === id)
+}
+
 /**
  * The line `id` across the reports: every run's reading in run order and their median; without a
- * median, the first missing run's note. Budget and informational ids never collide.
+ * median, the first missing run's note.
  */
 function acrossRuns(
   reports: readonly BudgetReport[],
   id: BudgetLineId | InfoLineId,
 ): { measurement: Measurement; readings: (number | null)[] } {
-  const runs = reports.map((r) => [...r.lines, ...r.info].find((l) => l.id === id))
+  const runs = reports.map((r) => lineOf(r, id))
   const readings = runs.flatMap((l) => (l === undefined ? [null] : l.readings))
   const value = medianOf(readings)
   if (value !== null) return { measurement: { value }, readings }
@@ -474,7 +482,7 @@ export type Attempt = { report: BudgetReport; diagnostics: Diagnostics }
 export const TTI_BEFORE_PLAYABLE_TOLERANCE_MS = 500
 
 function readingOf(report: BudgetReport, id: BudgetLineId | InfoLineId): number | null {
-  return [...report.lines, ...report.info].find((l) => l.id === id)?.measured ?? null
+  return lineOf(report, id)?.measured ?? null
 }
 
 /**
@@ -506,8 +514,8 @@ export function invalidReason({ report, diagnostics }: Attempt): string | null {
   return null
 }
 
-/** An attempt with its verdict from `invalidReason`, as the runner hands it to `settleRun`. */
-export type JudgedAttempt = { report: BudgetReport; invalid: string | null }
+/** An attempt with its verdict: `reason` is `invalidReason`'s answer, null for a measurement. */
+export type JudgedAttempt = { report: BudgetReport; reason: string | null }
 
 /** What a run counts as in the median, and why its attempts were retried (for the printout). */
 export type RunOutcome = {
@@ -518,33 +526,33 @@ export type RunOutcome = {
 }
 
 /**
- * What a run counts as after its attempts, at most two (#58): the first valid attempt; after two
- * invalid ones no reading at all, which the median sorts as the worst (ADR 0013, #50 Q1), so a run
- * that cannot be measured never passes a line on its own.
+ * What a run counts as after its attempts, one or two (#58, the runner retries once): the first
+ * valid attempt; after two invalid ones no reading at all, which the median sorts as the worst
+ * (ADR 0013, #50 Q1), so a run that cannot be measured never passes a line on its own.
  */
 export function settleRun(attempts: readonly JudgedAttempt[], budget: Budget): RunOutcome {
-  const invalid = attempts.flatMap((a) => (a.invalid === null ? [] : [a.invalid]))
-  const valid = attempts.find((a) => a.invalid === null)
+  const last = attempts.at(-1)
+  if (last === undefined) throw new Error('settleRun: a run has at least one attempt')
+  const invalid = attempts.flatMap((a) => (a.reason === null ? [] : [a.reason]))
+  const valid = attempts.find((a) => a.reason === null)
   if (valid !== undefined) return { report: valid.report, invalid }
-  return {
-    report: failedReport(budget, `invalid twice: ${invalid.at(-1) ?? 'no attempt'}`),
-    invalid,
-  }
+  return { report: failedReport(budget, `invalid twice: ${last.reason ?? ''}`), invalid }
 }
 
 /**
- * One line under the median's heading saying what the runs went through: the warm-up is always
- * discarded; then each retried run with its reason, or `no retry`.
+ * One line under the median's heading, indented like the lines, saying what the runs went through:
+ * the warm-up is always discarded; then each retried run with its reason, or `no retry`.
  */
 export function formatRunSummary(outcomes: readonly RunOutcome[]): string {
   const retries = outcomes.flatMap((o, i) => {
-    if (o.invalid.length === 0) return []
+    const [first, ...rest] = o.invalid
+    if (first === undefined) return []
     const run = `run ${String(i + 1)}`
-    return o.invalid.length === 1
-      ? [`${run} retried (${o.invalid.join('')})`]
-      : [`${run} invalid twice (${o.invalid.join(', then ')}), counted as the worst reading`]
+    return rest.length === 0
+      ? [`${run} retried (${first})`]
+      : [`${run} invalid twice (${[first, ...rest].join(', then ')}), counted as the worst reading`]
   })
-  return ['warm-up discarded', ...(retries.length === 0 ? ['no retry'] : retries)].join('; ')
+  return `  ${['warm-up discarded', ...(retries.length === 0 ? ['no retry'] : retries)].join('; ')}`
 }
 
 /** A value without its unit: ms rounded, bytes with thousands separators, a score to three places. */

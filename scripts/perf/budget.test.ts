@@ -49,7 +49,7 @@ type Request = {
 }
 
 type Readings = {
-  interactive?: number
+  interactive?: number | null
   interactiveAt?: number | null
   markAt?: number | null
   requests?: Request[]
@@ -82,7 +82,7 @@ function lhr(opts: Readings = {}): unknown {
   ]
   return {
     audits: {
-      interactive: { numericValue: interactive },
+      interactive: interactive === null ? {} : { numericValue: interactive },
       'user-timings': { details: { items: marks } },
       'network-requests': { details: { items: requests } },
       'largest-contentful-paint': { numericValue: lcp },
@@ -820,10 +820,14 @@ describe('invalidReason', () => {
     expect(invalidReason(attempt({ interactive: 1253, markAt: 1329 }))).toBeNull()
   })
 
-  it('accepts TTI exactly at the tolerance and rejects it one ms beyond', () => {
-    const at = 3000 - TTI_BEFORE_PLAYABLE_TOLERANCE_MS
-    expect(invalidReason(attempt({ interactive: at, markAt: 3000 }))).toBeNull()
-    expect(invalidReason(attempt({ interactive: at - 1, markAt: 3000 }))).toMatch(/^TTI /)
+  const atTolerance = 3000 - TTI_BEFORE_PLAYABLE_TOLERANCE_MS
+
+  it('accepts TTI exactly at the tolerance', () => {
+    expect(invalidReason(attempt({ interactive: atTolerance, markAt: 3000 }))).toBeNull()
+  })
+
+  it('rejects TTI one ms beyond the tolerance', () => {
+    expect(invalidReason(attempt({ interactive: atTolerance - 1, markAt: 3000 }))).toMatch(/^TTI /)
   })
 
   it('rejects a long-task reading of 0 with a non-zero playable time', () => {
@@ -833,20 +837,22 @@ describe('invalidReason', () => {
   })
 
   it('falls through to the long-task rule without a TTI reading', () => {
-    const result = lhr({ markAt: 1310, tasks: [] }) as { audits: Record<string, unknown> }
-    result.audits['interactive'] = {}
-    expect(
-      invalidReason({ report: evaluateBudget(result, budget), diagnostics: diagnose(result) }),
-    ).toBe('no long task recorded between the marks with world-playable at 1310 ms')
+    expect(invalidReason(attempt({ interactive: null, markAt: 1310, tasks: [] }))).toBe(
+      'no long task recorded between the marks with world-playable at 1310 ms',
+    )
   })
 })
 
 describe('settleRun', () => {
-  const valid = { report: longTaskRun(73), invalid: null }
-  const invalid = (reason: string) => ({ report: longTaskRun(0), invalid: reason })
+  const valid = { report: longTaskRun(73), reason: null }
+  const invalid = (reason: string) => ({ report: longTaskRun(0), reason })
 
   it('counts a valid first attempt as it came out, nothing retried', () => {
     expect(settleRun([valid], budget)).toEqual({ report: valid.report, invalid: [] })
+  })
+
+  it('throws without an attempt: a run always has one', () => {
+    expect(() => settleRun([], budget)).toThrow('settleRun: a run has at least one attempt')
   })
 
   it('counts the retry after an invalid first attempt and keeps the reason', () => {
@@ -856,9 +862,13 @@ describe('settleRun', () => {
     })
   })
 
-  it('counts two invalid attempts as no reading at all, with both reasons (#50 Q1: the worst)', () => {
+  it('keeps both reasons of two invalid attempts, in attempt order', () => {
     const outcome = settleRun([invalid('first'), invalid('second')], budget)
     expect(outcome.invalid).toEqual(['first', 'second'])
+  })
+
+  it('counts two invalid attempts as no reading at all (#50 Q1: the worst)', () => {
+    const outcome = settleRun([invalid('first'), invalid('second')], budget)
     expect(outcome.report.lines.map((l) => [l.measured, l.note])).toEqual([
       [null, 'invalid twice: second'],
       [null, 'invalid twice: second'],
@@ -877,8 +887,8 @@ describe('combineRuns with a retried run', () => {
   it("measures the median on the retry's reading, never on the discarded attempt", () => {
     const retried = settleRun(
       [
-        { report: run(268), invalid: 'no gated reading: hung' },
-        { report: run(99), invalid: null },
+        { report: run(268), reason: 'no gated reading: hung' },
+        { report: run(99), reason: null },
       ],
       lenient,
     )
@@ -891,8 +901,8 @@ describe('combineRuns with a retried run', () => {
   it('counts a run invalid twice as the worst reading, never as its 0 ms', () => {
     const worst = settleRun(
       [
-        { report: run(0), invalid: 'no long task' },
-        { report: run(0), invalid: 'no long task' },
+        { report: run(0), reason: 'no long task' },
+        { report: run(0), reason: 'no long task' },
       ],
       lenient,
     )
@@ -905,7 +915,7 @@ describe('formatRunSummary', () => {
   const clean = { report: longTaskRun(73), invalid: [] }
 
   it('says the warm-up was discarded and no run retried', () => {
-    expect(formatRunSummary([clean, clean, clean])).toBe('warm-up discarded; no retry')
+    expect(formatRunSummary([clean, clean, clean])).toBe('  warm-up discarded; no retry')
   })
 
   it('names the retried run and why', () => {
@@ -914,7 +924,7 @@ describe('formatRunSummary', () => {
       invalid: ['TTI 210 ms is 1100 ms before world-playable 1310 ms'],
     }
     expect(formatRunSummary([clean, retried, clean])).toBe(
-      'warm-up discarded; run 2 retried (TTI 210 ms is 1100 ms before world-playable 1310 ms)',
+      '  warm-up discarded; run 2 retried (TTI 210 ms is 1100 ms before world-playable 1310 ms)',
     )
   })
 
@@ -924,7 +934,7 @@ describe('formatRunSummary', () => {
       invalid: ['no gated reading: NO_NAVSTART', 'hung'],
     }
     expect(formatRunSummary([clean, clean, worst])).toBe(
-      'warm-up discarded; run 3 invalid twice (no gated reading: NO_NAVSTART, then hung), counted as the worst reading',
+      '  warm-up discarded; run 3 invalid twice (no gated reading: NO_NAVSTART, then hung), counted as the worst reading',
     )
   })
 })
