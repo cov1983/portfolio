@@ -21,4 +21,5 @@ Index
 - [0010 — Pre-rendering: a Vite SSR build of two routes, rendered with react-dom/server](0010-prerender-two-routes.md) — long-task limit superseded by 0013
 - [0011 — Content pipeline: Markdown + YAML front matter, zod, a Vite plugin, sharp](0011-content-pipeline.md)
 - [0012 — Response headers: CSP and companions in vercel.json, mirrored into vite preview](0012-response-headers.md)
-- [0013 — The long-task limit is 150 ms on the CI runner, judged on the median of three runs](0013-long-task-limit-on-the-ci-runner.md)
+- [0013 — The long-task limit is 150 ms on the CI runner, judged on the median of three runs](0013-long-task-limit-on-the-ci-runner.md) — retry rule superseded by 0014
+- [0014 — The perf runner warms up first and retries a run that is not a measurement](0014-perf-runner-warm-up-and-invalid-run-retry.md)

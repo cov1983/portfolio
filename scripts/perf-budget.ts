@@ -5,15 +5,19 @@
 // the title-screen-interactive mark, the world-playable mark, the download until that mark and the
 // longest task between the marks (line 1's condition (b), plan §7), all gated.
 //
-// Three runs, judged on the median (ADR 0013, #49): the shared CI runner varies 3–4× between runs,
-// so one pass cannot tell a slow chunk from a busy runner. Each of the three Lighthouse runs is
+// A warm-up navigation, then three runs judged on the median (ADR 0013, #49; ADR 0014, #58): the
+// shared CI runner varies 3–4× between runs and its first navigation is the slowest in every job,
+// so the warm-up is run exactly like a measured one, printed and discarded. Each measured run is
 // evaluated on its own; every line, the informational TTI, LCP, CLS and TBT included, is then the
 // median of the three readings (`combineRuns`), printed with all three readings, and the exit status
-// follows the gated lines' medians. A run that errors (an exception, or a Lighthouse runtimeError
-// such as NO_NAVSTART) is retried once on its own and counts once; a breach is never retried. A run
-// that fails, errors or lacks a value prints Lighthouse's runtimeError, runWarnings and audit errors (#41).
-// Each Lighthouse result is written to .lighthouse/lhr-<run>.json, a retry's to
-// .lighthouse/lhr-<run>-retry.json (a CI artifact).
+// follows the gated lines' medians. A run that is not a measurement (`invalidReason`: no gated
+// reading, as after an exception, a Lighthouse runtimeError or NO_NAVSTART on every trace audit;
+// TTI far before world-playable; no long task between the marks) is retried once on its own and
+// counts once; invalid twice, it counts as the worst reading (`settleRun`); a breach is never
+// retried. A run that fails, errors or lacks a value prints Lighthouse's runtimeError, runWarnings
+// and audit errors (#41), and a discarded attempt prints its readings, so nothing measured leaves
+// the log. Each Lighthouse result is written to .lighthouse/: lhr-warmup.json, lhr-<run>.json, a
+// retry's lhr-<run>-retry.json (a CI artifact).
 //
 // Chrome: chrome-launcher finds an installed Chrome or Chromium; where there is none (the
 // devcontainer), point CHROME_PATH at one, e.g. the Chromium that `make browsers` installs.
@@ -34,10 +38,16 @@ import {
   failedReport,
   formatDiagnostics,
   formatReport,
+  formatRunSummary,
+  invalidReason,
   parseBudget,
+  settleRun,
+  type Attempt,
   type Budget,
   type BudgetReport,
   type Diagnostics,
+  type JudgedAttempt,
+  type RunOutcome,
 } from './perf/budget.ts'
 
 const BUDGET_FILE = 'perf/budget.json'
@@ -85,11 +95,8 @@ async function runLighthouse(budget: Budget): Promise<unknown> {
   }
 }
 
-/** What one Lighthouse navigation produced: its report, what it said about itself, whether it errored. */
-type Outcome = { report: BudgetReport; diagnostics: Diagnostics; errored: boolean }
-
 /** One Lighthouse navigation, evaluated; an error becomes a failed report, never a throw. */
-async function measure(budget: Budget, file: string): Promise<Outcome> {
+async function measure(budget: Budget, file: string): Promise<Attempt> {
   let diagnostics: Diagnostics = diagnose(undefined)
   try {
     const lhr = await runLighthouse(budget)
@@ -98,14 +105,10 @@ async function measure(budget: Budget, file: string): Promise<Outcome> {
     if (diagnostics.runtimeError !== null) {
       throw new Error(`Lighthouse runtime error: ${diagnostics.runtimeError}`)
     }
-    return { report: evaluateBudget(lhr, budget), diagnostics, errored: false }
+    return { report: evaluateBudget(lhr, budget), diagnostics }
   } catch (error) {
     console.error(error) // the stack, for the log; the report's notes carry the message
-    return {
-      report: failedReport(budget, `error: ${messageOf(error)}`),
-      diagnostics,
-      errored: true,
-    }
+    return { report: failedReport(budget, `error: ${messageOf(error)}`), diagnostics }
   }
 }
 
@@ -113,28 +116,62 @@ function printDiagnostics(diagnostics: Diagnostics): void {
   for (const line of formatDiagnostics(diagnostics)) console.log(line)
 }
 
-/** Run `run` of RUNS: retried once on its own when it errors, then it counts once, as it came out. */
-async function measureRun(run: number, budget: Budget): Promise<BudgetReport> {
-  const heading = `perf budget, run ${String(run)} of ${String(RUNS)}`
-  let outcome = await measure(budget, `lhr-${String(run)}.json`)
-  let label = heading
-  if (outcome.errored) {
-    console.log(`${heading}: error, retrying once`)
-    printDiagnostics(outcome.diagnostics)
-    outcome = await measure(budget, `lhr-${String(run)}-retry.json`)
-    label = `${heading} (retry)`
-  }
-  console.log(`${label}: ${outcome.errored ? 'error' : 'done'}`)
-  // A failed or incomplete run says why: without this, run 2 on #41 left only "audit missing".
-  if (!outcome.report.pass || outcome.report.lines.some((l) => l.measured === null)) {
-    printDiagnostics(outcome.diagnostics)
-  }
-  return outcome.report
+function printLines(report: BudgetReport): void {
+  for (const line of formatReport(report)) console.log(line)
 }
 
-function printReport(heading: string, report: BudgetReport): void {
-  console.log(heading)
-  for (const line of formatReport(report)) console.log(line)
+/** A failed or incomplete report says why: without this, run 2 on #41 left only "audit missing". */
+function printDiagnosticsIfNeeded({ report, diagnostics }: Attempt): void {
+  if (!report.pass || report.lines.some((l) => l.measured === null)) printDiagnostics(diagnostics)
+}
+
+/** The warm-up navigation (#58): run and printed like a measured one, never judged, never counted. */
+async function warmUp(budget: Budget): Promise<void> {
+  const attempt = await measure(budget, 'lhr-warmup.json')
+  console.log('perf budget, warm-up (discarded): readings for information')
+  printLines(attempt.report)
+  printDiagnosticsIfNeeded(attempt)
+}
+
+/** An attempt with `invalidReason`'s answer: null for a measurement. */
+type Judged = { attempt: Attempt; reason: string | null }
+
+async function judge(budget: Budget, file: string): Promise<Judged> {
+  const attempt = await measure(budget, file)
+  return { attempt, reason: invalidReason(attempt) }
+}
+
+/**
+ * `done`, with Lighthouse's account when a line failed or lacks a value (#41); an invalid attempt
+ * with its readings and that account, since neither reaches the median (#58).
+ */
+function printJudged(label: string, { attempt, reason }: Judged, whenInvalid: string): void {
+  if (reason === null) {
+    console.log(`${label}: done`)
+    printDiagnosticsIfNeeded(attempt)
+    return
+  }
+  console.log(`${label}: invalid (${reason}), ${whenInvalid}; its readings, discarded:`)
+  printLines(attempt.report)
+  printDiagnostics(attempt.diagnostics)
+}
+
+/** Run `run` of RUNS: an attempt that is not a measurement is retried once; `settleRun` says what counts (#58). */
+async function measureRun(run: number, budget: Budget): Promise<RunOutcome> {
+  const heading = `perf budget, run ${String(run)} of ${String(RUNS)}`
+  const first = await judge(budget, `lhr-${String(run)}.json`)
+  printJudged(heading, first, 'retrying once')
+  const attempts = [first]
+  if (first.reason !== null) {
+    const retry = await judge(budget, `lhr-${String(run)}-retry.json`)
+    printJudged(`${heading} (retry)`, retry, 'counted as the worst reading')
+    attempts.push(retry)
+  }
+  const judged: JudgedAttempt[] = attempts.map((j) => ({
+    report: j.attempt.report,
+    reason: j.reason,
+  }))
+  return settleRun(judged, budget)
 }
 
 async function main(): Promise<number> {
@@ -147,17 +184,21 @@ async function main(): Promise<number> {
   } catch (error) {
     // No run possible (the port is taken, dist/ unreadable): still all four lines, then exit 1.
     console.error(error)
-    printReport('perf budget: no run', failedReport(budget, `error: ${messageOf(error)}`))
+    console.log('perf budget: no run')
+    printLines(failedReport(budget, `error: ${messageOf(error)}`))
     return 1
   }
   try {
-    const reports: BudgetReport[] = []
-    for (let run = 1; run <= RUNS; run++) reports.push(await measureRun(run, budget))
-    const report = combineRuns(reports, budget)
-    printReport(
-      `perf budget, median of ${String(RUNS)} runs: ${report.pass ? 'pass' : 'FAIL'}`,
-      report,
+    await warmUp(budget)
+    const outcomes: RunOutcome[] = []
+    for (let run = 1; run <= RUNS; run++) outcomes.push(await measureRun(run, budget))
+    const report = combineRuns(
+      outcomes.map((o) => o.report),
+      budget,
     )
+    console.log(`perf budget, median of ${String(RUNS)} runs: ${report.pass ? 'pass' : 'FAIL'}`)
+    console.log(formatRunSummary(outcomes))
+    printLines(report)
     return report.pass ? 0 : 1
   } finally {
     await server.close()

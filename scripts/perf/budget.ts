@@ -7,7 +7,9 @@
 // long task ≥ the limit between the two marks (the limit and its reason: ADR 0013). TTI, LCP, CLS
 // and TBT follow as informational lines that never decide (plan §7). Since #49 the runner makes
 // three Lighthouse runs and `combineRuns` judges each line on the median of their readings
-// (ADR 0013); every reading is kept on the line and printed next to the median.
+// (ADR 0013); every reading is kept on the line and printed next to the median. Since #58 a run
+// that is not a measurement (`invalidReason`) is retried once and counts as the worst reading on a
+// second failure (`settleRun`, ADR 0014).
 import { TITLE_SCREEN_INTERACTIVE_MARK, WORLD_PLAYABLE_MARK } from '../../src/perf/marks.ts'
 
 export type Throttling = {
@@ -415,15 +417,23 @@ export function medianOf(readings: readonly (number | null)[]): number | null {
   return sorted[Math.floor(sorted.length / 2)] ?? null
 }
 
+/** The budget or informational line `id` of a report; the two id sets never collide. */
+function lineOf(
+  report: BudgetReport,
+  id: BudgetLineId | InfoLineId,
+): BudgetLine | InfoLine | undefined {
+  return [...report.lines, ...report.info].find((l) => l.id === id)
+}
+
 /**
  * The line `id` across the reports: every run's reading in run order and their median; without a
- * median, the first missing run's note. Budget and informational ids never collide.
+ * median, the first missing run's note.
  */
 function acrossRuns(
   reports: readonly BudgetReport[],
   id: BudgetLineId | InfoLineId,
 ): { measurement: Measurement; readings: (number | null)[] } {
-  const runs = reports.map((r) => [...r.lines, ...r.info].find((l) => l.id === id))
+  const runs = reports.map((r) => lineOf(r, id))
   const readings = runs.flatMap((l) => (l === undefined ? [null] : l.readings))
   const value = medianOf(readings)
   if (value !== null) return { measurement: { value }, readings }
@@ -455,6 +465,97 @@ export function failedReport(budget: Budget, note: string): BudgetReport {
     lines: LINE_SPECS.map((spec) => line(spec, budget.limits, { value: null, note })),
     info: INFO_SPECS.map((spec) => infoLine(spec, { value: null, note })),
   }
+}
+
+/** One Lighthouse navigation evaluated, with what Lighthouse said about itself (#58). */
+export type Attempt = { report: BudgetReport; diagnostics: Diagnostics }
+
+/**
+ * How far TTI may precede the world-playable mark in a valid run. Lighthouse's TTI is the end of the
+ * last long task before its quiet window and the mark is recorded on the next frame after Rapier's
+ * init, so TTI is below the mark in every valid run: by 0–197 ms over the 30 valid runs of the
+ * eleven CI perf jobs of 2026-10-14 to 2026-10-16 (median about 50 ms). The two runs whose trace
+ * lost the main thread after hydration read TTI 1034 and 1100 ms below the mark. 500 ms is 2.5× the
+ * largest legitimate gap and half the smallest broken one (#58, ADR 0014; #60 re-derives it after
+ * the chunk split).
+ */
+export const TTI_BEFORE_PLAYABLE_TOLERANCE_MS = 500
+
+function readingOf(report: BudgetReport, id: BudgetLineId | InfoLineId): number | null {
+  return lineOf(report, id)?.measured ?? null
+}
+
+/**
+ * Why the attempt is not a measurement, or null when it is (#58, ADR 0014). Three shapes seen on
+ * the CI runner: (1) no gated line has a reading (NO_NAVSTART on every trace audit, a thrown error,
+ * a Lighthouse runtimeError); (2) TTI more than the tolerance before world-playable and (3) no long
+ * task between the marks at all, the two faces of a trace that lost the main thread after hydration
+ * (both marks present, TTI about 210 ms, TBT 0). In that order, after a breach check: a gated line
+ * that reads and breaches makes the run a measurement, so a breach is never retried, whatever its
+ * TTI gap (ai-review on #61); one missing gated reading alone is the worst reading of ADR 0013, not
+ * an invalid run. Rules 2 and 3 assume the World chunk's evaluation is a long task; #60 re-derives
+ * them after the chunk split, and rule 3's reason says so for whoever trips it before then.
+ */
+export function invalidReason({ report, diagnostics }: Attempt): string | null {
+  if (report.lines.every((l) => l.measured === null)) {
+    const cause =
+      diagnostics.runtimeError ??
+      diagnostics.auditErrors[0] ??
+      report.lines[0]?.note ??
+      'no reason reported'
+    return `no gated reading: ${cause}`
+  }
+  if (report.lines.some((l) => l.gated && l.measured !== null && !l.pass)) return null
+  const playable = readingOf(report, 'world-playable')
+  const tti = readingOf(report, 'tti')
+  if (playable !== null && tti !== null && playable - tti > TTI_BEFORE_PLAYABLE_TOLERANCE_MS) {
+    return `TTI ${amount(tti, 'ms')} is ${amount(playable - tti, 'ms')} before world-playable ${amount(playable, 'ms')}`
+  }
+  if (playable !== null && playable > 0 && readingOf(report, 'long-task-between-marks') === 0) {
+    return `no long task recorded between the marks with world-playable at ${amount(playable, 'ms')} (ADR 0014 rule 3; #60 re-bases it after the chunk split)`
+  }
+  return null
+}
+
+/** An attempt with its verdict: `reason` is `invalidReason`'s answer, null for a measurement. */
+export type JudgedAttempt = { report: BudgetReport; reason: string | null }
+
+/** What a run counts as in the median, and why its attempts were retried (for the printout). */
+export type RunOutcome = {
+  /** The first valid attempt, as it came out; after two invalid ones a `failedReport`. */
+  report: BudgetReport
+  /** The invalid attempts' reasons in attempt order: none, one (the retry counted) or two (the worst reading). */
+  invalid: string[]
+}
+
+/**
+ * What a run counts as after its attempts, one or two (#58, the runner retries once): the first
+ * valid attempt; after two invalid ones no reading at all, which the median sorts as the worst
+ * (ADR 0013, #50 Q1), so a run that cannot be measured never passes a line on its own.
+ */
+export function settleRun(attempts: readonly JudgedAttempt[], budget: Budget): RunOutcome {
+  const last = attempts.at(-1)
+  if (last === undefined) throw new Error('settleRun: a run has at least one attempt')
+  const invalid = attempts.flatMap((a) => (a.reason === null ? [] : [a.reason]))
+  const valid = attempts.find((a) => a.reason === null)
+  if (valid !== undefined) return { report: valid.report, invalid }
+  return { report: failedReport(budget, `invalid twice: ${last.reason ?? ''}`), invalid }
+}
+
+/**
+ * One line under the median's heading, indented like the lines, saying what the runs went through:
+ * the warm-up is always discarded; then each retried run with its reason, or `no retry`.
+ */
+export function formatRunSummary(outcomes: readonly RunOutcome[]): string {
+  const retries = outcomes.flatMap((o, i) => {
+    const [first, ...rest] = o.invalid
+    if (first === undefined) return []
+    const run = `run ${String(i + 1)}`
+    return rest.length === 0
+      ? [`${run} retried (${first})`]
+      : [`${run} invalid twice (${[first, ...rest].join(', then ')}), counted as the worst reading`]
+  })
+  return `  ${['warm-up discarded', ...(retries.length === 0 ? ['no retry'] : retries)].join('; ')}`
 }
 
 /** A value without its unit: ms rounded, bytes with thousands separators, a score to three places. */

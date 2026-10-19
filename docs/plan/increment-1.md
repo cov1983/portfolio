@@ -708,7 +708,10 @@ in increment-1; a later spec decides client metrics).
   `cumulative-layout-shift`, `total-blocking-time`); the evaluator stays pure and unit-tested; the
   runner's retry-once and print-all behaviour stays (corrected by chore/perf-median-and-long-task-limit,
   #49: three runs, each line judged on the median of their readings, all three printed, an erroring
-  run retried once on its own; ADR 0013).
+  run retried once on its own; ADR 0013; corrected by chore/perf-runner-warmup-retry, #58: a warm-up
+  navigation first, printed and discarded; a run that is not a measurement (no gated reading, TTI
+  more than 500 ms before world-playable, no long task between the marks) retried once, the worst
+  reading on a second failure; ADR 0014).
 - **Build output**: the `build` job keeps printing gzip sizes per chunk; T0 adds the `tests/build`
   Vitest project; T1, which creates the `world` chunk (`codeSplitting.groups`, ADR 0010), adds its check that the entry
   chunk does not import it (three, R3F, Rapier never leak into the Title Screen path).
@@ -722,7 +725,8 @@ in increment-1; a later spec decides client metrics).
 - **External links**: a weekly non-blocking workflow (`.github/workflows/links.yml`, same shape as
   `audit.yml`) fetches every external `links[].url` from the built content and goes red on a
   non-2xx; the build never depends on the network (spec, Content). T9.
-- **Lighthouse artifact** (`.lighthouse/lhr.json`) stays uploaded per run for anything else.
+- **Lighthouse artifact** (`.lighthouse/lhr-warmup.json`, `lhr-<run>.json`, a retry's
+  `lhr-<run>-retry.json`; #49, #58) stays uploaded per run for anything else.
 
 ## 8. Security & privacy
 
