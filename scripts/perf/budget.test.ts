@@ -792,6 +792,12 @@ describe('invalidReason', () => {
     expect(invalidReason(breach)).toBeNull()
   })
 
+  it('a breach within the TTI tolerance is a measurement', () => {
+    const breach = attempt({ tasks: [{ startTime: 1000, duration: 250 }] })
+    expect(breach.report.pass).toBe(false)
+    expect(invalidReason(breach)).toBeNull()
+  })
+
   it('names the audit error when every gated line is without a reading (NO_NAVSTART on every trace audit)', () => {
     expect(invalidReason(traceless())).toBe(`no gated reading: audit "interactive": ${NO_NAVSTART}`)
   })
