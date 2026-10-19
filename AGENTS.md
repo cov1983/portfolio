@@ -5,7 +5,7 @@ Thomas's personal website: an immersive, interactive 3D portfolio in which visit
 puck through a playful virtual world to discover his projects and background. Physics, hockey-inspired
 challenges and light storytelling make exploring the portfolio an experience that itself demonstrates
 his development skills. Status: **Phase 3, increment-1 in progress** (plan `docs/plan/increment-1.md`;
-T8a #32 adds the two Announcer captions and honours reduced motion).
+#58 adds the perf runner's warm-up run and the retry of an invalid run).
 The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the model owns Rapier, the scene mirrors it.
 
 ## Environment
