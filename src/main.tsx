@@ -18,10 +18,11 @@ import { createStore } from './app/store'
 // second time, raw; the boundary reports it to App, whose `World failed` line is the one
 // structured line per failure (plan §7). Nothing is swallowed: the kind and the message are in
 // that line, and the e2e tests consume exactly one. An error any other boundary catches is
-// logged as React would, so a later boundary that does not report cannot go silent.
+// logged as React would, the component stack beside it, so a later boundary that does not report
+// cannot go silent and stays as debuggable as React's default makes it.
 const rootOptions: RootOptions = {
   onCaughtError: (error, info) => {
-    if (!(info.errorBoundary instanceof FailureBoundary)) console.error(error)
+    if (!(info.errorBoundary instanceof FailureBoundary)) console.error(error, info.componentStack)
   },
 }
 const root = document.getElementById('root')
