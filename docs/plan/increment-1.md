@@ -686,8 +686,9 @@ cases use a context with `javaScriptEnabled: false`; reduced motion uses
   getContext('webgl')`), no recovery (Owner, Q4); E physics, with `WebAssembly.instantiate`
   stubbed to reject in an init script (Rapier's compat `init()` decodes its inline wasm and calls
   it); F entry without WebGL. React's default `onCaughtError` would log the caught error a second
-  time, so `src/main.tsx` overrides it (Owner, Q3): the boundary's structured line is the one line
-  §7 names. No wall-clock `timeout` override: every appearance is event-driven and nothing drives
+  time, so `src/main.tsx` overrides it (Owner, Q3) for the failure boundary alone, in dev and in
+  the build alike (ai-review on #64, findings 4 and 5): the boundary's structured line is the one
+  line §7 names, and any other boundary's error is still logged. No wall-clock `timeout` override: every appearance is event-driven and nothing drives
   the Puck, so the project's default `expect` timeouts are the bound.
 
 **What cannot be automated, and how it is verified**: frame rate (AC-23.1) and the browser pass
