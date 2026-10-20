@@ -87,6 +87,9 @@ test.describe('the world chunk aborted', () => {
   }) => {
     const aborted = await abortRequests(page, WORLD_CHUNK)
     await enteredIntoFailure(page)
+    await expect(failureScreen(page).getByRole('heading', { level: 1 })).toHaveText(
+      'The World could not start',
+    )
     await expect(failureScreen(page)).toContainText('did not load')
     await expectWorldReplaced(page)
     await failureReported(problems, browserName, aborted)
@@ -190,6 +193,9 @@ test.describe('a throw during the World’s render', () => {
     await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
     await page.keyboard.press('Enter')
     await expect(failureScreen(page)).toBeVisible()
+    await expect(failureScreen(page).getByRole('heading', { level: 1 })).toHaveText(
+      'The World stopped',
+    )
     await expect(failureScreen(page)).toContainText('error while drawing')
     await expect(worldContainer(page)).toHaveCount(0)
     await expect(titleScreen(page)).toHaveCount(1)
@@ -223,7 +229,7 @@ test.describe('the ice texture aborted', () => {
 
 // Path D: the WebGL context lost while the World runs, through the WEBGL_lose_context extension
 // on the page's canvas (a DOM read, no window global): the scene reports `webgl`, no recovery
-// (Owner, #33 Q4).
+// (Owner, #33 Q4). The heading reads "stopped": the only path where the Visitor was steering.
 test('a lost WebGL context replaces the World with the readable message (AC-22.2)', async ({
   page,
   problems,
@@ -238,6 +244,10 @@ test('a lost WebGL context replaces the World with the readable message (AC-22.2
     gl?.getExtension('WEBGL_lose_context')?.loseContext()
   })
   await expect(failureScreen(page)).toBeVisible()
+  // The World was playable when its context went: it stopped, it did not fail to start (#64).
+  await expect(failureScreen(page).getByRole('heading', { level: 1 })).toHaveText(
+    'The World stopped',
+  )
   await expect(failureScreen(page)).toContainText('WebGL')
   await expectWorldReplaced(page)
   await page.keyboard.press('Escape')

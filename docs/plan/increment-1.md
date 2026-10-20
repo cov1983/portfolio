@@ -511,7 +511,12 @@ reducer left for T8b: `enter` while `worldStatus === 'failed'` → `screen: 'fai
 while `entering` → `screen: 'failed'`; a `world-failure` once `worldStatus` is `'failed'` changes
 nothing (the first failure is the one shown). The World unmounts on `worldStatus === 'failed'`; the
 readable message (`src/site/WorldFailure.tsx`) carries the Fallback link, the Esc line and a "Title
-Screen" button for a Visitor without an Escape key. `selectWorldPreload` is also false when `webgl`
+Screen" button for a Visitor without an Escape key. **Corrected by the review of #64 (ai-review
+finding 9, Owner's triage 2026-10-20)**: the store holds an `AttributedFailure` (`WorldFailure` plus
+`phase: 'start' | 'play'`), set by `attributeFailure` from whether `worldStatus` was `'ready'` when
+the failure arrived; the message's heading reads "The World stopped" for `'play'` (a lost context,
+a throw after entry) and "The World could not start" for `'start'`, since the kind `webgl` alone
+names both a World that never started (path F) and one that lost its context (path D). `selectWorldPreload` is also false when `webgl`
 is false (Owner, Q5): a second exception to the spec's Architecture sentence, which named the
 coarse pointer alone; the way in stays, and the chunk loads on entry. The sentence was amended in
 the same PR (#64, closing hand-off #63) after ai-review's finding 2: `main` never holds code that

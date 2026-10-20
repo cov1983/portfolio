@@ -52,7 +52,7 @@ export function App({ content, store }: Props) {
   // message (AC-22.2).
   const reportFailure = useCallback(
     (failure: Failure) => {
-      const reported = attributeFailure(failure, store.getState().capability)
+      const reported = attributeFailure(failure, store.getState())
       console.error('World failed', reported)
       store.dispatch({ type: 'world-failure', failure: reported })
     },

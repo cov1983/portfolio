@@ -6,7 +6,7 @@
 // reads it live (T5b, #32 Q4).
 import type { ExhibitId } from '../content/types.ts'
 import type { WorldEvent } from '../world/model/world.ts'
-import type { WorldFailure } from './types.ts'
+import type { AttributedFailure } from './types.ts'
 
 /** What was detected after hydration (AC-21.2): the pointer, and whether the browser gives a WebGL 2 context (what three renders with). */
 export type Capability = { coarsePointer: boolean; webgl: boolean }
@@ -32,7 +32,8 @@ export type AppState = {
   caption: { place: CaptionPlace } | null
   /** null until detected after hydration. */
   capability: Capability | null
-  failure: WorldFailure | null
+  /** The first failure, as src/app/capability.ts attributed it; the readable message renders from it. */
+  failure: AttributedFailure | null
 }
 
 export type Action =
@@ -43,7 +44,7 @@ export type Action =
   | { type: 'open-panel'; panel: PanelRef }
   | { type: 'close-panel' }
   | { type: 'world-event'; event: WorldEvent }
-  | { type: 'world-failure'; failure: WorldFailure }
+  | { type: 'world-failure'; failure: AttributedFailure }
   | { type: 'caption-expired'; place: CaptionPlace }
 
 export const INITIAL_STATE: AppState = {

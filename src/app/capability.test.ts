@@ -78,21 +78,39 @@ describe('probeWebgl', () => {
 
 describe('attributeFailure', () => {
   const render = { kind: 'render', message: 'Error creating WebGL context.' } as const
+  const withoutWebgl = { coarsePointer: false, webgl: false }
+  const withWebgl = { coarsePointer: false, webgl: true }
 
   it('names a render throw without WebGL the WebGL failure (Owner, #33 Q2)', () => {
-    expect(attributeFailure(render, { coarsePointer: false, webgl: false })).toEqual({
+    expect(attributeFailure(render, { capability: withoutWebgl, worldStatus: 'loading' })).toEqual({
       kind: 'webgl',
       message: render.message,
+      phase: 'start',
     })
   })
 
-  it('leaves a render throw with WebGL, or before detection, as it came', () => {
-    expect(attributeFailure(render, { coarsePointer: false, webgl: true })).toBe(render)
-    expect(attributeFailure(render, null)).toBe(render)
+  it('leaves the kind of a render throw with WebGL, or before detection, as it came', () => {
+    expect(attributeFailure(render, { capability: withWebgl, worldStatus: 'loading' }).kind).toBe(
+      'render',
+    )
+    expect(attributeFailure(render, { capability: null, worldStatus: 'loading' }).kind).toBe(
+      'render',
+    )
   })
 
   it('leaves the other kinds as they came', () => {
     const physics = { kind: 'physics', message: 'wasm refused' } as const
-    expect(attributeFailure(physics, { coarsePointer: false, webgl: false })).toBe(physics)
+    expect(attributeFailure(physics, { capability: withoutWebgl, worldStatus: 'loading' })).toEqual(
+      { ...physics, phase: 'start' },
+    )
+  })
+
+  it('sets the phase from whether the World was playable when the failure arrived (review of #64)', () => {
+    const lost = { kind: 'webgl', message: 'the WebGL context was lost' } as const
+    expect(attributeFailure(lost, { capability: withWebgl, worldStatus: 'ready' }).phase).toBe(
+      'play',
+    )
+    for (const worldStatus of ['idle', 'loading', 'failed'] as const)
+      expect(attributeFailure(lost, { capability: withWebgl, worldStatus }).phase).toBe('start')
   })
 })

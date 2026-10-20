@@ -14,7 +14,7 @@ import {
 const first = 'first' as ExhibitId
 const panelFromList = { exhibitId: first, opener: 'list' } as const
 const panelFromGoal = { exhibitId: first, opener: 'goal' } as const
-const failure = { kind: 'bundle', message: 'chunk failed' } as const
+const failure = { kind: 'bundle', message: 'chunk failed', phase: 'start' } as const
 
 function state(overrides: Partial<AppState> = {}): AppState {
   return { ...INITIAL_STATE, ...overrides }
@@ -237,7 +237,7 @@ describe('reduce', () => {
 
   it('keeps the first failure when a second one is reported', () => {
     const before = state({ screen: 'failed', worldStatus: 'failed', failure })
-    const second = { kind: 'physics', message: 'wasm refused' } as const
+    const second = { kind: 'physics', message: 'wasm refused', phase: 'start' } as const
     expect(reduce(before, { type: 'world-failure', failure: second })).toBe(before)
   })
 

@@ -5,8 +5,8 @@
 // read live by src/world/World.tsx, not here (plan §5, corrected by #32). Pure: the media matcher
 // and the canvas come injected, so the detection is unit-tested without a DOM; src/app/App.tsx
 // wires window.matchMedia and document.createElement.
-import type { Capability } from './store.ts'
-import type { WorldFailure } from './types.ts'
+import type { AppState, Capability } from './store.ts'
+import type { AttributedFailure, WorldFailure } from './types.ts'
 
 /** `window.matchMedia` narrowed to what detection reads, so the detection is unit-tested without a DOM. */
 export type MediaMatcher = (query: string) => { matches: boolean }
@@ -40,15 +40,16 @@ export function detectCapability(matchMedia: MediaMatcher, webgl: () => boolean)
 }
 
 /**
- * The failure as reported: a throw during the World's render while the browser has no WebGL is
- * the WebGL failure (three cannot create its context) and is named so (Owner, #33 Q2); every
- * other failure is reported as it came.
+ * The failure as reported, read against the app state when it arrived: a throw during the
+ * World's render while the browser has no WebGL is the WebGL failure (three cannot create its
+ * context) and is named so (Owner, #33 Q2); every other kind is reported as it came. The phase is
+ * `'play'` when the World was playable at the time, `'start'` before (ai-review on #64, finding 9).
  */
 export function attributeFailure(
   failure: WorldFailure,
-  capability: Capability | null,
-): WorldFailure {
-  return failure.kind === 'render' && capability?.webgl === false
-    ? { ...failure, kind: 'webgl' }
-    : failure
+  state: Pick<AppState, 'capability' | 'worldStatus'>,
+): AttributedFailure {
+  const kind =
+    failure.kind === 'render' && state.capability?.webgl === false ? 'webgl' : failure.kind
+  return { ...failure, kind, phase: state.worldStatus === 'ready' ? 'play' : 'start' }
 }
