@@ -504,7 +504,8 @@ Content-free.
 hydration with an injected probe (`detectCapability(matchMedia, probeWebgl)`); App's probe takes a
 context from a detached canvas and releases it at once. `WorldFailure.kind` gains `'render'`: a throw
 during the World's render, caught by the failure boundary around `<World>` in App
-(`src/app/FailureBoundary.tsx`; R3F's Canvas rethrows the scene's errors into it); App maps a
+(`src/app/FailureBoundary.tsx`; R3F's Canvas rethrows the scene's errors into it, as read in R3F's
+source, proven for the overlay only: a scene-throw e2e path is hand-off #65); App maps a
 `'render'` failure to `'webgl'` when `capability.webgl` is false (Owner, Q2). Two transitions the T5a
 reducer left for T8b: `enter` while `worldStatus === 'failed'` → `screen: 'failed'`; `world-failure`
 while `entering` → `screen: 'failed'`; a `world-failure` once `worldStatus` is `'failed'` changes
