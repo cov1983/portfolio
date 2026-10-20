@@ -38,7 +38,7 @@ describe('probeWebgl', () => {
   /** A canvas whose contexts of the given kinds exist, recording what the probe asked and released. */
   function canvas(kinds: ('webgl2' | 'webgl')[], log: string[]): ProbeCanvas {
     return {
-      getContext: (id) => {
+      getContext: (id: 'webgl2' | 'webgl') => {
         log.push(`get ${id}`)
         if (!kinds.includes(id)) return null
         return {
@@ -52,22 +52,22 @@ describe('probeWebgl', () => {
     }
   }
 
-  it('finds WebGL 2 first and releases the context it took', () => {
+  it('finds WebGL 2 and releases the context it took', () => {
     const log: string[] = []
     expect(probeWebgl(() => canvas(['webgl2', 'webgl'], log))).toBe(true)
     expect(log).toEqual(['get webgl2', 'lose webgl2'])
   })
 
-  it('falls back to WebGL 1', () => {
+  it('reports no WebGL when the browser has WebGL 1 only: three renders with WebGL 2 alone', () => {
     const log: string[] = []
-    expect(probeWebgl(() => canvas(['webgl'], log))).toBe(true)
-    expect(log).toEqual(['get webgl2', 'get webgl', 'lose webgl'])
+    expect(probeWebgl(() => canvas(['webgl'], log))).toBe(false)
+    expect(log).toEqual(['get webgl2'])
   })
 
-  it('reports no WebGL when the canvas gives neither context', () => {
+  it('reports no WebGL when the canvas gives no context', () => {
     const log: string[] = []
     expect(probeWebgl(() => canvas([], log))).toBe(false)
-    expect(log).toEqual(['get webgl2', 'get webgl'])
+    expect(log).toEqual(['get webgl2'])
   })
 
   it('tolerates a browser without the release extension', () => {

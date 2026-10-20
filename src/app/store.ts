@@ -8,7 +8,7 @@ import type { ExhibitId } from '../content/types.ts'
 import type { WorldEvent } from '../world/model/world.ts'
 import type { WorldFailure } from './types.ts'
 
-/** What was detected after hydration (AC-21.2): the pointer, and whether the browser gives a WebGL context. */
+/** What was detected after hydration (AC-21.2): the pointer, and whether the browser gives a WebGL 2 context (what three renders with). */
 export type Capability = { coarsePointer: boolean; webgl: boolean }
 
 /** An open Exhibit Panel and what opened it, which is where focus returns on close (AC-2.2, 16.5). */

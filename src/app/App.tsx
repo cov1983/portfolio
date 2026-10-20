@@ -73,12 +73,9 @@ export function App({ content, store }: Props) {
         (query) => window.matchMedia(query),
         () =>
           probeWebgl(() => {
-            // The overloads of getContext narrowed to the two kinds the probe asks for.
+            // The overloads of getContext narrowed to the one kind the probe asks for.
             const canvas = document.createElement('canvas')
-            return {
-              getContext: (id) =>
-                id === 'webgl2' ? canvas.getContext('webgl2') : canvas.getContext('webgl'),
-            }
+            return { getContext: (id) => canvas.getContext(id) }
           }),
       ),
     })

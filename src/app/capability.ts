@@ -18,17 +18,18 @@ export type ProbeContext = {
   getExtension: (name: 'WEBGL_lose_context') => { loseContext: () => void } | null
 }
 
-/** `HTMLCanvasElement` narrowed to the probe: a context of either kind, or none. */
-export type ProbeCanvas = { getContext: (id: 'webgl2' | 'webgl') => ProbeContext | null }
+/** `HTMLCanvasElement` narrowed to the probe: a WebGL 2 context, or none. */
+export type ProbeCanvas = { getContext: (id: 'webgl2') => ProbeContext | null }
 
 /**
- * Whether the browser gives a WebGL context: WebGL 2 first (what three asks for), WebGL 1 as the
- * fallback. The context is released at once where the browser has the extension: a browser
- * allows few contexts, and the World needs its own.
+ * Whether the browser gives a WebGL 2 context, the only kind three renders with since r163
+ * (`three` 0.186 here; ai-review on #64): a browser with WebGL 1 alone cannot run the World, so
+ * it gets the hint. The context is released at once where the browser has the extension: a
+ * browser allows few contexts, and the World needs its own.
  */
 export function probeWebgl(createCanvas: () => ProbeCanvas): boolean {
   const canvas = createCanvas()
-  const context = canvas.getContext('webgl2') ?? canvas.getContext('webgl')
+  const context = canvas.getContext('webgl2')
   if (context === null) return false
   context.getExtension('WEBGL_lose_context')?.loseContext()
   return true
