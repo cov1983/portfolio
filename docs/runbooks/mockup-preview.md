@@ -1,7 +1,8 @@
 # Runbook — the mockup preview project (`mockups/project-discovery/`)
 
 A second Vercel project serves `mockups/project-discovery/` read-only at an unlisted
-`*.vercel.app` URL, so a test client can try the project-discovery mockup (the zip on #59) before
+`*.vercel.app` URL (unlisted: linked from nowhere; the host is public to anyone who reads this
+repository), so a test client can try the project-discovery mockup (the zip on #59) before
 increment 2 builds the real `/start` on thomascova.dev. It is not thomascova.dev: a separate
 project, a separate origin, no domain, no Deployment Checks. Nothing in it is product code
 (`mockups/README.md`). Creating, changing and deleting the project are dashboard steps the Owner
@@ -11,13 +12,13 @@ does; an agent never does them (the setup wizard does not know this project eith
 
 | where | value | why |
 |---|---|---|
-| Vercel project | `tc-discovery-9k2v`, linked to `cov1983/portfolio` through the GitHub App already installed for the main project | one repository, two projects; the app installation is shared |
+| Vercel project | `tc-discovery-9k2v`, linked to `cov1983/portfolio` | one repository, two projects |
 | Settings → General → Root Directory | `mockups/project-discovery` | Vercel sees only this folder; `vercel.json` is read from here, not from the repository root |
 | Settings → Build and Deployment → Framework Preset | Other | a static folder, no framework |
 | Install Command, Build Command, Output Directory | empty, empty, `.` | no install, no build; the folder is the site |
 | Settings → Git → Ignored Build Step | `git diff --quiet HEAD^ HEAD -- .` | runs in the Root Directory: only a commit that touches the folder deploys |
 | Settings → Git → Comments | off | no Vercel comments on the portfolio's pull requests from this project |
-| Settings → Deployment Protection | the default | previews behind Vercel authentication, production public at the unlisted URL |
+| Settings → Deployment Protection | the default | nothing changed from what Vercel sets for a new project |
 
 `mockups/project-discovery/vercel.json` repeats the four build settings (`framework: null`, empty
 `installCommand` and `buildCommand`, `outputDirectory: "."`) and carries the response headers. It
@@ -29,14 +30,16 @@ The headers, one rule on `/(.*)`: `X-Robots-Tag: noindex` (the page also carries
 tag), `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, and a Content Security
 Policy of `default-src 'none'` that allows only the mockup's inline CSS and JS
 (`style-src 'unsafe-inline'; script-src 'unsafe-inline'`) with `base-uri`, `form-action` and
-`frame-ancestors` at `'none'`. The mockup loads nothing else: no image, font, stylesheet or request
+`frame-ancestors` at `'none'`. The list is the ticket's (#70); ADR 0012's `Permissions-Policy` and
+`Cross-Origin-Opener-Policy` belong to thomascova.dev's `vercel.json`. The mockup loads nothing else: no image, font, stylesheet or request
 to any origin; its one form never submits; the brief download is a `blob:` URL with the `download`
 attribute, which no CSP fetch directive governs.
 
 ## After a deploy
 
 1. The deployment's Build log shows no install and no build step.
-2. `curl -sI https://<deployment-url>/ | grep -i -e x-robots-tag -e x-content-type-options -e referrer-policy -e content-security-policy`
+2. On the production URL (a preview may sit behind Deployment Protection):
+   `curl -sI https://<production-url>/ | grep -i -e x-robots-tag -e x-content-type-options -e referrer-policy -e content-security-policy`
    prints the four headers.
 3. In a browser: the page renders, the questionnaire moves through its sections, "download brief"
    saves `project-discovery-brief.txt`, and the DevTools console shows no CSP report.
