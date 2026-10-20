@@ -98,6 +98,17 @@ export async function expectRecorded(
   problems.splice(problems.findIndex(matches), 1)
 }
 
+/**
+ * Drops every recorded problem of `kind` mentioning `detail`, whether any is there or not: for a
+ * browser's own line about a request the test itself broke. Chromium logs "Failed to load
+ * resource" as a console error for an aborted request, before the page's own report; Firefox and
+ * WebKit log nothing. The page's report is still consumed with `expectRecorded` first.
+ */
+export function discardRecorded(problems: Problem[], kind: ProblemKind, detail: string): void {
+  const kept = problems.filter((p) => !(p.kind === kind && p.detail.includes(detail)))
+  problems.splice(0, problems.length, ...kept)
+}
+
 /** How many times the page recorded the user-timing mark `name` (the perf gate's instruments). */
 export function recorded(page: Page, name: string): Promise<number> {
   return page.evaluate((n) => performance.getEntriesByName(n, 'mark').length, name)
@@ -114,6 +125,9 @@ export const wayIn = (page: Page): Locator =>
 export const worldContainer = (page: Page): Locator => page.locator('section[aria-label="World"]')
 
 export const titleScreen = (page: Page): Locator => page.locator('main.title-screen')
+
+/** The readable failure that replaces the World (AC-22.2): a main, absent from the page otherwise. */
+export const failureScreen = (page: Page): Locator => page.locator('main.world-failure')
 
 /** The Title Screen's list entry of the Exhibit titled `title`. */
 export const listEntry = (page: Page, title: string): Locator =>

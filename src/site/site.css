@@ -38,7 +38,8 @@ a {
 }
 
 .title-screen,
-.fallback-page {
+.fallback-page,
+.world-failure {
   max-width: 44rem;
   margin: 0 auto;
   padding: 3rem 1.25rem 4rem;
@@ -65,7 +66,8 @@ h2 {
   margin: 1rem 0 0;
 }
 
-.way-in {
+.way-in,
+.world-failure button {
   display: inline-block;
   margin: 2rem 0 0;
   padding: 0.75rem 1.5rem;
@@ -79,6 +81,7 @@ h2 {
 }
 
 .way-in:focus-visible,
+.world-failure button:focus-visible,
 .exhibit-panel .close:focus-visible,
 a:focus-visible {
   outline: 3px solid var(--accent);
@@ -102,6 +105,29 @@ a:focus-visible {
 
 .fallback {
   margin: 2.5rem 0 0;
+}
+
+/* The readable failure (src/site/WorldFailure.tsx): the Title Screen's layout, the reason as
+   large as the one line, the way back next to the Esc line. The main takes focus on arrival and
+   is not a control. */
+.world-failure:focus {
+  outline: none;
+}
+
+.world-failure .reason {
+  font-size: 1.25rem;
+}
+
+.world-failure .way-back {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin: 1.5rem 0 0;
+  color: var(--muted);
+}
+
+.world-failure .way-back button {
+  margin: 0;
 }
 
 /* The Fallback Page */

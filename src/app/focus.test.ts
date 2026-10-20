@@ -39,6 +39,20 @@ describe('focusAfter', () => {
     expect(focusAfter({ from, to })).toEqual({ target: 'world' })
   })
 
+  it('moves focus to the readable failure that replaced the World (AC-22.2)', () => {
+    const failure = { kind: 'bundle', message: 'chunk failed' } as const
+    const from = state({ screen: 'world', worldStatus: 'ready' })
+    const to = state({ screen: 'failed', worldStatus: 'failed', failure })
+    expect(focusAfter({ from, to })).toEqual({ target: 'failure' })
+  })
+
+  it('moves focus to the readable failure when Enter meets a World that failed before', () => {
+    const failure = { kind: 'bundle', message: 'chunk failed' } as const
+    const from = state({ worldStatus: 'failed', failure })
+    const to = state({ screen: 'failed', worldStatus: 'failed', failure })
+    expect(focusAfter({ from, to })).toEqual({ target: 'failure' })
+  })
+
   it('moves nothing when the screen and the Panel are unchanged', () => {
     const from = state({ screen: 'world', worldStatus: 'ready' })
     const to = state({ screen: 'world', worldStatus: 'ready', caption: { place: 'hub' } })

@@ -4,6 +4,7 @@ import type { Content } from '../content/types.ts'
 import { markOnce, TITLE_SCREEN_INTERACTIVE_MARK } from '../perf/marks.ts'
 import { ExhibitPanel } from '../site/ExhibitPanel'
 import { TitleScreen } from '../site/TitleScreen'
+import { WorldFailure } from '../site/WorldFailure'
 import type { World as WorldComponent } from '../world/World'
 import { captionTimer } from './caption.ts'
 import { detectCapability } from './capability.ts'
@@ -17,7 +18,7 @@ import {
   type WorldLoader,
 } from './preload.ts'
 import { selectShownCaption, selectWorldPaused, type Store } from './store.ts'
-import type { WorldFailure } from './types.ts'
+import type { WorldFailure as Failure } from './types.ts'
 
 // The hydrated root (plan §2, module app; ADR 0010): the one tree both src/entry-prerender.tsx
 // renders to a string and src/main.tsx hydrates, so the pre-rendered markup and the first client
@@ -39,13 +40,15 @@ export function App({ content, store }: Props) {
   const worldRef = useRef<HTMLElement>(null)
   const entriesRef = useRef<HTMLElement>(null)
   const panelCloseRef = useRef<HTMLButtonElement>(null)
+  const failureRef = useRef<HTMLElement>(null)
   const previous = useRef(state)
   const loaderRef = useRef<WorldLoader | null>(null)
 
-  // Structured, no personal data (plan §7); T8b turns it into the readable message (AC-22.2) and
-  // its test consumes this line through the shared fixture (noted on #33).
+  // Structured, no personal data (plan §7): the one console line per failure, which the e2e tests
+  // consume through the shared fixture (noted on #33); the store turns it into the readable
+  // message (AC-22.2).
   const reportFailure = useCallback(
-    (failure: WorldFailure) => {
+    (failure: Failure) => {
       console.error('World failed', failure)
       store.dispatch({ type: 'world-failure', failure })
     },
@@ -124,14 +127,15 @@ export function App({ content, store }: Props) {
 
   // Focus rules (plan §5): the World container on entry (AC-5.1, 6.2); the Panel's close control
   // on open (Owner, #30 Q2); the list entry that opened the Panel on close (AC-2.2), found by its
-  // href, which the pre-rendered markup already carries. Escape to the Title Screen moves focus
-  // nowhere (the spec names no target; the inert World drops it to the body, where Enter and Space
-  // reach the key router).
+  // href, which the pre-rendered markup already carries; the readable failure when it replaces the
+  // World (AC-22.2). Escape to the Title Screen moves focus nowhere (the spec names no target; the
+  // inert World drops it to the body, where Enter and Space reach the key router).
   useEffect(() => {
     const target = focusAfter({ from: previous.current, to: state })
     previous.current = state
     if (target?.target === 'world') worldRef.current?.focus()
     else if (target?.target === 'panel') panelCloseRef.current?.focus()
+    else if (target?.target === 'failure') failureRef.current?.focus()
     else if (target?.target === 'list-entry' && target.exhibitId !== undefined) {
       entriesRef.current
         ?.querySelector<HTMLAnchorElement>(`a[href="/exhibits#${target.exhibitId}"]`)
@@ -156,7 +160,9 @@ export function App({ content, store }: Props) {
       : content.exhibits.find((exhibit) => exhibit.id === state.panel?.exhibitId)
 
   // `entering` alone is the loading state: the reducer clears it on every path to a ready World
-  // (store.test.ts proves the invariant), so no second condition is needed here.
+  // (store.test.ts proves the invariant), so no second condition is needed here. A failed World
+  // is unmounted: the readable message replaces it (AC-22.2), and a lost context or a disposed
+  // scene is freed; the failure screen renders from the store's failure.
   return (
     <>
       <TitleScreen
@@ -183,7 +189,16 @@ export function App({ content, store }: Props) {
           }}
         />
       )}
-      {World !== null && (
+      {state.screen === 'failed' && state.failure !== null && (
+        <WorldFailure
+          failure={state.failure}
+          mainRef={failureRef}
+          onTitleScreen={() => {
+            store.dispatch({ type: 'escape' })
+          }}
+        />
+      )}
+      {World !== null && state.worldStatus !== 'failed' && (
         <World
           content={content}
           paused={selectWorldPaused(state)}
