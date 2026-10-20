@@ -8,3 +8,5 @@ Procedures:
 - [`setup-wizard.md`](setup-wizard.md) — the one-time dashboard setup the Owner runs
   (`scripts/setup-wizard.sh`): Vercel project and Deployment Checks, the CI review key, Renovate,
   CodeQL, domain and DNS, required checks on `main`; what each stage changes and how to revert it.
+- [`mockup-preview.md`](mockup-preview.md) — the second Vercel project that serves
+  `mockups/project-discovery/` read-only (#70): its settings, the check after a deploy, how to delete it.
