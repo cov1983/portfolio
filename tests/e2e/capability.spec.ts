@@ -6,8 +6,8 @@ import {
   expectRecorded,
   failureScreen,
   hydrated,
+  expectRequestedAfter,
   recorded,
-  resourceStartTimes,
   test,
   wayIn,
   WORLD_CHUNK,
@@ -120,9 +120,7 @@ test.describe('without WebGL (AC-22.1)', () => {
     await page.keyboard.press('Enter')
     await expect(failureScreen(page)).toBeVisible()
     await expect(failureScreen(page)).toContainText('WebGL')
-    const starts = await resourceStartTimes(page, WORLD_CHUNK)
-    expect(starts.length).toBeGreaterThan(0)
-    expect(Math.min(...starts)).toBeGreaterThanOrEqual(pressedAt)
+    await expectRequestedAfter(page, WORLD_CHUNK, pressedAt)
     await expectRecorded(problems, 'console.error', 'World failed')
     await expectRecorded(
       problems,

@@ -6,7 +6,7 @@ import {
   hydrated,
   ICE_TEXTURE,
   recorded,
-  resourceStartTimes,
+  expectRequestedAfter,
   test,
   WORLD_CHUNK,
   worldContainer,
@@ -40,10 +40,11 @@ test('the world chunk is requested only after the title-screen-interactive mark'
 }) => {
   await page.goto('/')
   await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
-  const mark = await markStart(page, TITLE_SCREEN_INTERACTIVE_MARK)
-  const starts = await resourceStartTimes(page, WORLD_CHUNK)
-  expect(starts.length).toBeGreaterThan(0)
-  expect(Math.min(...starts)).toBeGreaterThanOrEqual(mark)
+  await expectRequestedAfter(
+    page,
+    WORLD_CHUNK,
+    await markStart(page, TITLE_SCREEN_INTERACTIVE_MARK),
+  )
 })
 
 // Spec, Architecture: no preload on a coarse pointer; the chunk loads only when the Visitor
@@ -70,9 +71,7 @@ test.describe('with a coarse pointer', () => {
     expect(await recorded(page, WORLD_PLAYABLE_MARK)).toBe(0)
     await page.keyboard.press('Enter')
     await expect(worldContainer(page)).toBeVisible()
-    const starts = await resourceStartTimes(page, WORLD_CHUNK)
-    expect(starts.length).toBeGreaterThan(0)
-    expect(Math.min(...starts)).toBeGreaterThanOrEqual(pressedAt)
+    await expectRequestedAfter(page, WORLD_CHUNK, pressedAt)
   })
 })
 

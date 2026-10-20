@@ -3,7 +3,6 @@ import type { Page } from '@playwright/test'
 
 import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks'
 import {
-  discardRecorded,
   expect,
   expectRecorded,
   failureScreen,
@@ -30,13 +29,44 @@ import {
 /** The Fallback Page link, by its text (the Title Screen's, AC-1.1). */
 const FALLBACK_LINK = { name: /plain page/ }
 
+/** What a test aborted: the route counts its requests, so the browser's lines about them can be counted too. */
+type Aborted = { requests: number }
+
+/** Aborts every request matching `pattern` and counts them (a chunk may be fetched more than once). */
+async function abortRequests(page: Page, pattern: RegExp): Promise<Aborted> {
+  const aborted: Aborted = { requests: 0 }
+  await page.route(pattern, (route) => {
+    aborted.requests += 1
+    return route.abort()
+  })
+  return aborted
+}
+
 /**
- * App's one structured line for the failure, consumed; then the browser's own line about the
- * request the test aborted (Chromium only, see discardRecorded), which is no second report.
+ * App's one structured line for the failure, consumed; then, in Chromium alone, its own
+ * "Failed to load resource" line for each request the test aborted (Firefox and WebKit log
+ * nothing for it), consumed one per request, so a browser line nobody expected still fails.
  */
-async function failureReported(problems: Problem[]): Promise<void> {
+async function failureReported(
+  problems: Problem[],
+  browserName: string,
+  aborted: Aborted,
+): Promise<void> {
   await expectRecorded(problems, 'console.error', 'World failed')
-  discardRecorded(problems, 'console.error', 'Failed to load resource')
+  if (browserName !== 'chromium') return
+  for (let i = 0; i < aborted.requests; i++)
+    await expectRecorded(problems, 'console.error', 'Failed to load resource')
+}
+
+/** The message with the Fallback link is on show in place of the World, the Title Screen hidden but mounted. */
+async function expectWorldReplaced(page: Page): Promise<void> {
+  await expect(failureScreen(page).getByRole('link', FALLBACK_LINK)).toHaveAttribute(
+    'href',
+    '/exhibits',
+  )
+  await expect(worldContainer(page)).toHaveCount(0)
+  await expect(titleScreen(page)).toHaveCount(1)
+  await expect(titleScreen(page)).toBeHidden()
 }
 
 /** `/` hydrated, Enter: the readable failure is on show. */
@@ -46,88 +76,92 @@ async function enteredIntoFailure(page: Page): Promise<void> {
   await expect(failureScreen(page)).toBeVisible()
 }
 
-// Path A: the world chunk's request aborted, so the dynamic import rejects (T5b's loader reports
-// `bundle`). The preload meets it behind the Title Screen; Enter then shows the message.
+// Path A: the world chunk's requests aborted (the World's own chunk and the library chunk it
+// imports, each possibly preloaded and fetched), so the dynamic import rejects (T5b's loader
+// reports `bundle`). The preload meets it behind the Title Screen; Enter then shows the message.
 test.describe('the world chunk aborted', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.route(WORLD_CHUNK, (route) => route.abort())
-  })
-
   test('after Enter a readable message with the Fallback link replaces the World (AC-22.2)', async ({
     page,
     problems,
+    browserName,
   }) => {
+    const aborted = await abortRequests(page, WORLD_CHUNK)
     await enteredIntoFailure(page)
     await expect(failureScreen(page)).toContainText('did not load')
-    await expect(failureScreen(page).getByRole('link', FALLBACK_LINK)).toHaveAttribute(
-      'href',
-      '/exhibits',
-    )
-    await expect(titleScreen(page)).toBeHidden()
-    await expect(worldContainer(page)).toHaveCount(0)
-    await failureReported(problems)
+    await expectWorldReplaced(page)
+    await failureReported(problems, browserName, aborted)
   })
 
   test('the message takes focus, so it is read and its link is in reach', async ({
     page,
     problems,
+    browserName,
   }) => {
+    const aborted = await abortRequests(page, WORLD_CHUNK)
     await enteredIntoFailure(page)
     await expect(failureScreen(page)).toBeFocused()
     await page.keyboard.press('Tab')
     await expect(failureScreen(page).getByRole('link', FALLBACK_LINK)).toBeFocused()
-    await failureReported(problems)
+    await failureReported(problems, browserName, aborted)
   })
 
   test('Escape shows the Title Screen again, the message gone (AC-22.2)', async ({
     page,
     problems,
+    browserName,
   }) => {
+    const aborted = await abortRequests(page, WORLD_CHUNK)
     await enteredIntoFailure(page)
     await page.keyboard.press('Escape')
     await expect(titleScreen(page)).toBeVisible()
     await expect(failureScreen(page)).toHaveCount(0)
     await expect(wayIn(page)).toBeEnabled()
-    await failureReported(problems)
+    await failureReported(problems, browserName, aborted)
   })
 
   test('the Title Screen control does what Escape does, for a Visitor without an Escape key', async ({
     page,
     problems,
+    browserName,
   }) => {
+    const aborted = await abortRequests(page, WORLD_CHUNK)
     await enteredIntoFailure(page)
     await failureScreen(page).getByRole('button', { name: 'Title Screen' }).click()
     await expect(titleScreen(page)).toBeVisible()
     await expect(failureScreen(page)).toHaveCount(0)
-    await failureReported(problems)
+    await failureReported(problems, browserName, aborted)
   })
 
   test('Enter from the Title Screen shows the message again, without a reload', async ({
     page,
     problems,
+    browserName,
   }) => {
+    const aborted = await abortRequests(page, WORLD_CHUNK)
     await enteredIntoFailure(page)
     await page.keyboard.press('Escape')
     await expect(titleScreen(page)).toBeVisible()
     await page.keyboard.press('Enter')
     await expect(failureScreen(page)).toBeVisible()
-    await failureReported(problems)
+    await failureReported(problems, browserName, aborted)
   })
 
-  test('the Fallback link navigates', async ({ page, problems }) => {
+  test('the Fallback link navigates', async ({ page, problems, browserName }) => {
+    const aborted = await abortRequests(page, WORLD_CHUNK)
     await enteredIntoFailure(page)
-    await failureReported(problems)
+    await failureReported(problems, browserName, aborted)
     await failureScreen(page).getByRole('link', FALLBACK_LINK).click()
     await expect(page).toHaveURL(/\/exhibits$/)
   })
 
-  test('has no WCAG 2.2 AA violations', async ({ page, problems }) => {
+  test('has no WCAG 2.2 AA violations', async ({ page, problems, browserName }) => {
+    const aborted = await abortRequests(page, WORLD_CHUNK)
     await enteredIntoFailure(page)
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
       .analyze()
     expect(results.violations).toEqual([])
-    await failureReported(problems)
+    await failureReported(problems, browserName, aborted)
   })
 })
 
@@ -172,19 +206,18 @@ test.describe('a throw during the World’s render', () => {
 // Path C: the ice texture's request aborted (#55's hand-off on #33): the scene reports it as a
 // `bundle` failure like the chunk, met by the preload behind the Title Screen.
 test.describe('the ice texture aborted', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.route(ICE_TEXTURE, (route) => route.abort())
-  })
-
   test('after Enter a readable message with the Fallback link replaces the World (AC-22.2)', async ({
     page,
     problems,
+    browserName,
   }) => {
+    const aborted = await abortRequests(page, ICE_TEXTURE)
     await enteredIntoFailure(page)
     await expect(failureScreen(page)).toContainText('did not load')
-    await expect(failureScreen(page).getByRole('link', FALLBACK_LINK)).toBeVisible()
-    await expect(worldContainer(page)).toHaveCount(0)
-    await failureReported(problems)
+    await expectWorldReplaced(page)
+    await page.keyboard.press('Escape')
+    await expect(titleScreen(page)).toBeVisible()
+    await failureReported(problems, browserName, aborted)
   })
 })
 
@@ -206,7 +239,7 @@ test('a lost WebGL context replaces the World with the readable message (AC-22.2
   })
   await expect(failureScreen(page)).toBeVisible()
   await expect(failureScreen(page)).toContainText('WebGL')
-  await expect(worldContainer(page)).toHaveCount(0)
+  await expectWorldReplaced(page)
   await page.keyboard.press('Escape')
   await expect(titleScreen(page)).toBeVisible()
   await expectRecorded(problems, 'console.error', 'World failed')
@@ -229,8 +262,9 @@ test.describe('physics failing to initialise', () => {
   }) => {
     await enteredIntoFailure(page)
     await expect(failureScreen(page)).toContainText('physics engine')
-    await expect(failureScreen(page).getByRole('link', FALLBACK_LINK)).toBeVisible()
-    await expect(worldContainer(page)).toHaveCount(0)
+    await expectWorldReplaced(page)
+    await page.keyboard.press('Escape')
+    await expect(titleScreen(page)).toBeVisible()
     await expectRecorded(problems, 'console.error', 'World failed')
   })
 })

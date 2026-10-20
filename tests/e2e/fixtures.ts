@@ -98,17 +98,6 @@ export async function expectRecorded(
   problems.splice(problems.findIndex(matches), 1)
 }
 
-/**
- * Drops every recorded problem of `kind` mentioning `detail`, whether any is there or not: for a
- * browser's own line about a request the test itself broke. Chromium logs "Failed to load
- * resource" as a console error for an aborted request, before the page's own report; Firefox and
- * WebKit log nothing. The page's report is still consumed with `expectRecorded` first.
- */
-export function discardRecorded(problems: Problem[], kind: ProblemKind, detail: string): void {
-  const kept = problems.filter((p) => !(p.kind === kind && p.detail.includes(detail)))
-  problems.splice(0, problems.length, ...kept)
-}
-
 /** Start times (ms from navigation start) of the requests matching `pattern`, from resource timing. */
 export function resourceStartTimes(page: Page, pattern: RegExp): Promise<number[]> {
   return page.evaluate(
@@ -119,6 +108,17 @@ export function resourceStartTimes(page: Page, pattern: RegExp): Promise<number[
         .map((entry) => entry.startTime),
     pattern.source,
   )
+}
+
+/** The requests matching `pattern` were made, and none before `time` (ms from navigation start). */
+export async function expectRequestedAfter(
+  page: Page,
+  pattern: RegExp,
+  time: number,
+): Promise<void> {
+  const starts = await resourceStartTimes(page, pattern)
+  expect(starts.length).toBeGreaterThan(0)
+  expect(Math.min(...starts)).toBeGreaterThanOrEqual(time)
 }
 
 /** How many times the page recorded the user-timing mark `name` (the perf gate's instruments). */

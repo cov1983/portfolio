@@ -1,6 +1,7 @@
 import type { RefObject } from 'react'
 
 import type { WorldFailure as Failure } from '../app/types.ts'
+import { FallbackLink } from './FallbackLink'
 import './site.css'
 
 // The readable failure (spec AC-22.2; plan §5, corrected by #33): when the World fails after the
@@ -31,9 +32,7 @@ export function WorldFailure({ failure, mainRef, onTitleScreen }: Props) {
     <main className="world-failure" tabIndex={-1} ref={mainRef}>
       <h1>The World could not start</h1>
       <p className="reason">{SENTENCES[failure.kind]}</p>
-      <p className="fallback">
-        <a href="/exhibits">Every Exhibit, the Bio and the Contact as a plain page</a>
-      </p>
+      <FallbackLink />
       <p className="way-back">
         <button type="button" onClick={onTitleScreen}>
           Title Screen

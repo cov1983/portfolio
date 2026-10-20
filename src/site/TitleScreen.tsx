@@ -3,6 +3,7 @@ import type { MouseEvent, RefObject } from 'react'
 import type { Capability } from '../app/store.ts'
 import type { Content, ExhibitId } from '../content/types.ts'
 import { Contact } from './Contact'
+import { FallbackLink } from './FallbackLink'
 import './site.css'
 
 // The Title Screen (spec: Title Screen; ADR 0004, ADR 0010): the Owner's name, the one line, the
@@ -20,10 +21,13 @@ import './site.css'
 // finds the entry to return focus to when the Panel closes (AC-2.2). `hidden` while the World is shown
 // (T5b): the `hidden` attribute, so the Title Screen leaves the tab order and the accessibility
 // tree; Escape brings it back over the paused World (AC-6.1).
+/** A capability hint: what it is about, and the sentence the Visitor reads. */
+type Hint = { kind: 'webgl' | 'keyboard'; text: string }
+
 /** The hints a detection calls for, WebGL first (the World cannot run at all), each its own paragraph. */
-function hintsFor(capability: Capability | null): { kind: 'webgl' | 'keyboard'; text: string }[] {
+function hintsFor(capability: Capability | null): Hint[] {
   if (capability === null) return []
-  const hints: { kind: 'webgl' | 'keyboard'; text: string }[] = []
+  const hints: Hint[] = []
   if (!capability.webgl)
     hints.push({ kind: 'webgl', text: 'The World cannot run here: this browser has no WebGL.' })
   if (capability.coarsePointer)
@@ -52,11 +56,6 @@ export function TitleScreen({
   entriesRef,
 }: Props) {
   const hints = hintsFor(capability)
-  const fallback = (
-    <p className="fallback">
-      <a href="/exhibits">Every Exhibit, the Bio and the Contact as a plain page</a>
-    </p>
-  )
   return (
     <main className="title-screen" hidden={hidden}>
       {hints.length > 0 && (
@@ -66,7 +65,7 @@ export function TitleScreen({
               {hint.text}
             </p>
           ))}
-          {fallback}
+          <FallbackLink />
         </>
       )}
       <header>
@@ -100,7 +99,7 @@ export function TitleScreen({
           ))}
         </ul>
       </nav>
-      {hints.length === 0 && fallback}
+      {hints.length === 0 && <FallbackLink />}
     </main>
   )
 }

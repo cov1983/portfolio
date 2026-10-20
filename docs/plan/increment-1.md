@@ -513,7 +513,7 @@ readable message (`src/site/WorldFailure.tsx`) carries the Fallback link, the Es
 Screen" button for a Visitor without an Escape key. `selectWorldPreload` is also false when `webgl`
 is false (Owner, Q5): a second exception to the spec's Architecture sentence, which names the
 coarse pointer alone; the way in stays, and the chunk loads on entry. An amendment candidate for
-increment 2, noted in `docs/retro.md`.
+increment 2: hand-off #63, noted in `docs/retro.md`.
 
 ### Focus (`src/app/focus.ts`)
 
@@ -664,13 +664,17 @@ cases use a context with `javaScriptEnabled: false`; reduced motion uses
   init-script stub the row names; the stub is described in `capability.spec.ts`'s header as the
   fallback. Firefox accepts `isMobile` without an error but its documentation calls it unsupported,
   so the test does not pass it there.
-- Row 22.1 adds: no world chunk is requested before Enter (the preload is withheld without WebGL,
-  §5 corrected by #33), and entry with WebGL stubbed loads the chunk and ends on the readable
-  message of kind `'webgl'` (path F below): the way in stays and fails honestly.
+- Row 21.1's "no preload on a coarse pointer" half stays in `world.spec.ts` under the `matchMedia`
+  stub (T5b, Owner on #29 Q6); `capability.spec.ts` proves the hint, the link order and the way in.
+- Row 22.1 adds: entry with WebGL stubbed loads the chunk only then (the preload is withheld without
+  WebGL, §5 corrected by #33, hand-off #63 for the spec sentence) and ends on the readable message
+  of kind `'webgl'` (path F below): the way in stays and fails honestly.
 - Row 22.2 covers six paths in `tests/e2e/world-failure.spec.ts`, each ending with the readable
   message and the Fallback link, the Title Screen hidden but mounted, Escape (and the "Title
   Screen" button) showing it again, and `expectRecorded(problems, 'console.error', 'World failed')`
-  consuming App's one structured line (T5b hand-off): A the world chunk aborted with `page.route`;
+  consuming App's one structured line (T5b hand-off), and, in Chromium alone, its own "Failed to
+  load resource" line once per aborted request (Firefox and WebKit log none): A the world chunk
+  aborted with `page.route`;
   B the Hub caption's key renamed in the entry chunk in flight, so `captionText` throws in the
   World's render after entry and the boundary reports `'render'` (T8a hand-off); C the ice texture
   `/assets/ice-*.webp` aborted (#55 hand-off, kind `'bundle'`); D the WebGL context lost through
