@@ -76,8 +76,11 @@ export function reduce(state: AppState, action: Action): AppState {
       }
       return action.status === state.worldStatus ? state : { ...state, worldStatus: action.status }
     case 'enter':
-      // A Panel owns the keys while open; the failure screen is T8b's; inside the World it is a no-op.
+      // A Panel owns the keys while open; on the failure screen and inside the World it is a no-op.
+      // A World that failed before entry answers with the readable message (AC-22.2; T5a's
+      // hand-off on #33): the way in stays, and says honestly what happened.
       if (state.panel !== null || state.screen !== 'title') return state
+      if (state.worldStatus === 'failed') return { ...state, screen: 'failed', entering: false }
       if (state.worldStatus === 'ready') return { ...state, screen: 'world', entering: false }
       return state.entering ? state : { ...state, entering: true }
     case 'escape':
@@ -96,13 +99,15 @@ export function reduce(state: AppState, action: Action): AppState {
     case 'world-event':
       return reduceWorldEvent(state, action.event)
     case 'world-failure':
-      // After entry the readable message replaces the World (AC-22.2); before, the Title Screen stays.
+      // The first failure is the one shown. After entry, or while the Visitor is entering, the
+      // readable message replaces the World (AC-22.2); on the Title Screen it waits for Enter.
+      if (state.worldStatus === 'failed') return state
       return {
         ...state,
         failure: action.failure,
         worldStatus: 'failed',
         entering: false,
-        screen: state.screen === 'world' ? 'failed' : state.screen,
+        screen: state.screen === 'world' || state.entering ? 'failed' : state.screen,
       }
     case 'caption-expired':
       // Only the place it was timed for: a late timer must not clear a newer caption (#32 D7).

@@ -101,6 +101,16 @@ describe('reduce', () => {
     expect(reduce(before, { type: 'enter' })).toBe(before)
   })
 
+  it('shows the failure screen on enter when the World failed before entry (AC-22.2; T5a hand-off on #33)', () => {
+    const next = reduce(state({ worldStatus: 'failed', failure }), { type: 'enter' })
+    expect(next).toMatchObject({ screen: 'failed', entering: false, failure })
+  })
+
+  it('ignores enter while a Panel is open over a failed World', () => {
+    const before = state({ worldStatus: 'failed', failure, panel: panelFromList })
+    expect(reduce(before, { type: 'enter' })).toBe(before)
+  })
+
   it('ignores enter inside the World', () => {
     const before = state({ screen: 'world', worldStatus: 'ready' })
     expect(reduce(before, { type: 'enter' })).toBe(before)
@@ -206,12 +216,28 @@ describe('reduce', () => {
     expect(next).toMatchObject({ screen: 'failed', worldStatus: 'failed', failure })
   })
 
-  it('keeps the Title Screen when the World fails before entry', () => {
+  it('shows the failure screen when the World fails while the Visitor is entering (AC-22.2; T5a hand-off on #33)', () => {
     const next = reduce(state({ worldStatus: 'loading', entering: true }), {
       type: 'world-failure',
       failure,
     })
-    expect(next).toMatchObject({ screen: 'title', worldStatus: 'failed', entering: false, failure })
+    expect(next).toMatchObject({
+      screen: 'failed',
+      worldStatus: 'failed',
+      entering: false,
+      failure,
+    })
+  })
+
+  it('keeps the Title Screen when the World fails before entry, the failure waiting for Enter', () => {
+    const next = reduce(state({ worldStatus: 'loading' }), { type: 'world-failure', failure })
+    expect(next).toMatchObject({ screen: 'title', worldStatus: 'failed', failure })
+  })
+
+  it('keeps the first failure when a second one is reported', () => {
+    const before = state({ screen: 'failed', worldStatus: 'failed', failure })
+    const second = { kind: 'physics', message: 'wasm refused' } as const
+    expect(reduce(before, { type: 'world-failure', failure: second })).toBe(before)
   })
 
   it('clears the caption when it expires', () => {
