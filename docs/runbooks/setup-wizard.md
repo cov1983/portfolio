@@ -57,6 +57,6 @@ before the next stage.
 ## Related
 
 `docs/adr/0006-hosting-vercel.md` (why Vercel), `docs/adr/0007-renovate-automerge.md` (why
-auto-merge), `vercel.json` (every build setting; the dashboard carries none),
+auto-merge), `vercel.json` (every build setting; the main project's dashboard carries none),
 `.github/workflows/ci.yml` (the job names the checks match). The mockup preview is a second
 Vercel project with its own runbook, `mockup-preview.md`; the wizard never touches it.

@@ -22,9 +22,10 @@ does; an agent never does them (the setup wizard does not know this project eith
 
 `mockups/project-discovery/vercel.json` repeats the four build settings (`framework: null`, empty
 `installCommand` and `buildCommand`, `outputDirectory: "."`), carries the Ignored Build Step as
-`ignoreCommand: "git diff --quiet HEAD^ HEAD -- ."` (it runs in the Root Directory: only a commit
-that touches the folder deploys) and the response headers. It exists because the project's first
-two deploys failed: when the Root Directory has no `vercel.json` of its own, Vercel applies the
+`ignoreCommand: "git diff --quiet HEAD^ HEAD -- ."` (it runs in the Root Directory and compares
+the last commit of a push: only a push whose last commit touches the folder deploys; redeploy from
+the dashboard otherwise) and the response headers. It exists because the project's first two
+deploys failed: when the Root Directory has no `vercel.json` of its own, Vercel applies the
 repository root's (pnpm install, `node build/build.ts`, `dist`), which has nothing to build there
 (#70).
 
@@ -33,9 +34,9 @@ tag), `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, and a C
 Policy of `default-src 'none'` that allows only the mockup's inline CSS and JS
 (`style-src 'unsafe-inline'; script-src 'unsafe-inline'`) with `base-uri`, `form-action` and
 `frame-ancestors` at `'none'`. The list is the ticket's (#70); ADR 0012's `Permissions-Policy` and
-`Cross-Origin-Opener-Policy` belong to thomascova.dev's `vercel.json`. The mockup loads nothing else: no image, font, stylesheet or request
-to any origin; its one form never submits; the brief download is a `blob:` URL with the `download`
-attribute, which no CSP fetch directive governs.
+`Cross-Origin-Opener-Policy` belong to thomascova.dev's `vercel.json`. The mockup loads nothing
+else: no image, font, stylesheet or request to any origin; its one form never submits; the brief
+download is a `blob:` URL with the `download` attribute, which no CSP fetch directive governs.
 
 ## After a deploy
 
@@ -44,7 +45,9 @@ attribute, which no CSP fetch directive governs.
    `curl -sI https://<production-url>/ | grep -i -e x-robots-tag -e x-content-type-options -e referrer-policy -e content-security-policy`
    prints the four headers.
 3. In a browser: the page renders, the questionnaire moves through its sections, "download brief"
-   saves `project-discovery-brief.txt`, and the DevTools console shows no CSP report.
+   saves `project-discovery-brief.txt`, and the DevTools console shows no CSP report. A blocked
+   `/favicon.ico` line is expected and harmless: the page declares no icon, the browser asks for
+   one on its own, and `default-src 'none'` denies it.
 
 A failure in step 1 means the Root Directory lost its `vercel.json` (or the setting itself);
 in step 2, the headers rule; in step 3, a change to the mockup that needs something the CSP
