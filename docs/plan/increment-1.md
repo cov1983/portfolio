@@ -513,10 +513,13 @@ nothing (the first failure is the one shown). The World unmounts on `worldStatus
 readable message (`src/site/WorldFailure.tsx`) carries the Fallback link, the Esc line and a "Title
 Screen" button for a Visitor without an Escape key. **Corrected by the review of #64 (ai-review
 finding 9, Owner's triage 2026-10-20)**: the store holds an `AttributedFailure` (`WorldFailure` plus
-`phase: 'start' | 'play'`), set by `attributeFailure` from whether `worldStatus` was `'ready'` when
-the failure arrived; the message's heading reads "The World stopped" for `'play'` (a lost context,
-a throw after entry) and "The World could not start" for `'start'`, since the kind `webgl` alone
-names both a World that never started (path F) and one that lost its context (path D). `selectWorldPreload` is also false when `webgl`
+`phase: 'start' | 'play'`), set by `attributeFailure` from whether the Visitor was in the World
+(`screen === 'world'`) and it was playable (`worldStatus === 'ready'`) when the failure arrived
+(round 2, Minor 1: a World ready behind the Title Screen counts as `'start'`, since the Visitor
+never saw it run); the message's heading reads "The World stopped" for `'play'` (a lost context
+while steering, a throw after entry, path B included: the Visitor entered and the World was on
+screen) and "The World could not start" for `'start'`, since the kind `webgl` alone names both a
+World that never started (path F) and one that lost its context (path D). `selectWorldPreload` is also false when `webgl`
 is false (Owner, Q5): a second exception to the spec's Architecture sentence, which named the
 coarse pointer alone; the way in stays, and the chunk loads on entry. The sentence was amended in
 the same PR (#64, closing hand-off #63) after ai-review's finding 2: `main` never holds code that

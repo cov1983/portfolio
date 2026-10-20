@@ -82,7 +82,13 @@ describe('attributeFailure', () => {
   const withWebgl = { coarsePointer: false, webgl: true }
 
   it('names a render throw without WebGL the WebGL failure (Owner, #33 Q2)', () => {
-    expect(attributeFailure(render, { capability: withoutWebgl, worldStatus: 'loading' })).toEqual({
+    expect(
+      attributeFailure(render, {
+        capability: withoutWebgl,
+        screen: 'title',
+        worldStatus: 'loading',
+      }),
+    ).toEqual({
       kind: 'webgl',
       message: render.message,
       phase: 'start',
@@ -90,27 +96,43 @@ describe('attributeFailure', () => {
   })
 
   it('leaves the kind of a render throw with WebGL, or before detection, as it came', () => {
-    expect(attributeFailure(render, { capability: withWebgl, worldStatus: 'loading' }).kind).toBe(
-      'render',
-    )
-    expect(attributeFailure(render, { capability: null, worldStatus: 'loading' }).kind).toBe(
-      'render',
-    )
+    expect(
+      attributeFailure(render, { capability: withWebgl, screen: 'title', worldStatus: 'loading' })
+        .kind,
+    ).toBe('render')
+    expect(
+      attributeFailure(render, { capability: null, screen: 'title', worldStatus: 'loading' }).kind,
+    ).toBe('render')
   })
 
   it('leaves the other kinds as they came', () => {
     const physics = { kind: 'physics', message: 'wasm refused' } as const
-    expect(attributeFailure(physics, { capability: withoutWebgl, worldStatus: 'loading' })).toEqual(
-      { ...physics, phase: 'start' },
-    )
+    expect(
+      attributeFailure(physics, {
+        capability: withoutWebgl,
+        screen: 'title',
+        worldStatus: 'loading',
+      }),
+    ).toEqual({ ...physics, phase: 'start' })
   })
 
-  it('sets the phase from whether the World was playable when the failure arrived (review of #64)', () => {
+  it('sets the phase play when the Visitor was in a playable World (review of #64)', () => {
     const lost = { kind: 'webgl', message: 'the WebGL context was lost' } as const
-    expect(attributeFailure(lost, { capability: withWebgl, worldStatus: 'ready' }).phase).toBe(
-      'play',
-    )
+    expect(
+      attributeFailure(lost, { capability: withWebgl, screen: 'world', worldStatus: 'ready' })
+        .phase,
+    ).toBe('play')
     for (const worldStatus of ['idle', 'loading', 'failed'] as const)
-      expect(attributeFailure(lost, { capability: withWebgl, worldStatus }).phase).toBe('start')
+      expect(
+        attributeFailure(lost, { capability: withWebgl, screen: 'world', worldStatus }).phase,
+      ).toBe('start')
+  })
+
+  it('sets the phase start for a World ready behind the Title Screen (review of #64, round 2)', () => {
+    const lost = { kind: 'webgl', message: 'the WebGL context was lost' } as const
+    expect(
+      attributeFailure(lost, { capability: withWebgl, screen: 'title', worldStatus: 'ready' })
+        .phase,
+    ).toBe('start')
   })
 })

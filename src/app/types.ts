@@ -11,10 +11,12 @@
 export type WorldFailure = { kind: 'bundle' | 'webgl' | 'physics' | 'render'; message: string }
 
 /**
- * When the failure arrived (ai-review on #64, finding 9): `'start'` before the World was playable
- * (it could not start), `'play'` once it was (it stopped: a lost context, a throw after entry).
- * The heading of the readable message reads from it; the kind alone cannot tell, since `webgl`
- * names both a World that never started (no context) and one that lost its context.
+ * When the failure arrived (ai-review on #64, finding 9; round 2, Minor 1): `'play'` when the
+ * Visitor was in the World and it was playable (it stopped: a lost context while steering, a throw
+ * after entry), `'start'` otherwise (it could not start), a World preloaded and ready behind the
+ * Title Screen included, since the Visitor never saw that one run. The heading of the readable
+ * message reads from it; the kind alone cannot tell, since `webgl` names both a World that never
+ * started (no context) and one that lost its context.
  */
 export type FailurePhase = 'start' | 'play'
 

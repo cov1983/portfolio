@@ -43,13 +43,17 @@ export function detectCapability(matchMedia: MediaMatcher, webgl: () => boolean)
  * The failure as reported, read against the app state when it arrived: a throw during the
  * World's render while the browser has no WebGL is the WebGL failure (three cannot create its
  * context) and is named so (Owner, #33 Q2); every other kind is reported as it came. The phase is
- * `'play'` when the World was playable at the time, `'start'` before (ai-review on #64, finding 9).
+ * `'play'` when the Visitor was in the World and it was playable at the time, `'start'` before
+ * (ai-review on #64, finding 9; round 2, Minor 1): a World preloaded behind the Title Screen is
+ * `'ready'` too, but a failure there (a context dropped in a background tab) is one the Visitor
+ * never saw run, so the message says it could not start.
  */
 export function attributeFailure(
   failure: WorldFailure,
-  state: Pick<AppState, 'capability' | 'worldStatus'>,
+  state: Pick<AppState, 'capability' | 'screen' | 'worldStatus'>,
 ): AttributedFailure {
   const kind =
     failure.kind === 'render' && state.capability?.webgl === false ? 'webgl' : failure.kind
-  return { ...failure, kind, phase: state.worldStatus === 'ready' ? 'play' : 'start' }
+  const phase = state.screen === 'world' && state.worldStatus === 'ready' ? 'play' : 'start'
+  return { ...failure, kind, phase }
 }
