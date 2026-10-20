@@ -78,22 +78,29 @@ test.describe('with a coarse pointer (AC-21.1)', () => {
   })
 })
 
-// WebGL unavailable: `getContext` answers null for `webgl` and `webgl2` before any page script
-// runs, as a browser without WebGL does (plan §6).
+/**
+ * `getContext` answers null for the given kinds before any page script runs, as a browser
+ * without those contexts does (plan §6).
+ */
+async function withoutContexts(page: Page, kinds: readonly string[]): Promise<void> {
+  await page.addInitScript((denied: readonly string[]) => {
+    // Read, not called, from the prototype: the wrapper below applies it to the canvas asked.
+    const original = Reflect.get(HTMLCanvasElement.prototype, 'getContext')
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      id: string,
+      ...rest: unknown[]
+    ) {
+      if (denied.includes(id)) return null
+      return Reflect.apply(original, this, [id, ...rest]) as RenderingContext | null
+    } as typeof original
+  }, kinds)
+}
+
+// WebGL unavailable: neither `webgl` nor `webgl2`.
 test.describe('without WebGL (AC-22.1)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
-      // Read, not called, from the prototype: the wrapper below applies it to the canvas asked.
-      const original = Reflect.get(HTMLCanvasElement.prototype, 'getContext')
-      HTMLCanvasElement.prototype.getContext = function (
-        this: HTMLCanvasElement,
-        id: string,
-        ...rest: unknown[]
-      ) {
-        if (id === 'webgl' || id === 'webgl2') return null
-        return Reflect.apply(original, this, [id, ...rest]) as RenderingContext | null
-      } as typeof original
-    })
+    await withoutContexts(page, ['webgl', 'webgl2'])
   })
 
   test('shows the WebGL hint, the Fallback link first, the way in enabled', async ({ page }) => {
@@ -127,5 +134,26 @@ test.describe('without WebGL (AC-22.1)', () => {
       'console.error',
       'THREE.WebGLRenderer: Error creating WebGL context',
     )
+  })
+})
+
+// WebGL 1 alone: `webgl` answers, `webgl2` does not (older iOS Safari, a blocklisted driver).
+// three 0.186 renders with WebGL 2 only, so the probe in src/app/capability.ts asks for that kind
+// alone (ai-review on #64, finding 1; this browser case, round 2, Minor 3): the hint appears as
+// without WebGL at all.
+test.describe('with WebGL 1 only (AC-22.1)', () => {
+  test.beforeEach(async ({ page }) => {
+    await withoutContexts(page, ['webgl2'])
+  })
+
+  test('shows the WebGL hint, the Fallback link first, the way in enabled', async ({ page }) => {
+    await hydrated(page)
+    await expect(page.locator('[data-hint="webgl"]')).toHaveText(
+      'The World cannot run here: this browser has no WebGL.',
+    )
+    await expect(page.locator('[data-hint]')).toHaveCount(1)
+    await expectFallbackLinkFirst(page)
+    await expect(wayIn(page)).toBeVisible()
+    await expect(wayIn(page)).toBeEnabled()
   })
 })
