@@ -1,0 +1,1 @@
+Reference mockups served read-only by a second Vercel project (Root Directory `mockups/project-discovery`, no build; #66): nothing in this folder is product code, and no repo-wide tool formats, lints or tests it.

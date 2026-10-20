@@ -5,7 +5,15 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 
 export default defineConfig([
-  globalIgnores(['dist/', 'coverage/', 'node_modules/', '.pnpm-store/', '.agents/', '.claude/']),
+  globalIgnores([
+    'dist/',
+    'coverage/',
+    'node_modules/',
+    '.pnpm-store/',
+    '.agents/',
+    '.claude/',
+    'mockups/',
+  ]),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

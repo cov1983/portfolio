@@ -32,6 +32,7 @@ proves the toolchain; application code starts with the Phase 3 tickets.
 - `docs/constitution.md` — principles (v1.0, ratified 2026-10-08)
 - `docs/spec/`, `docs/plan/`, `docs/adr/`, `docs/runbooks/`, `docs/retro.md`
 - `docs/runbooks/setup-wizard.md` — the one-time dashboard setup (`scripts/setup-wizard.sh`) and how to revert it
+- `mockups/` — reference mockups (today `project-discovery`, #66), served read-only by a second Vercel project rooted there; not part of the portfolio build, ignored by every repo-wide tool
 
 ## Branch & PR conventions
 - `main` is protected by a ruleset: pull request required, no force-push, no deletion. Nobody pushes to `main`.
