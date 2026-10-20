@@ -6,6 +6,7 @@ import {
   hydrated,
   ICE_TEXTURE,
   recorded,
+  resourceStartTimes,
   test,
   WORLD_CHUNK,
   worldContainer,
@@ -16,18 +17,6 @@ import {
 // world-playable from a plain navigation. The mark is the perf gate's instrument (plan §7 line 2);
 // this is its canary in the three browsers under the CSP of ADR 0012 (the shared fixture fails
 // on any violation). Presence and wiring, never WebGL output.
-/** Start times (ms from navigation start) of the World chunk requests, from resource timing. */
-function chunkStartTimes(page: Page, pattern: RegExp): Promise<number[]> {
-  return page.evaluate(
-    (source) =>
-      performance
-        .getEntriesByType('resource')
-        .filter((entry) => new RegExp(source, 'i').test(entry.name))
-        .map((entry) => entry.startTime),
-    pattern.source,
-  )
-}
-
 function markStart(page: Page, name: string): Promise<number> {
   return page.evaluate((n) => performance.getEntriesByName(n, 'mark')[0]?.startTime ?? -1, name)
 }
@@ -52,7 +41,7 @@ test('the world chunk is requested only after the title-screen-interactive mark'
   await page.goto('/')
   await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
   const mark = await markStart(page, TITLE_SCREEN_INTERACTIVE_MARK)
-  const starts = await chunkStartTimes(page, WORLD_CHUNK)
+  const starts = await resourceStartTimes(page, WORLD_CHUNK)
   expect(starts.length).toBeGreaterThan(0)
   expect(Math.min(...starts)).toBeGreaterThanOrEqual(mark)
 })
@@ -81,7 +70,7 @@ test.describe('with a coarse pointer', () => {
     expect(await recorded(page, WORLD_PLAYABLE_MARK)).toBe(0)
     await page.keyboard.press('Enter')
     await expect(worldContainer(page)).toBeVisible()
-    const starts = await chunkStartTimes(page, WORLD_CHUNK)
+    const starts = await resourceStartTimes(page, WORLD_CHUNK)
     expect(starts.length).toBeGreaterThan(0)
     expect(Math.min(...starts)).toBeGreaterThanOrEqual(pressedAt)
   })

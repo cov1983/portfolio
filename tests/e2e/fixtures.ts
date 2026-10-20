@@ -109,6 +109,18 @@ export function discardRecorded(problems: Problem[], kind: ProblemKind, detail: 
   problems.splice(0, problems.length, ...kept)
 }
 
+/** Start times (ms from navigation start) of the requests matching `pattern`, from resource timing. */
+export function resourceStartTimes(page: Page, pattern: RegExp): Promise<number[]> {
+  return page.evaluate(
+    (source) =>
+      performance
+        .getEntriesByType('resource')
+        .filter((entry) => new RegExp(source, 'i').test(entry.name))
+        .map((entry) => entry.startTime),
+    pattern.source,
+  )
+}
+
 /** How many times the page recorded the user-timing mark `name` (the perf gate's instruments). */
 export function recorded(page: Page, name: string): Promise<number> {
   return page.evaluate((n) => performance.getEntriesByName(n, 'mark').length, name)

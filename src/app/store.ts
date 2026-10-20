@@ -1,14 +1,15 @@
 // The app state and its reducer (plan §5, Store and key routing; ADR 0009: app state lives in one
 // small store, the World model is never React state). Pure: no DOM, no React; src/app/App.tsx reads
 // the store with useSyncExternalStore. Three trims of the §5 contract, recorded there (T5a, #28):
-// Capability holds the coarse pointer only, the caption holds its place only, routeKey (keys.ts)
-// takes no key code. Reduced motion is no Capability: src/world/World.tsx reads it live (T5b, #32 Q4).
+// Capability held the coarse pointer only until T8b added webgl (#33), the caption holds its place
+// only, routeKey (keys.ts) takes no key code. Reduced motion is no Capability: src/world/World.tsx
+// reads it live (T5b, #32 Q4).
 import type { ExhibitId } from '../content/types.ts'
 import type { WorldEvent } from '../world/model/world.ts'
 import type { WorldFailure } from './types.ts'
 
-/** What was detected after hydration (AC-21.2). T8b adds webgl. */
-export type Capability = { coarsePointer: boolean }
+/** What was detected after hydration (AC-21.2): the pointer, and whether the browser gives a WebGL context. */
+export type Capability = { coarsePointer: boolean; webgl: boolean }
 
 /** An open Exhibit Panel and what opened it, which is where focus returns on close (AC-2.2, 16.5). */
 export type PanelRef = { exhibitId: ExhibitId; opener: 'list' | 'goal' }
@@ -139,9 +140,13 @@ export const selectWorldPaused = (s: AppState): boolean => s.screen !== 'world' 
 export const selectShownCaption = (s: AppState): AppState['caption'] =>
   s.screen === 'world' && s.panel === null ? s.caption : null
 
-/** The World chunk is imported after hydration unless a coarse pointer was detected (spec, Architecture). */
+/**
+ * The World chunk is imported after hydration unless a coarse pointer was detected (spec,
+ * Architecture) or the browser has no WebGL (Owner, #33 Q5: a second exception, the chunk the
+ * browser cannot use; the way in stays, and the chunk loads on entry).
+ */
 export const selectWorldPreload = (s: AppState): boolean =>
-  s.capability !== null && !s.capability.coarsePointer
+  s.capability !== null && !s.capability.coarsePointer && s.capability.webgl
 
 // Function-typed properties, not methods: useSyncExternalStore takes them unbound.
 export type Store = {

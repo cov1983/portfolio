@@ -8,7 +8,7 @@ import { WorldFailure } from '../site/WorldFailure'
 import type { World as WorldComponent } from '../world/World'
 import { captionTimer } from './caption.ts'
 import { FailureBoundary } from './FailureBoundary'
-import { detectCapability } from './capability.ts'
+import { attributeFailure, detectCapability, probeWebgl } from './capability.ts'
 import { focusAfter } from './focus.ts'
 import { INTERACTIVE_SELECTOR, isPlainActivation, keyAction, routeKey } from './keys.ts'
 import {
@@ -52,22 +52,35 @@ export function App({ content, store }: Props) {
   // message (AC-22.2).
   const reportFailure = useCallback(
     (failure: Failure) => {
-      console.error('World failed', failure)
-      store.dispatch({ type: 'world-failure', failure })
+      const reported = attributeFailure(failure, store.getState().capability)
+      console.error('World failed', reported)
+      store.dispatch({ type: 'world-failure', failure: reported })
     },
     [store],
   )
 
   // After the commit that attached the handlers: the Title Screen is interactive (plan §7 line 1),
-  // then detection (spec: after hydration; the preload reads it, T8b the hints), then the key
-  // router and the World loader. StrictMode mounts twice in dev: the mark and the dispatch are
+  // then detection (spec: after hydration; the preload and the Title Screen's hints read it; the
+  // WebGL probe takes and releases one context here, after the mark), then the key router and the
+  // World loader. StrictMode mounts twice in dev: the mark and the dispatch are
   // idempotent, the listeners are removed in the cleanup, the second loader's import is served
   // from the module cache.
   useEffect(() => {
     markOnce(performance, TITLE_SCREEN_INTERACTIVE_MARK)
     store.dispatch({
       type: 'capability',
-      capability: detectCapability((query) => window.matchMedia(query)),
+      capability: detectCapability(
+        (query) => window.matchMedia(query),
+        () =>
+          probeWebgl(() => {
+            // The overloads of getContext narrowed to the two kinds the probe asks for.
+            const canvas = document.createElement('canvas')
+            return {
+              getContext: (id) =>
+                id === 'webgl2' ? canvas.getContext('webgl2') : canvas.getContext('webgl'),
+            }
+          }),
+      ),
     })
     const onKeyDown = (event: KeyboardEvent): void => {
       const target = event.target instanceof Element ? event.target : null
@@ -170,6 +183,7 @@ export function App({ content, store }: Props) {
     <>
       <TitleScreen
         content={content}
+        capability={state.capability}
         loading={state.entering}
         hidden={state.screen !== 'title'}
         onEnter={() => {

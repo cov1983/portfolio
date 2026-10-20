@@ -107,6 +107,19 @@ a:focus-visible {
   margin: 2.5rem 0 0;
 }
 
+/* A capability hint (TitleScreen, AC-21.1, 22.1): at the top, after hydration only, with the
+   Fallback link right under it. */
+.hint {
+  margin: 0 0 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgb(11 92 173 / 8%);
+  border-left: 4px solid var(--accent);
+}
+
+.hint + .fallback {
+  margin: 0 0 2rem;
+}
+
 /* The readable failure (src/site/WorldFailure.tsx): the Title Screen's layout, the reason as
    large as the one line, the way back next to the Esc line. The main takes focus on arrival and
    is not a control. */

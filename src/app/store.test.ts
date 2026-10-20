@@ -34,8 +34,9 @@ describe('reduce', () => {
   })
 
   it('records the capability detected after hydration', () => {
-    const next = reduce(state(), { type: 'capability', capability: { coarsePointer: true } })
-    expect(next.capability).toEqual({ coarsePointer: true })
+    const capability = { coarsePointer: true, webgl: true }
+    const next = reduce(state(), { type: 'capability', capability })
+    expect(next.capability).toEqual(capability)
   })
 
   it('records the World status', () => {
@@ -315,11 +316,21 @@ describe('selectWorldPreload', () => {
   })
 
   it('does not preload on a coarse pointer (spec: no preload after a coarse pointer is detected)', () => {
-    expect(selectWorldPreload(state({ capability: { coarsePointer: true } }))).toBe(false)
+    expect(selectWorldPreload(state({ capability: { coarsePointer: true, webgl: true } }))).toBe(
+      false,
+    )
   })
 
-  it('preloads on a fine pointer', () => {
-    expect(selectWorldPreload(state({ capability: { coarsePointer: false } }))).toBe(true)
+  it('does not preload without WebGL (Owner, #33 Q5: the browser cannot use the chunk)', () => {
+    expect(selectWorldPreload(state({ capability: { coarsePointer: false, webgl: false } }))).toBe(
+      false,
+    )
+  })
+
+  it('preloads on a fine pointer with WebGL', () => {
+    expect(selectWorldPreload(state({ capability: { coarsePointer: false, webgl: true } }))).toBe(
+      true,
+    )
   })
 })
 

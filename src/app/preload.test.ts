@@ -163,16 +163,16 @@ describe('idleScheduler', () => {
 
 describe('shouldPreload', () => {
   it('preloads on a fine pointer while nothing has been imported', () => {
-    expect(shouldPreload(state({ capability: { coarsePointer: false } }))).toBe(true)
+    expect(shouldPreload(state({ capability: { coarsePointer: false, webgl: true } }))).toBe(true)
   })
 
   it('does not preload before the capability is known or on a coarse pointer', () => {
     expect(shouldPreload(state())).toBe(false)
-    expect(shouldPreload(state({ capability: { coarsePointer: true } }))).toBe(false)
+    expect(shouldPreload(state({ capability: { coarsePointer: true, webgl: true } }))).toBe(false)
   })
 
   it('does not preload twice: an import under way, done or failed is left alone', () => {
-    const fine = { coarsePointer: false }
+    const fine = { coarsePointer: false, webgl: true }
     expect(shouldPreload(state({ capability: fine, worldStatus: 'loading' }))).toBe(false)
     expect(shouldPreload(state({ capability: fine, worldStatus: 'ready' }))).toBe(false)
     expect(shouldPreload(state({ capability: fine, worldStatus: 'failed' }))).toBe(false)
