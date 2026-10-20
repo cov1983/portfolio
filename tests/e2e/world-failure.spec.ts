@@ -173,7 +173,9 @@ test.describe('the world chunk aborted', () => {
 // Title Screen (the World preloads and records world-playable as usual), and on entry the
 // welcome's lookup throws in the World's render. The failure boundary turns it into the message,
 // and the hydrated root with the Title Screen survives. The rewrite is asserted, so a change of
-// the chunk's shape fails here, not silently.
+// the chunk's shape fails here, not silently. The heading reads "stopped": the Visitor entered
+// and the World was on screen when the throw came, even though no frame was steered (Owner, the
+// round-2 triage of #64); a phase that depended on a frame shown is not worth new state.
 test.describe('a throw during the World’s render', () => {
   test.beforeEach(async ({ page }) => {
     await page.route(/\/assets\/index-[^/]*\.js$/, async (route) => {
@@ -229,7 +231,7 @@ test.describe('the ice texture aborted', () => {
 
 // Path D: the WebGL context lost while the World runs, through the WEBGL_lose_context extension
 // on the page's canvas (a DOM read, no window global): the scene reports `webgl`, no recovery
-// (Owner, #33 Q4). The heading reads "stopped": the only path where the Visitor was steering.
+// (Owner, #33 Q4). The heading reads "stopped": the Visitor was steering.
 test('a lost WebGL context replaces the World with the readable message (AC-22.2)', async ({
   page,
   problems,
