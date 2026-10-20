@@ -53,6 +53,22 @@ describe('focusAfter', () => {
     expect(focusAfter({ from, to })).toEqual({ target: 'failure' })
   })
 
+  it('moves nothing while a Panel is open, where the World fails under it (ai-review on #64)', () => {
+    const failure = { kind: 'webgl', message: 'the WebGL context was lost' } as const
+    const panel = { exhibitId: first, opener: 'goal' } as const
+    const from = state({ screen: 'world', worldStatus: 'ready', panel })
+    const to = state({ screen: 'failed', worldStatus: 'failed', failure, panel })
+    expect(focusAfter({ from, to })).toBeNull()
+  })
+
+  it('moves focus to the readable failure when the Panel closes onto it, not the unmounted World', () => {
+    const failure = { kind: 'webgl', message: 'the WebGL context was lost' } as const
+    const panel = { exhibitId: first, opener: 'goal' } as const
+    const from = state({ screen: 'failed', worldStatus: 'failed', failure, panel })
+    const to = state({ screen: 'failed', worldStatus: 'failed', failure })
+    expect(focusAfter({ from, to })).toEqual({ target: 'failure' })
+  })
+
   it('moves nothing when the screen and the Panel are unchanged', () => {
     const from = state({ screen: 'world', worldStatus: 'ready' })
     const to = state({ screen: 'world', worldStatus: 'ready', caption: { place: 'hub' } })

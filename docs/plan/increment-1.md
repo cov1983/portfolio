@@ -527,7 +527,10 @@ export function focusAfter(transition: { from: AppState; to: AppState }): { targ
 
 **Corrected by #33 (T8b, 2026-10-20)**: `Focusable` gains `'failure'`: entered the failure screen
 (`to.screen === 'failed'`) → the failure `<main>` (`tabIndex={-1}`), so a screen reader reads the
-message and Tab reaches its Fallback link.
+message and Tab reaches its Fallback link. **Corrected by the review of #64 (ai-review finding 3,
+Owner's triage 2026-10-20)**: while a Panel is open no other transition moves focus (the page under
+the modal dialog is inert, so the target would be lost), and a Panel closing onto the failed screen
+→ `'failure'`, not its opener's World, which is unmounted.
 
 ### Instruments (`src/perf/`)
 

@@ -141,8 +141,9 @@ export function App({ content, store }: Props) {
   // Focus rules (plan §5): the World container on entry (AC-5.1, 6.2); the Panel's close control
   // on open (Owner, #30 Q2); the list entry that opened the Panel on close (AC-2.2), found by its
   // href, which the pre-rendered markup already carries; the readable failure when it replaces the
-  // World (AC-22.2). Escape to the Title Screen moves focus nowhere (the spec names no target; the
-  // inert World drops it to the body, where Enter and Space reach the key router).
+  // World (AC-22.2), or when a Panel closes onto it. Escape to the Title Screen moves focus nowhere
+  // (the spec names no target; the inert World drops it to the body, where Enter and Space reach
+  // the key router).
   useEffect(() => {
     const target = focusAfter({ from: previous.current, to: state })
     previous.current = state
