@@ -919,6 +919,8 @@ answer lives in its test file. The last column names where each answer landed, o
 | Q4 | Does `sharp` install on Vercel's build image and under pnpm 10's build-script policy without an allowlist entry (`pnpm.onlyBuiltDependencies`), and inside the devcontainer? | `/research`: sharp's install docs for 0.34, pnpm 10 changelog; the devcontainer run; answer in ADR 0011 | answered 2026-10-10 → ADR 0011 |
 | Q5 | How does each Playwright browser emulate a coarse pointer for AC-21.1 (Chromium and WebKit via `isMobile`; Firefox has no `isMobile`)? | `/research`: Playwright 1.64 docs and source for `isMobile`/`hasTouch` per browser; the test uses the device descriptor where it works and an init-script stub of `matchMedia` elsewhere, documented in the spec file | answered by T8b (#33, 2026-10-20) → `tests/e2e/capability.spec.ts`; §6 note on rows 21.1–22.2 (`hasTouch` works in all three browsers) |
 
+**Note (review of #64, ai-review finding 7, declined by the Owner on 2026-10-20)**: without WebGL the way in still loads the World chunk on entry and fails inside three (path F), instead of answering Enter with the message at once and sparing the download: the way in stays an honest attempt, and a Visitor who enters past the hint gets the real failure, not a prediction of it.
+
 ## 13. Hand-offs (tracker issues opened in the PR of the `plan: approve` commit)
 
 Beyond the brief's twelve sections: CLAUDE.md makes a hand-off without an issue a Blocker, so the
