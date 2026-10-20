@@ -511,9 +511,10 @@ while `entering` → `screen: 'failed'`; a `world-failure` once `worldStatus` is
 nothing (the first failure is the one shown). The World unmounts on `worldStatus === 'failed'`; the
 readable message (`src/site/WorldFailure.tsx`) carries the Fallback link, the Esc line and a "Title
 Screen" button for a Visitor without an Escape key. `selectWorldPreload` is also false when `webgl`
-is false (Owner, Q5): a second exception to the spec's Architecture sentence, which names the
-coarse pointer alone; the way in stays, and the chunk loads on entry. An amendment candidate for
-increment 2: hand-off #63, noted in `docs/retro.md`.
+is false (Owner, Q5): a second exception to the spec's Architecture sentence, which named the
+coarse pointer alone; the way in stays, and the chunk loads on entry. The sentence was amended in
+the same PR (#64, closing hand-off #63) after ai-review's finding 2: `main` never holds code that
+disagrees with the frozen spec.
 
 ### Focus (`src/app/focus.ts`)
 

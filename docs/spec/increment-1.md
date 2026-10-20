@@ -1,4 +1,4 @@
-# Spec: increment-1            Status: approved   Owner: Thomas (@cov1983)
+# Spec: increment-1            Status: amended    Owner: Thomas (@cov1983)
 
 Written 2026-10-08 by `/to-spec` from issue #3 (grilling outcome), `GLOSSARY.md` and ADRs 0003–0005.
 No new interview was held. Terms in capitals are defined in `GLOSSARY.md`. The decisions the sources
@@ -404,8 +404,9 @@ when the plan moves things.
 - The Title Screen and the Exhibit Panel do not depend on the World bundle: a Panel opens from the
   list before the World has loaded (AC-2.1). The World bundle starts loading in the background as
   soon as the Title Screen is interactive, without waiting for the Visitor to press Enter, so that
-  the 2 s and 5 s targets hold together. Exception: when a coarse pointer is detected after
-  hydration (US-21) no preload happens; the bundle loads only if the Visitor enters the World.
+  the 2 s and 5 s targets hold together. Exceptions: when a coarse pointer is detected after
+  hydration (US-21), or when the 3D-capability check finds no WebGL context (US-22), no preload
+  happens; the bundle loads only if the Visitor enters the World.
 - Exhibit list entries on the Title Screen are links to the Exhibit's Fallback Page anchor; with
   script, activation opens the Panel instead (progressive enhancement, AC-1.2 and AC-2.3). There
   are no deep links to an Exhibit Panel in increment-1; the Fallback Page anchors are the shareable
