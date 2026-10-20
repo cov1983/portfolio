@@ -16,15 +16,17 @@ does; an agent never does them (the setup wizard does not know this project eith
 | Settings → General → Root Directory | `mockups/project-discovery` | Vercel sees only this folder; `vercel.json` is read from here, not from the repository root |
 | Settings → Build and Deployment → Framework Preset | Other | a static folder, no framework |
 | Install Command, Build Command, Output Directory | empty, empty, `.` | no install, no build; the folder is the site |
-| Settings → Git → Ignored Build Step | `git diff --quiet HEAD^ HEAD -- .` | runs in the Root Directory: only a commit that touches the folder deploys |
+| Settings → Git → Ignored Build Step | the default (Automatic) | the step is the file's `ignoreCommand` (below), not a dashboard field |
 | Settings → Git → Comments | off | no Vercel comments on the portfolio's pull requests from this project |
 | Settings → Deployment Protection | the default | nothing changed from what Vercel sets for a new project |
 
 `mockups/project-discovery/vercel.json` repeats the four build settings (`framework: null`, empty
-`installCommand` and `buildCommand`, `outputDirectory: "."`) and carries the response headers. It
-exists because the project's first two deploys failed: when the Root Directory has no `vercel.json`
-of its own, Vercel applies the repository root's (pnpm install, `node build/build.ts`, `dist`),
-which has nothing to build there (#70).
+`installCommand` and `buildCommand`, `outputDirectory: "."`), carries the Ignored Build Step as
+`ignoreCommand: "git diff --quiet HEAD^ HEAD -- ."` (it runs in the Root Directory: only a commit
+that touches the folder deploys) and the response headers. It exists because the project's first
+two deploys failed: when the Root Directory has no `vercel.json` of its own, Vercel applies the
+repository root's (pnpm install, `node build/build.ts`, `dist`), which has nothing to build there
+(#70).
 
 The headers, one rule on `/(.*)`: `X-Robots-Tag: noindex` (the page also carries the robots meta
 tag), `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, and a Content Security
