@@ -14,7 +14,7 @@ import {
 const first = 'first' as ExhibitId
 const panelFromList = { exhibitId: first, opener: 'list' } as const
 const panelFromGoal = { exhibitId: first, opener: 'goal' } as const
-const failure = { kind: 'bundle', message: 'chunk failed' } as const
+const failure = { kind: 'bundle', message: 'chunk failed', phase: 'start' } as const
 
 function state(overrides: Partial<AppState> = {}): AppState {
   return { ...INITIAL_STATE, ...overrides }
@@ -34,8 +34,9 @@ describe('reduce', () => {
   })
 
   it('records the capability detected after hydration', () => {
-    const next = reduce(state(), { type: 'capability', capability: { coarsePointer: true } })
-    expect(next.capability).toEqual({ coarsePointer: true })
+    const capability = { coarsePointer: true, webgl: true }
+    const next = reduce(state(), { type: 'capability', capability })
+    expect(next.capability).toEqual(capability)
   })
 
   it('records the World status', () => {
@@ -98,6 +99,16 @@ describe('reduce', () => {
 
   it('ignores enter on the failure screen', () => {
     const before = state({ screen: 'failed', worldStatus: 'failed', failure })
+    expect(reduce(before, { type: 'enter' })).toBe(before)
+  })
+
+  it('shows the failure screen on enter when the World failed before entry (AC-22.2; T5a hand-off on #33)', () => {
+    const next = reduce(state({ worldStatus: 'failed', failure }), { type: 'enter' })
+    expect(next).toMatchObject({ screen: 'failed', entering: false, failure })
+  })
+
+  it('ignores enter while a Panel is open over a failed World', () => {
+    const before = state({ worldStatus: 'failed', failure, panel: panelFromList })
     expect(reduce(before, { type: 'enter' })).toBe(before)
   })
 
@@ -206,12 +217,28 @@ describe('reduce', () => {
     expect(next).toMatchObject({ screen: 'failed', worldStatus: 'failed', failure })
   })
 
-  it('keeps the Title Screen when the World fails before entry', () => {
+  it('shows the failure screen when the World fails while the Visitor is entering (AC-22.2; T5a hand-off on #33)', () => {
     const next = reduce(state({ worldStatus: 'loading', entering: true }), {
       type: 'world-failure',
       failure,
     })
-    expect(next).toMatchObject({ screen: 'title', worldStatus: 'failed', entering: false, failure })
+    expect(next).toMatchObject({
+      screen: 'failed',
+      worldStatus: 'failed',
+      entering: false,
+      failure,
+    })
+  })
+
+  it('keeps the Title Screen when the World fails before entry, the failure waiting for Enter', () => {
+    const next = reduce(state({ worldStatus: 'loading' }), { type: 'world-failure', failure })
+    expect(next).toMatchObject({ screen: 'title', worldStatus: 'failed', failure })
+  })
+
+  it('keeps the first failure when a second one is reported', () => {
+    const before = state({ screen: 'failed', worldStatus: 'failed', failure })
+    const second = { kind: 'physics', message: 'wasm refused', phase: 'start' } as const
+    expect(reduce(before, { type: 'world-failure', failure: second })).toBe(before)
   })
 
   it('clears the caption when it expires', () => {
@@ -289,11 +316,21 @@ describe('selectWorldPreload', () => {
   })
 
   it('does not preload on a coarse pointer (spec: no preload after a coarse pointer is detected)', () => {
-    expect(selectWorldPreload(state({ capability: { coarsePointer: true } }))).toBe(false)
+    expect(selectWorldPreload(state({ capability: { coarsePointer: true, webgl: true } }))).toBe(
+      false,
+    )
   })
 
-  it('preloads on a fine pointer', () => {
-    expect(selectWorldPreload(state({ capability: { coarsePointer: false } }))).toBe(true)
+  it('does not preload without WebGL (Owner, #33 Q5: the browser cannot use the chunk)', () => {
+    expect(selectWorldPreload(state({ capability: { coarsePointer: false, webgl: false } }))).toBe(
+      false,
+    )
+  })
+
+  it('preloads on a fine pointer with WebGL', () => {
+    expect(selectWorldPreload(state({ capability: { coarsePointer: false, webgl: true } }))).toBe(
+      true,
+    )
   })
 })
 

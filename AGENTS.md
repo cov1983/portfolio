@@ -5,7 +5,7 @@ Thomas's personal website: an immersive, interactive 3D portfolio in which visit
 puck through a playful virtual world to discover his projects and background. Physics, hockey-inspired
 challenges and light storytelling make exploring the portfolio an experience that itself demonstrates
 his development skills. Status: **Phase 3, increment-1 in progress** (plan `docs/plan/increment-1.md`;
-#58 adds the perf runner's warm-up run and the retry of an invalid run).
+T8b #33 adds the capability hints and the failure boundary with its readable message).
 The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the model owns Rapier, the scene mirrors it.
 
 ## Environment
@@ -63,9 +63,9 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
 - `.devcontainer/`          Dockerfile + devcontainer.json: the reference toolchain
 - `src/`                    application code: `main.tsx` (hydrates `/`), `entry-prerender.tsx`
                             (both documents as strings for `build/build.ts`), `site/` (the HTML surfaces: TitleScreen, FallbackPage,
-                            Exhibit, ExhibitPanel, Picture, Contact, Meta, WorldOverlay, `site.css`; no three, Rapier or World model), `world/` (`model/`: layout, Rapier
+                            Exhibit, ExhibitPanel, Picture, Contact, Meta, WorldOverlay, WorldFailure, `site.css`; no three, Rapier or World model), `world/` (`model/`: layout, Rapier
                             model, pure camera; `input/`: keys by physical code; `scene/`: the R3F mirror; `World.tsx`), `perf/` (the marks),
-                            `content/` (ADR 0011: schema, types, `loadContent`, variant planner, `mailto.ts`), `app/` (plan §5: store, keys, focus, capability, preload; `App.tsx` the hydrated root)
+                            `content/` (ADR 0011: schema, types, `loadContent`, variant planner, `mailto.ts`), `app/` (plan §5: store, keys, focus, capability, preload, FailureBoundary; `App.tsx` the hydrated root)
 - `build/`                  the build's I/O (plan §2, ADR 0010): `build.ts` (`make build`: client build, SSR build, both documents),
                             `prerender.ts` (pure: routes, shell fill, preview `cleanUrl`, `siteOrigin`), `content-plugin.ts` (validates
                             `content/`, serves `virtual:content`, emits `dist/media/`, dev media; `CONTENT_DIR`), `images.ts` (sharp)

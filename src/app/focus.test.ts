@@ -39,6 +39,36 @@ describe('focusAfter', () => {
     expect(focusAfter({ from, to })).toEqual({ target: 'world' })
   })
 
+  it('moves focus to the readable failure that replaced the World (AC-22.2)', () => {
+    const failure = { kind: 'bundle', message: 'chunk failed', phase: 'start' } as const
+    const from = state({ screen: 'world', worldStatus: 'ready' })
+    const to = state({ screen: 'failed', worldStatus: 'failed', failure })
+    expect(focusAfter({ from, to })).toEqual({ target: 'failure' })
+  })
+
+  it('moves focus to the readable failure when Enter meets a World that failed before', () => {
+    const failure = { kind: 'bundle', message: 'chunk failed', phase: 'start' } as const
+    const from = state({ worldStatus: 'failed', failure })
+    const to = state({ screen: 'failed', worldStatus: 'failed', failure })
+    expect(focusAfter({ from, to })).toEqual({ target: 'failure' })
+  })
+
+  it('moves nothing while a Panel is open, where the World fails under it (ai-review on #64)', () => {
+    const failure = { kind: 'webgl', message: 'the WebGL context was lost', phase: 'play' } as const
+    const panel = { exhibitId: first, opener: 'goal' } as const
+    const from = state({ screen: 'world', worldStatus: 'ready', panel })
+    const to = state({ screen: 'failed', worldStatus: 'failed', failure, panel })
+    expect(focusAfter({ from, to })).toBeNull()
+  })
+
+  it('moves focus to the readable failure when the Panel closes onto it, not the unmounted World', () => {
+    const failure = { kind: 'webgl', message: 'the WebGL context was lost', phase: 'play' } as const
+    const panel = { exhibitId: first, opener: 'goal' } as const
+    const from = state({ screen: 'failed', worldStatus: 'failed', failure, panel })
+    const to = state({ screen: 'failed', worldStatus: 'failed', failure })
+    expect(focusAfter({ from, to })).toEqual({ target: 'failure' })
+  })
+
   it('moves nothing when the screen and the Panel are unchanged', () => {
     const from = state({ screen: 'world', worldStatus: 'ready' })
     const to = state({ screen: 'world', worldStatus: 'ready', caption: { place: 'hub' } })

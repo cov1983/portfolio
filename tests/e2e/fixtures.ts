@@ -98,6 +98,29 @@ export async function expectRecorded(
   problems.splice(problems.findIndex(matches), 1)
 }
 
+/** Start times (ms from navigation start) of the requests matching `pattern`, from resource timing. */
+export function resourceStartTimes(page: Page, pattern: RegExp): Promise<number[]> {
+  return page.evaluate(
+    (source) =>
+      performance
+        .getEntriesByType('resource')
+        .filter((entry) => new RegExp(source, 'i').test(entry.name))
+        .map((entry) => entry.startTime),
+    pattern.source,
+  )
+}
+
+/** The requests matching `pattern` were made, and none before `time` (ms from navigation start). */
+export async function expectRequestedAfter(
+  page: Page,
+  pattern: RegExp,
+  time: number,
+): Promise<void> {
+  const starts = await resourceStartTimes(page, pattern)
+  expect(starts.length).toBeGreaterThan(0)
+  expect(Math.min(...starts)).toBeGreaterThanOrEqual(time)
+}
+
 /** How many times the page recorded the user-timing mark `name` (the perf gate's instruments). */
 export function recorded(page: Page, name: string): Promise<number> {
   return page.evaluate((n) => performance.getEntriesByName(n, 'mark').length, name)
@@ -105,6 +128,9 @@ export function recorded(page: Page, name: string): Promise<number> {
 
 /** The World's chunks: the library chunk `world-*.js` and the World's own `World-*.js`, which imports it. */
 export const WORLD_CHUNK = /\/assets\/world-.*\.js$/i
+
+/** The ice texture's path (#55): Vite's hashed file under /assets/, the World's one fetched file besides its chunks. */
+export const ICE_TEXTURE = /\/assets\/ice-[^/]*\.webp$/
 
 /** The way-in control, whatever its label (loading or not). */
 export const wayIn = (page: Page): Locator =>
@@ -114,6 +140,9 @@ export const wayIn = (page: Page): Locator =>
 export const worldContainer = (page: Page): Locator => page.locator('section[aria-label="World"]')
 
 export const titleScreen = (page: Page): Locator => page.locator('main.title-screen')
+
+/** The readable failure that replaces the World (AC-22.2): a main, absent from the page otherwise. */
+export const failureScreen = (page: Page): Locator => page.locator('main.world-failure')
 
 /** The Title Screen's list entry of the Exhibit titled `title`. */
 export const listEntry = (page: Page, title: string): Locator =>

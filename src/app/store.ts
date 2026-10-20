@@ -1,14 +1,15 @@
 // The app state and its reducer (plan §5, Store and key routing; ADR 0009: app state lives in one
 // small store, the World model is never React state). Pure: no DOM, no React; src/app/App.tsx reads
 // the store with useSyncExternalStore. Three trims of the §5 contract, recorded there (T5a, #28):
-// Capability holds the coarse pointer only, the caption holds its place only, routeKey (keys.ts)
-// takes no key code. Reduced motion is no Capability: src/world/World.tsx reads it live (T5b, #32 Q4).
+// Capability held the coarse pointer only until T8b added webgl (#33), the caption holds its place
+// only, routeKey (keys.ts) takes no key code. Reduced motion is no Capability: src/world/World.tsx
+// reads it live (T5b, #32 Q4).
 import type { ExhibitId } from '../content/types.ts'
 import type { WorldEvent } from '../world/model/world.ts'
-import type { WorldFailure } from './types.ts'
+import type { AttributedFailure } from './types.ts'
 
-/** What was detected after hydration (AC-21.2). T8b adds webgl. */
-export type Capability = { coarsePointer: boolean }
+/** What was detected after hydration (AC-21.2): the pointer, and whether the browser gives a WebGL 2 context (what three renders with). */
+export type Capability = { coarsePointer: boolean; webgl: boolean }
 
 /** An open Exhibit Panel and what opened it, which is where focus returns on close (AC-2.2, 16.5). */
 export type PanelRef = { exhibitId: ExhibitId; opener: 'list' | 'goal' }
@@ -31,7 +32,8 @@ export type AppState = {
   caption: { place: CaptionPlace } | null
   /** null until detected after hydration. */
   capability: Capability | null
-  failure: WorldFailure | null
+  /** The first failure, as src/app/capability.ts attributed it; the readable message renders from it. */
+  failure: AttributedFailure | null
 }
 
 export type Action =
@@ -42,7 +44,7 @@ export type Action =
   | { type: 'open-panel'; panel: PanelRef }
   | { type: 'close-panel' }
   | { type: 'world-event'; event: WorldEvent }
-  | { type: 'world-failure'; failure: WorldFailure }
+  | { type: 'world-failure'; failure: AttributedFailure }
   | { type: 'caption-expired'; place: CaptionPlace }
 
 export const INITIAL_STATE: AppState = {
@@ -76,8 +78,11 @@ export function reduce(state: AppState, action: Action): AppState {
       }
       return action.status === state.worldStatus ? state : { ...state, worldStatus: action.status }
     case 'enter':
-      // A Panel owns the keys while open; the failure screen is T8b's; inside the World it is a no-op.
+      // A Panel owns the keys while open; on the failure screen and inside the World it is a no-op.
+      // A World that failed before entry answers with the readable message (AC-22.2; T5a's
+      // hand-off on #33): the way in stays, and says honestly what happened.
       if (state.panel !== null || state.screen !== 'title') return state
+      if (state.worldStatus === 'failed') return { ...state, screen: 'failed', entering: false }
       if (state.worldStatus === 'ready') return { ...state, screen: 'world', entering: false }
       return state.entering ? state : { ...state, entering: true }
     case 'escape':
@@ -96,13 +101,15 @@ export function reduce(state: AppState, action: Action): AppState {
     case 'world-event':
       return reduceWorldEvent(state, action.event)
     case 'world-failure':
-      // After entry the readable message replaces the World (AC-22.2); before, the Title Screen stays.
+      // The first failure is the one shown. After entry, or while the Visitor is entering, the
+      // readable message replaces the World (AC-22.2); on the Title Screen it waits for Enter.
+      if (state.worldStatus === 'failed') return state
       return {
         ...state,
         failure: action.failure,
         worldStatus: 'failed',
         entering: false,
-        screen: state.screen === 'world' ? 'failed' : state.screen,
+        screen: state.screen === 'world' || state.entering ? 'failed' : state.screen,
       }
     case 'caption-expired':
       // Only the place it was timed for: a late timer must not clear a newer caption (#32 D7).
@@ -134,9 +141,13 @@ export const selectWorldPaused = (s: AppState): boolean => s.screen !== 'world' 
 export const selectShownCaption = (s: AppState): AppState['caption'] =>
   s.screen === 'world' && s.panel === null ? s.caption : null
 
-/** The World chunk is imported after hydration unless a coarse pointer was detected (spec, Architecture). */
+/**
+ * The World chunk is imported after hydration unless a coarse pointer was detected (spec,
+ * Architecture) or the browser has no WebGL (Owner, #33 Q5: a second exception, the chunk the
+ * browser cannot use; the way in stays, and the chunk loads on entry).
+ */
 export const selectWorldPreload = (s: AppState): boolean =>
-  s.capability !== null && !s.capability.coarsePointer
+  s.capability !== null && !s.capability.coarsePointer && s.capability.webgl
 
 // Function-typed properties, not methods: useSyncExternalStore takes them unbound.
 export type Store = {
