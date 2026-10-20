@@ -13,3 +13,6 @@ node_modules/
 
 # Hook test fixtures mirror the one-line JSON payload Claude Code sends; kept compact on purpose.
 .claude/hooks/tests/*.json
+
+# Reference mockups served by a second Vercel project, not product code (#66): kept as delivered.
+mockups/
