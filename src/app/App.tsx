@@ -7,6 +7,7 @@ import { TitleScreen } from '../site/TitleScreen'
 import { WorldFailure } from '../site/WorldFailure'
 import type { World as WorldComponent } from '../world/World'
 import { captionTimer } from './caption.ts'
+import { FailureBoundary } from './FailureBoundary'
 import { detectCapability } from './capability.ts'
 import { focusAfter } from './focus.ts'
 import { INTERACTIVE_SELECTOR, isPlainActivation, keyAction, routeKey } from './keys.ts'
@@ -25,8 +26,10 @@ import type { WorldFailure as Failure } from './types.ts'
 // render come from the same component and the same initial state (tests/build/index-html.test.ts
 // compares them). The initial state renders the Title Screen alone; the World arrives by dynamic
 // import (the entry chunk never imports it, ADR 0010) and mounts paused and hidden behind the
-// Title Screen through the store (plan §2, Entry and preload policy). The Exhibit Panel renders
-// while the store holds one (T6), so the initial state, and the pre-rendered markup, have none.
+// Title Screen through the store (plan §2, Entry and preload policy), inside the failure boundary
+// (FailureBoundary.tsx), so a throw in the World never unmounts the Title Screen. The Exhibit
+// Panel renders while the store holds one (T6), so the initial state, and the pre-rendered
+// markup, have none.
 // Outside the coverage ratchet (a component): seam 1 proves it (tests/e2e/world-entry.spec.ts,
 // world.spec.ts, exhibit-panel.spec.ts).
 type Props = { content: Content; store: Store }
@@ -199,20 +202,22 @@ export function App({ content, store }: Props) {
         />
       )}
       {World !== null && state.worldStatus !== 'failed' && (
-        <World
-          content={content}
-          paused={selectWorldPaused(state)}
-          hidden={state.screen !== 'world'}
-          captionPlace={shownPlace ?? null}
-          containerRef={worldRef}
-          onReady={() => {
-            store.dispatch({ type: 'world-status', status: 'ready' })
-          }}
-          onEvent={(event) => {
-            store.dispatch({ type: 'world-event', event })
-          }}
-          onFailure={reportFailure}
-        />
+        <FailureBoundary onFailure={reportFailure}>
+          <World
+            content={content}
+            paused={selectWorldPaused(state)}
+            hidden={state.screen !== 'world'}
+            captionPlace={shownPlace ?? null}
+            containerRef={worldRef}
+            onReady={() => {
+              store.dispatch({ type: 'world-status', status: 'ready' })
+            }}
+            onEvent={(event) => {
+              store.dispatch({ type: 'world-event', event })
+            }}
+            onFailure={reportFailure}
+          />
+        </FailureBoundary>
       )}
     </>
   )

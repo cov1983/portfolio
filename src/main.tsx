@@ -12,7 +12,10 @@ import { createStore } from './app/store'
 // travels in this chunk, so hydration needs no further request; the World arrives by dynamic
 // import, so this chunk never imports the `world` chunk (ADR 0010). React's default
 // onRecoverableError stays: a hydration mismatch reaches the page as an uncaught error, which the
-// e2e fixture fails on.
+// e2e fixture fails on. onCaughtError is overridden (Owner, #33 Q3): React's default would log an
+// error the failure boundary caught a second time, raw; the boundary reports it to App, whose
+// `World failed` line is the one structured line per failure (plan §7). Nothing is swallowed:
+// the kind and the message are in that line, and the e2e tests consume exactly one.
 const root = document.getElementById('root')
 if (root !== null) {
   const app = (
@@ -25,6 +28,6 @@ if (root !== null) {
   if (import.meta.env.DEV && root.childElementCount === 0) {
     createRoot(root).render(app)
   } else {
-    hydrateRoot(root, app)
+    hydrateRoot(root, app, { onCaughtError: () => undefined })
   }
 }

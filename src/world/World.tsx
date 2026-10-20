@@ -34,8 +34,9 @@ export type WorldProps = {
   hidden: boolean
   /**
    * The place of the Announcer caption on show, or null (the app times it, plan §5). Its text is
-   * looked up here, so a missing caption fails in the World's code; containing that failure is
-   * T8b's error boundary for the World (#33): until then a throw still unmounts the root.
+   * looked up here, so a missing caption fails in the World's code, which the app's failure
+   * boundary around the World contains (src/app/FailureBoundary.tsx, #33): the readable message
+   * replaces the World and the Title Screen stays.
    */
   captionPlace: CaptionPlace | null
   /** The container, so the app can focus it (plan §5, focusAfter). */

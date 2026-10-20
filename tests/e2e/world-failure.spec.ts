@@ -1,12 +1,14 @@
 import AxeBuilder from '@axe-core/playwright'
 import type { Page } from '@playwright/test'
 
+import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks'
 import {
   discardRecorded,
   expect,
   expectRecorded,
   failureScreen,
   hydrated,
+  recorded,
   test,
   titleScreen,
   wayIn,
@@ -125,5 +127,43 @@ test.describe('the world chunk aborted', () => {
       .analyze()
     expect(results.violations).toEqual([])
     await failureReported(problems)
+  })
+})
+
+// Path B: a throw during the World's render (T8a's hand-off on #33). The entry chunk is rewritten
+// in flight so the content's Hub caption sits under another key: nothing is looked up behind the
+// Title Screen (the World preloads and records world-playable as usual), and on entry the
+// welcome's lookup throws in the World's render. The failure boundary turns it into the message,
+// and the hydrated root with the Title Screen survives. The rewrite is asserted, so a change of
+// the chunk's shape fails here, not silently.
+test.describe('a throw during the World’s render', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route(/\/assets\/index-[^/]*\.js$/, async (route) => {
+      const response = await route.fetch()
+      const body = (await response.text()).replace('captions:{hub:', 'captions:{hub_:')
+      expect(body).toContain('captions:{hub_:')
+      await route.fulfill({ response, body })
+    })
+  })
+
+  test('the boundary replaces the World with the readable message and keeps the Title Screen (AC-22.2)', async ({
+    page,
+    problems,
+    content,
+  }) => {
+    await hydrated(page)
+    await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
+    await page.keyboard.press('Enter')
+    await expect(failureScreen(page)).toBeVisible()
+    await expect(failureScreen(page)).toContainText('error while drawing')
+    await expect(worldContainer(page)).toHaveCount(0)
+    await expect(titleScreen(page)).toHaveCount(1)
+    await expect(titleScreen(page)).toBeHidden()
+    await page.keyboard.press('Escape')
+    await expect(titleScreen(page)).toBeVisible()
+    await expect(titleScreen(page).getByRole('heading', { level: 1 })).toHaveText(
+      content.owner.name,
+    )
+    await expectRecorded(problems, 'console.error', 'World failed')
   })
 })
