@@ -499,6 +499,22 @@ missing caption fails in the World's code, not the hydrated root's) and gives it
 frame after the section leaves `inert`, so a screen reader announces it; the reducer stays
 Content-free.
 
+**Corrected by #33 (T8b, 2026-10-20; Owner's answers on #33)**: `Capability` gains `webgl`
+(`{ coarsePointer: boolean; webgl: boolean }`, the T5a trim's "T8b adds `webgl`"), detected after
+hydration with an injected probe (`detectCapability(matchMedia, probeWebgl)`); App's probe takes a
+context from a detached canvas and releases it at once. `WorldFailure.kind` gains `'render'`: a throw
+during the World's render, caught by the failure boundary around `<World>` in App
+(`src/app/FailureBoundary.tsx`; R3F's Canvas rethrows the scene's errors into it); App maps a
+`'render'` failure to `'webgl'` when `capability.webgl` is false (Owner, Q2). Two transitions the T5a
+reducer left for T8b: `enter` while `worldStatus === 'failed'` → `screen: 'failed'`; `world-failure`
+while `entering` → `screen: 'failed'`; a `world-failure` once `worldStatus` is `'failed'` changes
+nothing (the first failure is the one shown). The World unmounts on `worldStatus === 'failed'`; the
+readable message (`src/site/WorldFailure.tsx`) carries the Fallback link, the Esc line and a "Title
+Screen" button for a Visitor without an Escape key. `selectWorldPreload` is also false when `webgl`
+is false (Owner, Q5): a second exception to the spec's Architecture sentence, which names the
+coarse pointer alone; the way in stays, and the chunk loads on entry. An amendment candidate for
+increment 2, noted in `docs/retro.md`.
+
 ### Focus (`src/app/focus.ts`)
 
 ```ts
@@ -507,6 +523,10 @@ export function focusAfter(transition: { from: AppState; to: AppState }): { targ
 //   panel opened → 'panel'; panel closed → opener ('list-entry' with id | 'world'); entered World → 'world'
 //   overlay control activated → 'world' is not a state transition: the overlay's handler returns focus itself (corrected by T5b, #29)
 ```
+
+**Corrected by #33 (T8b, 2026-10-20)**: `Focusable` gains `'failure'`: entered the failure screen
+(`to.screen === 'failed'`) → the failure `<main>` (`tabIndex={-1}`), so a screen reader reads the
+message and Tab reaches its Fallback link.
 
 ### Instruments (`src/perf/`)
 
@@ -635,6 +655,32 @@ cases use a context with `javaScriptEnabled: false`; reduced motion uses
   e2e times it: with the real clock the 5 s timer races the 2.17 s of model time from the Zone's
   entry to its Goal on WebKit's ~0.4× software renderer, and `page.clock` may not move while the
   Puck is driven.
+
+**Note on rows 21.1, 22.1 and 22.2 (corrected by #33, T8b, 2026-10-20; Owner's answers on #33)**:
+- Row 21.1, Q5's answer per browser (probed on 2026-10-20 against the installed Playwright 1.64
+  browsers): `isMobile: true, hasTouch: true` makes `(pointer: coarse)` match in Chromium and
+  WebKit; `hasTouch: true` alone makes it match in all three, Firefox included (headed under Xvfb,
+  as the project runs it). Firefox therefore uses `hasTouch: true`, its own emulation, not the
+  init-script stub the row names; the stub is described in `capability.spec.ts`'s header as the
+  fallback. Firefox accepts `isMobile` without an error but its documentation calls it unsupported,
+  so the test does not pass it there.
+- Row 22.1 adds: no world chunk is requested before Enter (the preload is withheld without WebGL,
+  §5 corrected by #33), and entry with WebGL stubbed loads the chunk and ends on the readable
+  message of kind `'webgl'` (path F below): the way in stays and fails honestly.
+- Row 22.2 covers six paths in `tests/e2e/world-failure.spec.ts`, each ending with the readable
+  message and the Fallback link, the Title Screen hidden but mounted, Escape (and the "Title
+  Screen" button) showing it again, and `expectRecorded(problems, 'console.error', 'World failed')`
+  consuming App's one structured line (T5b hand-off): A the world chunk aborted with `page.route`;
+  B the Hub caption's key renamed in the entry chunk in flight, so `captionText` throws in the
+  World's render after entry and the boundary reports `'render'` (T8a hand-off); C the ice texture
+  `/assets/ice-*.webp` aborted (#55 hand-off, kind `'bundle'`); D the WebGL context lost through
+  `WEBGL_lose_context.loseContext()` on the page's canvas (`getContext('webgl2') ??
+  getContext('webgl')`), no recovery (Owner, Q4); E physics, with `WebAssembly.instantiate`
+  stubbed to reject in an init script (Rapier's compat `init()` decodes its inline wasm and calls
+  it); F entry without WebGL. React's default `onCaughtError` would log the caught error a second
+  time, so `src/main.tsx` overrides it (Owner, Q3): the boundary's structured line is the one line
+  §7 names. No wall-clock `timeout` override: every appearance is event-driven and nothing drives
+  the Puck, so the project's default `expect` timeouts are the bound.
 
 **What cannot be automated, and how it is verified**: frame rate (AC-23.1) and the browser pass
 (AC-24.2) are the spec's two Owner-measured criteria; the feel sign-off on the real Hub (ADR 0005
@@ -861,7 +907,7 @@ answer lives in its test file. The last column names where each answer landed, o
 | Q2 | `@dimforge/rapier3d-compat` (wasm inlined as base64, no plugin, works under Node today) vs `@dimforge/rapier3d` + `vite-plugin-wasm` (streaming compile, smaller transfer): what do the download and world-playable lines say? | `/prototype`, same branch and run as Q1: both packages, the lines side by side; the compat package stays unless the non-compat one buys ≥ 300 KB or ≥ 300 ms; answer in ADR 0009 | answered 2026-10-10 → ADR 0009 |
 | Q3 | Can Lighthouse's `user-timings` audit see a mark recorded after the load event while the World chunk is still arriving (needed for `world-playable` from a plain navigation; decides whether §7 line 2 is measurable at all)? | `/research` against the Lighthouse 13 gatherer source and the Phase 0b run (mark at 0.55 s was before load), confirmed by the Q1 run's `lhr.json`; if not, the runner extends `maxWaitForLoad`/`pauseAfterLoadMs` in `scripts/perf-budget.ts`; answer folded into §7 **before the approval commit** | answered 2026-10-10 → §7 line 2 |
 | Q4 | Does `sharp` install on Vercel's build image and under pnpm 10's build-script policy without an allowlist entry (`pnpm.onlyBuiltDependencies`), and inside the devcontainer? | `/research`: sharp's install docs for 0.34, pnpm 10 changelog; the devcontainer run; answer in ADR 0011 | answered 2026-10-10 → ADR 0011 |
-| Q5 | How does each Playwright browser emulate a coarse pointer for AC-21.1 (Chromium and WebKit via `isMobile`; Firefox has no `isMobile`)? | `/research`: Playwright 1.64 docs and source for `isMobile`/`hasTouch` per browser; the test uses the device descriptor where it works and an init-script stub of `matchMedia` elsewhere, documented in the spec file | T8b |
+| Q5 | How does each Playwright browser emulate a coarse pointer for AC-21.1 (Chromium and WebKit via `isMobile`; Firefox has no `isMobile`)? | `/research`: Playwright 1.64 docs and source for `isMobile`/`hasTouch` per browser; the test uses the device descriptor where it works and an init-script stub of `matchMedia` elsewhere, documented in the spec file | answered by T8b (#33, 2026-10-20) → `tests/e2e/capability.spec.ts`; §6 note on rows 21.1–22.2 (`hasTouch` works in all three browsers) |
 
 ## 13. Hand-offs (tracker issues opened in the PR of the `plan: approve` commit)
 
