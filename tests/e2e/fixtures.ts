@@ -117,6 +117,9 @@ export function recorded(page: Page, name: string): Promise<number> {
 /** The World's chunks: the library chunk `world-*.js` and the World's own `World-*.js`, which imports it. */
 export const WORLD_CHUNK = /\/assets\/world-.*\.js$/i
 
+/** The ice texture's path (#55): Vite's hashed file under /assets/, the World's one fetched file besides its chunks. */
+export const ICE_TEXTURE = /\/assets\/ice-[^/]*\.webp$/
+
 /** The way-in control, whatever its label (loading or not). */
 export const wayIn = (page: Page): Locator =>
   page.getByRole('button', { name: /Enter the World|Loading the World/ })

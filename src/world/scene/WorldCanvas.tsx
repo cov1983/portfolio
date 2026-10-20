@@ -223,6 +223,20 @@ function Scene({
     invalidate()
   }, [loaded, invalidate])
 
+  // A lost WebGL context ends the World: the app shows the readable message (AC-22.2, kind
+  // 'webgl'). No recovery in increment-1 (Owner, #33 Q4); three's own listener keeps preventing
+  // the event's default, which is harmless once the World is unmounted.
+  useEffect(() => {
+    const canvas = gl.domElement
+    const onContextLost = (): void => {
+      callbacks.current.onFailure({ kind: 'webgl', message: 'the WebGL context was lost' })
+    }
+    canvas.addEventListener('webglcontextlost', onContextLost)
+    return () => {
+      canvas.removeEventListener('webglcontextlost', onContextLost)
+    }
+  }, [gl])
+
   // Reset (AC-12.1): the model's, then a snap of both render states so nothing is blended, and
   // the camera at its goal; R and the overlay's control (AC-12.2) both end here.
   const resetNow = useCallback((): void => {

@@ -8,6 +8,7 @@ import {
   expectRecorded,
   failureScreen,
   hydrated,
+  ICE_TEXTURE,
   recorded,
   test,
   titleScreen,
@@ -164,6 +165,72 @@ test.describe('a throw during the World’s render', () => {
     await expect(titleScreen(page).getByRole('heading', { level: 1 })).toHaveText(
       content.owner.name,
     )
+    await expectRecorded(problems, 'console.error', 'World failed')
+  })
+})
+
+// Path C: the ice texture's request aborted (#55's hand-off on #33): the scene reports it as a
+// `bundle` failure like the chunk, met by the preload behind the Title Screen.
+test.describe('the ice texture aborted', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route(ICE_TEXTURE, (route) => route.abort())
+  })
+
+  test('after Enter a readable message with the Fallback link replaces the World (AC-22.2)', async ({
+    page,
+    problems,
+  }) => {
+    await enteredIntoFailure(page)
+    await expect(failureScreen(page)).toContainText('did not load')
+    await expect(failureScreen(page).getByRole('link', FALLBACK_LINK)).toBeVisible()
+    await expect(worldContainer(page)).toHaveCount(0)
+    await failureReported(problems)
+  })
+})
+
+// Path D: the WebGL context lost while the World runs, through the WEBGL_lose_context extension
+// on the page's canvas (a DOM read, no window global): the scene reports `webgl`, no recovery
+// (Owner, #33 Q4).
+test('a lost WebGL context replaces the World with the readable message (AC-22.2)', async ({
+  page,
+  problems,
+}) => {
+  await hydrated(page)
+  await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
+  await page.keyboard.press('Enter')
+  await expect(worldContainer(page)).toBeVisible()
+  await page.locator('canvas').evaluate((element) => {
+    const canvas = element as HTMLCanvasElement
+    const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl')
+    gl?.getExtension('WEBGL_lose_context')?.loseContext()
+  })
+  await expect(failureScreen(page)).toBeVisible()
+  await expect(failureScreen(page)).toContainText('WebGL')
+  await expect(worldContainer(page)).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await expect(titleScreen(page)).toBeVisible()
+  await expectRecorded(problems, 'console.error', 'World failed')
+})
+
+// Path E: physics. Rapier's compat package decodes its inline wasm and instantiates it with
+// WebAssembly.instantiate; stubbed to reject before any page script runs, its init rejects and
+// the scene reports `physics`, met by the preload behind the Title Screen.
+test.describe('physics failing to initialise', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      WebAssembly.instantiate = (): Promise<never> =>
+        Promise.reject(new Error('wasm refused by the test'))
+    })
+  })
+
+  test('after Enter a readable message with the Fallback link replaces the World (AC-22.2)', async ({
+    page,
+    problems,
+  }) => {
+    await enteredIntoFailure(page)
+    await expect(failureScreen(page)).toContainText('physics engine')
+    await expect(failureScreen(page).getByRole('link', FALLBACK_LINK)).toBeVisible()
+    await expect(worldContainer(page)).toHaveCount(0)
     await expectRecorded(problems, 'console.error', 'World failed')
   })
 })

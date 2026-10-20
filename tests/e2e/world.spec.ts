@@ -1,7 +1,15 @@
 import type { Page } from '@playwright/test'
 
 import { TITLE_SCREEN_INTERACTIVE_MARK, WORLD_PLAYABLE_MARK } from '../../src/perf/marks'
-import { expect, hydrated, recorded, test, WORLD_CHUNK, worldContainer } from './fixtures'
+import {
+  expect,
+  hydrated,
+  ICE_TEXTURE,
+  recorded,
+  test,
+  WORLD_CHUNK,
+  worldContainer,
+} from './fixtures'
 
 // Seam 1 at `/` (plan §2, Entry and preload policy; ADR 0010): the World preloads after the
 // title-screen-interactive mark and mounts paused behind the Title Screen, where it records
@@ -88,9 +96,6 @@ test('the World requests only same-origin files and no Exhibit media', async ({ 
   expect(urls.filter((url) => !url.startsWith(origin))).toEqual([])
   expect(urls.filter((url) => new URL(url).pathname.startsWith('/media/exhibits/'))).toEqual([])
 })
-
-/** The ice texture's path: Vite's hashed file under /assets/. */
-const ICE_TEXTURE = /\/assets\/ice-[^/]*\.webp$/
 
 /** The end times (ms from navigation start) of the ice texture's requests, from resource timing. */
 function iceEndTimes(page: Page): Promise<number[]> {
