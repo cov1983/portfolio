@@ -2,7 +2,7 @@ import { readdir, readFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { scriptSources, staticImports } from './chunk-checks'
+import { dataUrls, scriptSources, staticImports } from './chunk-checks'
 import { removeBuild, runProductionBuild, type BuildResult } from './production-build'
 
 // Seam 1's build half (plan §7, ADR 0010): the `world` chunk holds three, React Three Fiber and
@@ -85,6 +85,19 @@ describe('the built chunks', () => {
     for (const [file, source] of closure) {
       expect(source, file).not.toContain(MARKERS.three)
       expect(source, file).not.toContain(MARKERS.rapier)
+    }
+  })
+
+  // #55: an asset under Vite's inline limit (4 KiB) becomes a data: URL inside a chunk or a
+  // stylesheet, and the CSP's 'self' sources (vercel.json, ADR 0012: img-src, font-src, media-src)
+  // block it whatever its kind. Every chunk and stylesheet under assets/ is read; the list holds at
+  // least the world chunk above.
+  it("inlines no asset as a data: URL in any chunk or stylesheet (the CSP's 'self' sources)", async () => {
+    const assets = join(build.outDir, 'assets')
+    const files = (await readdir(assets)).filter((f) => /\.(js|css)$/.test(f))
+    expect(files.length, 'chunks and stylesheets under assets/').toBeGreaterThan(0)
+    for (const file of files) {
+      expect(dataUrls(await readFile(join(assets, file), 'utf8')), file).toEqual([])
     }
   })
 })

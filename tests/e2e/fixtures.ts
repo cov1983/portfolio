@@ -46,6 +46,24 @@ type ReportViolation = (detail: string) => void
 /** Name of the binding `page.exposeFunction` installs on `window`. */
 const VIOLATION_BINDING = '__portfolioReportSecurityPolicyViolation'
 
+// Craft rules of this suite, each from a retro line (docs/retro.md; ADR 0015, fold 2):
+// - A predicate inside `expect.poll` uses only non-waiting reads (isVisible, count, allTextContents,
+//   evaluate), never an auto-waiting action: the action blocks the poll instead of answering it, and
+//   the error then says "waiting on the predicate" with no Received value (#46).
+// - A visibility assertion on a container names what gives it a box: a section whose children are
+//   all fixed-position has none and reads as hidden in every browser (`worldContainer`, T5b #29).
+// - A test that drives the Puck to a target bounds the drive in model time (`modelTime`), the claim
+//   it proves, never a wall-clock timeout that cannot fail (T7 #31).
+// - A helper's name says what it builds from: a fixture, a schema-parsed Content, a page, not "the
+//   content" (T7 #31).
+// - `page.clock` is installed only after any user-timing mark a helper polls (`recorded`,
+//   `expectRecorded`): its fake performance records no marks (T8a #32).
+// - A test that breaks a request consumes the browser's own console line for it, per browser and
+//   after the page's own line (Chromium logs "Failed to load resource" once or twice per chunk,
+//   Firefox and WebKit stay silent), and a library that logs before it throws (three on a missing
+//   WebGL context) is consumed as a named second line through `expectRecorded`, never silenced in
+//   this fixture (T8b #33).
+
 // Shared e2e fixture (plan §6, Observability): every test using this `test` fails when the page
 // raises an uncaught error, logs a `console.error` or reports a `securitypolicyviolation`, so the
 // CI gate sees what a Visitor's console would. The violation event only exists in the page, so an

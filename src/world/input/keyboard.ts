@@ -27,9 +27,9 @@ export type KeyState = {
   /** The keys held right now; the same object for the state's lifetime, so a frame loop can keep it. */
   readonly input: DriveInput
   /** Feeds one event; returns the command it carries, if any. */
-  onKey(event: KeyEvent): Command | null
+  onKey: (event: KeyEvent) => Command | null
   /** Releases every direction (the window lost focus). */
-  clear(): void
+  clear: () => void
 }
 
 function directionOf(code: string): Direction | undefined {

@@ -20,3 +20,6 @@ Index
   plan.
 - [Retro fold 1 — Phase 0–1 lessons](retro-fold-1.md) — process plan (guide §4.0.3), Owner-accepted 2026-10-10;
   the fold table is ADR 0008. Not a feature plan.
+- [Retro fold 2 — the increment-1 lessons](retro-fold-2.md) — process plan (guide §4.0.3), Owner-accepted 2026-10-21
+  (#76); the inventory of the 22 rows since ADR 0008 with verdicts, the fold-1 probation check and the commit order;
+  the fold table of record is ADR 0015. Not a feature plan.

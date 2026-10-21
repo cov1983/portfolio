@@ -39,6 +39,9 @@ writes the file under `docs/spec/` (`docs/agents/skill-overrides.md`).
 - When a spec, plan or grilling defers work to "its own ticket", open that issue in the PR of the
   approving commit (`spec: approve`, plan acceptance), labelled `ready-for-agent` or
   `ready-for-human`, with `Part of #<parent>` at the top. A hand-off without an issue is a Blocker.
+- An Owner decision is cited by its tracker comment, read back with `gh issue view <number>
+  --comments` before use; a confirmation that is not on the tracker yet is not cited (retro
+  2026-10-16, T8a #32; ADR 0015).
 
 ## When a skill says "fetch the relevant ticket"
 

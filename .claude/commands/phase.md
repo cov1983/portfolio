@@ -18,9 +18,18 @@ Owner approves: no file edits and no commits before step 6 says so.
    job or a third-party action, list the repository settings it needs (dependency graph, code
    scanning, auto-merge, secrets, rulesets) and verify each with `gh api repos/{owner}/{repo}/...`
    now; a missing one is an Owner step in the plan, not a surprise on the first run. Check the
-   action's inputs against its source for the mode it runs in, not its README.
+   action's inputs against its source for the mode it runs in, not its README. A premise the plan
+   rests on (what a tool does, what the installed tool can do, what a repo-wide tool reaches) is
+   probed before it becomes a design, with the result in the plan. A ticket conditioned on a count
+   takes the count now, from the tracker; past the window it becomes a hand-off issue, not a bigger
+   ticket. The row-level rules of a plan (tolerances, dependency rows, probe shapes, a later
+   ticket's code path) are in `docs/agents/skill-overrides.md`, "Plans and probes"; a plan that
+   skips one says why.
 6. Stop and wait for the Owner's approval of the plan. Once approved, the plan leaves the chat
    before implementation starts: for a single ticket, post it as a comment on the ticket
    (`gh issue comment $ARGUMENTS --body-file -`); when the work spans more than one PR or changes
    the process, the first commit on the branch writes it to `docs/plan/<name>.md` and the index.
-   A plan that exists only in a chat or a local plan file does not exist.
+   Posting or committing it is the first action after the approval, before any other edit: plan
+   mode holds the comment back, so the approval ends with the comment, not with code. An Owner
+   decision is cited by its tracker comment, read back with `gh issue view` before use, never from
+   memory. A plan that exists only in a chat or a local plan file does not exist.

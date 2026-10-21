@@ -72,13 +72,13 @@ export type WorldEvent =
 export interface WorldModel {
   readonly layout: WorldLayout
   /** Exactly one FIXED_DT step; diagonal input is normalised. Pausing is not calling step(). */
-  step(input: DriveInput): WorldEvent[]
+  step: (input: DriveInput) => WorldEvent[]
   /** The Puck at rest at hub.resetPoint (AC-12.1). */
-  reset(): void
-  puck(): PuckState
-  place(): Place
+  reset: () => void
+  puck: () => PuckState
+  place: () => Place
   /** Frees the Rapier world. */
-  dispose(): void
+  dispose: () => void
 }
 
 /** The unit drive vector on the ice for the keys held, or null when nothing is pressed (AC-7.3). */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { scriptSources, staticImports } from './chunk-checks'
+import { dataUrls, scriptSources, staticImports } from './chunk-checks'
 
 describe('scriptSources', () => {
   it('returns the src of every script tag', () => {
@@ -34,5 +34,27 @@ describe('staticImports', () => {
 
   it('ignores import.meta', () => {
     expect(staticImports('const u=import.meta.url;')).toEqual([])
+  })
+})
+
+describe('dataUrls', () => {
+  it('reports a base64 data: URL inside minified code', () => {
+    const js = 'const i=new Image;i.src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==";'
+    expect(dataUrls(js)).toEqual(['data:image/png;base64,'])
+  })
+
+  it('reports a percent-encoded data: URL inside a stylesheet', () => {
+    const css =
+      '.ice{background:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27/%3E")}'
+    expect(dataUrls(css)).toEqual(['data:image/svg+xml,'])
+  })
+
+  it('ignores a regex literal and prose that mention data:', () => {
+    const js = 'const r=/^data:(.*?)(;base64)?,(.*)$/;const note="data: the readings";'
+    expect(dataUrls(js)).toEqual([])
+  })
+
+  it('ignores a minified object literal whose data property holds a division', () => {
+    expect(dataUrls('return{data:e/t,width:n};const o={data:r/255,y:1}')).toEqual([])
   })
 })
