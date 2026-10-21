@@ -76,6 +76,7 @@ _Avoid_: narrator, tutorial text, guide
 **Overlay**:
 The World's HTML layer over the canvas: the current caption, the Reset control and the Key legend.
 Assistive technology reads the Overlay; it never reads the canvas.
+The spec's "an HTML overlay owns the keyboard" (an open Exhibit Panel, the Title Screen shown over the World) is not the Overlay.
 _Avoid_: HUD, UI layer, game overlay
 
 **Key legend**:
