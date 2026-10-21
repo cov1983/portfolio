@@ -53,4 +53,8 @@ describe('dataUrls', () => {
     const js = 'const r=/^data:(.*?)(;base64)?,(.*)$/;const note="data: the readings";'
     expect(dataUrls(js)).toEqual([])
   })
+
+  it('ignores a minified object literal whose data property holds a division', () => {
+    expect(dataUrls('return{data:e/t,width:n};const o={data:r/255,y:1}')).toEqual([])
+  })
 })

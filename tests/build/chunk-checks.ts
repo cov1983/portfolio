@@ -17,9 +17,12 @@ export function staticImports(js: string): string[] {
 }
 
 // A `data:` URL as a bundler inlines an asset under its inline limit (Vite: build.assetsInlineLimit,
-// 4 KiB by default): the scheme, a media type and the comma before the payload. A regex literal such
-// as three's `data:(.*?)` or prose with "data:" has no media type and never matches.
-const DATA_URL = /\bdata:[a-z][a-z0-9.+-]*\/[a-z0-9.+-]+(?:;[a-z0-9=-]+)*,/gi
+// 4 KiB by default): the scheme, a media type and the comma before the payload. The top-level type
+// is one of the IANA registry's, so a minified object literal such as `{data:e/t,width:n}` (a
+// property named data holding a division) never matches; nor does a regex literal such as three's
+// `data:(.*?)` or prose with "data:", which have no media type (ai-review on #79).
+const DATA_URL =
+  /\bdata:(?:application|audio|font|image|model|text|video)\/[a-z0-9.+-]+(?:;[a-z0-9=-]+)*,/gi
 
 /** Every `data:` URL (scheme, media type, parameters and the comma) in a chunk or stylesheet, in source order. */
 export function dataUrls(text: string): string[] {
