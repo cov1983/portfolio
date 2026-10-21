@@ -32,6 +32,7 @@
 set -uo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+root="$(cd "$here/../../.." && pwd -P)"
 hook="$here/../guard-bash.sh"
 export GUARD_BASH_LOG
 GUARD_BASH_LOG="$(mktemp)"
@@ -40,10 +41,13 @@ PREVIOUS_TMP=""
 trap 'rm -f "$GUARD_BASH_LOG" "$PREVIOUS_TMP"; [[ -n "$FORMAT_TMP" ]] && rm -rf "$FORMAT_TMP"' EXIT
 
 # --- --prove: the fixture against the previous hook and the working tree ----------------------
-past() { if [[ "$1" == deny ]]; then echo denied; else echo allowed; fi; }
+outcome_word() { if [[ "$1" == deny ]]; then echo denied; else echo allowed; fi; }
+# The hook's decision for a fixture: deny, allow, or "error <rc>" when the hook itself failed (a
+# crashed or unusable hook is never read as allow: CLAUDE.md, errors are never swallowed).
 decision() {
-  local out
-  out="$("$1" <"$2")"
+  local out rc
+  out="$("$1" <"$2")"; rc=$?
+  if [[ $rc -ne 0 ]]; then echo "error $rc"; return; fi
   if [[ "$out" == *'"permissionDecision":"deny"'* ]]; then echo deny; else echo allow; fi
 }
 if [[ "${1-}" == "--prove" ]]; then
@@ -59,9 +63,12 @@ if [[ "${1-}" == "--prove" ]]; then
     *) echo "FAIL  $name: a fixture is named allowed-* or denied-*" >&2; exit 2 ;;
   esac
   if [[ -n "${3-}" ]]; then
+    if [[ ! -x "$3" ]]; then
+      echo "FAIL  $name: previous hook $3 is not an executable file" >&2
+      exit 2
+    fi
     previous="$3"; previous_name="$3"
   else
-    root="$(cd "$here/../../.." && pwd -P)"
     PREVIOUS_TMP="$(mktemp)"
     if ! git -C "$root" show HEAD:.claude/hooks/guard-bash.sh >"$PREVIOUS_TMP" 2>/dev/null; then
       echo "FAIL  no guard-bash.sh committed at HEAD" >&2
@@ -72,15 +79,21 @@ if [[ "${1-}" == "--prove" ]]; then
   fi
   before="$(decision "$previous" "$fixture")"
   after="$(decision "$hook" "$fixture")"
+  for verdict in "$before at $previous_name" "$after by the working tree"; do
+    if [[ "$verdict" == error* ]]; then
+      echo "FAIL  $name: the hook exited non-zero (${verdict#error }); no decision to compare" >&2
+      exit 2
+    fi
+  done
   if [[ "$after" != "$expect" ]]; then
-    echo "FAIL  $name: $(past "$after") by the working tree hook; the fixture expects $(past "$expect")"
+    echo "FAIL  $name: $(outcome_word "$after") by the working tree hook; the fixture expects $(outcome_word "$expect")"
     exit 1
   fi
   if [[ "$before" == "$expect" ]]; then
-    echo "FAIL  $name: already $(past "$expect") at $previous_name; the fixture proves an old behaviour, not this change"
+    echo "FAIL  $name: already $(outcome_word "$expect") at $previous_name; the fixture proves an old behaviour, not this change"
     exit 1
   fi
-  echo "PASS  $name: $(past "$before") at $previous_name, $(past "$after") by the working tree: the fixture proves the change"
+  echo "PASS  $name: $(outcome_word "$before") at $previous_name, $(outcome_word "$after") by the working tree: the fixture proves the change"
   exit 0
 fi
 
@@ -107,7 +120,6 @@ format="$here/../format-file.sh"
 out="$(echo '{}' | "$format")"; rc=$?
 if [[ $rc -eq 0 && -z "$out" ]]; then echo "PASS  format-file: empty payload is a silent exit 0"; else echo "FAIL  format-file: empty payload rc=$rc out=$out"; fail=1; fi
 
-root="$(cd "$here/../../.." && pwd -P)"
 if (cd "$root" && pnpm exec prettier --version >/dev/null 2>&1); then
   FORMAT_TMP="$(mktemp -d "$root/format-file-smoke.XXXXXX")"
   printf '{"a":1}\n' >"$FORMAT_TMP/x.json"

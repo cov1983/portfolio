@@ -281,11 +281,14 @@ jobs:
             --allowedTools "mcp__github_comment__update_claude_comment,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr checks:*),Bash(gh issue view:*)"
             --disallowedTools "Edit,Write,MultiEdit,NotebookEdit"
 
-      # The review's execution file (the agent's messages and tool results: public PR text, both
-      # secrets masked) when the step fails, so the first failure explains itself without a workflow
-      # change (retro 2026-10-10, fix/ai-review-output; ADR 0015). At the pinned commit the action
-      # sets the output on every failure path once the file exists (src/entrypoints/run.ts catch,
-      # base-action/src/execution-file.ts); a failure before Claude runs leaves it empty.
+      # The review's execution file when the step fails, so the first failure explains itself without
+      # a workflow change (retro 2026-10-10, fix/ai-review-output; ADR 0015). The file holds the
+      # agent's messages and tool results: the output of the four read-only gh commands allowed
+      # above, public PR text that never carries either secret as an argument; the runner masks logs,
+      # not artifacts, so the file is kept as plain as its inputs. At the pinned commit the action
+      # sets the output on every failure path once the file exists (base-action/src/run-claude-sdk.ts
+      # line 222 writes it before each failure throw; src/entrypoints/run.ts line 318 sets the output
+      # in its catch, before setFailed at 324); a failure before Claude runs leaves it empty.
       - name: Upload review execution file on failure
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure() && steps.review.outputs.execution_file != ''

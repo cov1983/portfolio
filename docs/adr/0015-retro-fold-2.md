@@ -135,7 +135,8 @@ Three of the folds change the workflow and are the decision proper:
   shell tests, every verify), 28 (action inputs against source), 29 (`gh api` settings), 32
   (shellcheck). Not fired yet: 6 (`/wizard` dotenv), 7 (skill review at install), 9 (grilling
   outcomes), 10 (`/prototype` numeric first), 13 (`/to-spec` as a comment), 17 (the amendment's
-  principle), 23 (actionlint), 25 (scanner fixtures). The clean-worktree action (4, 30) has failed
+  principle), 21 (the formatter never touches `docs/spec/**`: silent, no spec reformatted), 23
+  (actionlint), 25 (scanner fixtures). The clean-worktree action (4, 30) has failed
   no job and was applied once (#55's `.gitignore`). Nothing deleted here; fold 3 reviews the not-fired
   list for deletion and the fold-2 rules for a first firing.
 - `CLAUDE.md` is at its 150-line cap: this fold replaced fourteen lines with longer lines and added
@@ -144,9 +145,11 @@ Three of the folds change the workflow and are the decision proper:
 - `make lint` now rejects a method signature in an interface or type literal; a class method still
   satisfies a function-typed property, so implementers did not change. A new contract written as
   methods goes red on the first `make verify`, which is the point.
-- The `ai-review-execution` artifact holds the review's messages and tool results: public PR text
-  (`gh pr view`, `gh pr diff`, `gh issue view`), both secrets masked by the runner. It is uploaded
-  only on a failed step and kept 14 days, like the other CI artifacts.
+- The `ai-review-execution` artifact holds the review's messages and tool results: the output of
+  the four read-only `gh` commands the step allows (`gh pr view`, `gh pr diff`, `gh pr checks`,
+  `gh issue view`), public PR text that never carries either secret as an argument. The runner
+  masks logs, not artifacts, so the file is as plain as its inputs; a wider tool list would need
+  this sentence rechecked. Uploaded only on a failed step, kept 14 days like the other artifacts.
 - `run.sh --prove` reads the committed hook through `git show HEAD:`, so it runs in a clone only;
   `make test-shell` and the `lint` job are unchanged and still prove every fixture against the
   working-tree hook.

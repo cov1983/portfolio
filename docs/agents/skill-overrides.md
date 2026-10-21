@@ -112,4 +112,5 @@ says why.
 - A `test` failure on a Renovate PR with no `src/` change is read as toolchain drift of the coverage
   ratchet first (V8's branch and statement counts move with Node, Vitest or the coverage provider);
   the fix is an ADR lowering the floor to the new reading, never a silent threshold edit and never a
-  toolchain pin to dodge it (2026-10-21, the #77 review on #76).
+  toolchain pin to dodge it (no retro row: the Owner's comment of 2026-10-21 on #76 from the #77
+  review; ADR 0015, item 65).
