@@ -13,7 +13,7 @@ not a file here (`CLAUDE.md`, Working protocol).
 
 Index
 - [increment-1](increment-1.md) — feature plan (guide §4.2), reviewed 2026-10-10 (plan-mode and independent review
-  folded in), awaiting `plan: approve increment-1`; architecture, content schema, contracts, the test per acceptance
+  folded in), approved 2026-10-10 (`plan: approve increment-1`, 88e978e), shipped by T10 (#35); architecture, content schema, contracts, the test per acceptance
   criterion, the perf gate's instruments, headers, risks and the ticket slices T0–T11 for `/to-tickets`; ADR stubs 0009–0012.
 - [Phase 0b — harden the repository](phase-0b.md) — process plan (guide §4.0.2), Owner-accepted 2026-10-09;
   four sequential PRs with the Owner decisions folded in and each PR's outcome recorded. Not a feature

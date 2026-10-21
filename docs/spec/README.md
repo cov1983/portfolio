@@ -11,4 +11,5 @@ Status line at the top: `draft | approved | amended`.
 - Required sections: user stories with Given/When/Then acceptance criteria, non-functional requirements, data classification, non-goals, open-questions list, empty before approval.
 
 Specs: `increment-1.md` (written 2026-10-08 from issue #3; approved 2026-10-08, commit 408c7f8, and
-frozen since).
+frozen since; amended by 69bfe15, a8e8c3c (#55) and 8b687be (#63); shipped as increment-1 by T10 (#35),
+measured on production 1bf12bd).
