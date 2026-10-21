@@ -4,11 +4,13 @@ An immersive, interactive 3D portfolio: visitors steer an ice-hockey puck throug
 world to discover Thomas's projects and background. Physics, hockey-inspired challenges and a bit of
 storytelling turn browsing a CV into an experience that showcases the development work itself.
 
-Status: **toolchain and gates wired; Phase 0b ends when the Owner runs the setup wizard**. The
-spec for the first increment is approved (`docs/spec/increment-1.md`), the stack is decided
-(`docs/adr/0003-web-3d-stack.md`), hosting is Vercel (`docs/adr/0006-hosting-vercel.md`,
-`vercel.json`) and the vocabulary is in `GLOSSARY.md`. `src/` holds only the Phase 0b skeleton that
-proves the toolchain; application code starts with the Phase 3 tickets.
+Status: **increment-1 live** (shipped by T10, #35). The first increment's spec is
+`docs/spec/increment-1.md` (approved 2026-10-08, amended three times) and its plan
+`docs/plan/increment-1.md`; the stack is decided (`docs/adr/0003-web-3d-stack.md`,
+`docs/adr/0009-world-model-owns-rapier.md`), hosting is Vercel (`docs/adr/0006-hosting-vercel.md`,
+`vercel.json`) and the vocabulary is in `GLOSSARY.md`. `src/` holds the application (the map is in
+`CLAUDE.md`). Next: increment 2, the project intake at `/start` (#59), behind its own spec; T11
+touch steering is optional, behind its spec amendment (#38).
 
 ## Run it locally
 - **Devcontainer** (recommended): open the repo in VS Code and "Reopen in Container", or
@@ -46,22 +48,22 @@ proves the toolchain; application code starts with the Phase 3 tickets.
   |---|---|---|
   | `lint` | `make format-check lint typecheck`, agent-file identity and line count, `make shellcheck` (hooks, pre-commit, gates and their tests), actionlint, settings JSON, `make test-shell` (hook smoke tests, spec-freeze gate test) | yes |
   | `test` | `make test` (Vitest with the coverage ratchet) | yes |
-  | `build` | `make build`, prints compressed asset sizes | after the setup wizard's ruleset stage |
-  | `e2e` | `make test-e2e` (Playwright in Chromium, Firefox and WebKit with axe against the production build) | after the setup wizard |
-  | `perf` | `make perf`: Lighthouse budget from `perf/budget.json` against the production build (Title Screen interactive, World playable, download until playable; one retry, all three numbers always printed) | after the setup wizard |
-  | `sast` | CodeQL, javascript-typescript, results under Security → Code scanning | after the setup wizard |
-  | `deps` | dependency review of the lockfile change (blocks at severity high); `pnpm audit` as a warning, and weekly in `audit.yml` | after the setup wizard |
+  | `build` | `make build`, prints compressed asset sizes | yes |
+  | `e2e` | `make test-e2e` (Playwright in Chromium, Firefox and WebKit with axe against the production build) | yes |
+  | `perf` | `make perf`: Lighthouse budget from `perf/budget.json` against the production build (Title Screen interactive, World playable, download until playable; one retry, all three numbers always printed) | yes |
+  | `sast` | CodeQL, javascript-typescript, results under Security → Code scanning | yes |
+  | `deps` | dependency review of the lockfile change (blocks at severity high); `pnpm audit` as a warning, and weekly in `audit.yml` | yes |
   | `gitleaks` | secret scan over full history | yes |
-  | `spec-freeze` | `scripts/spec-freeze.sh`: an approved spec changes only through `amend:` commits | after the setup wizard |
-  | `ai-review` | independent Claude review (`anthropics/claude-code-action`, read-only tools, one tracking comment); skipped with a notice until `ANTHROPIC_API_KEY` is stored, and for Renovate branches | no: its findings are a Definition of Done item |
+  | `spec-freeze` | `scripts/spec-freeze.sh`: an approved spec changes only through `amend:` commits | yes |
+  | `ai-review` | independent Claude review (`anthropics/claude-code-action`, read-only tools, one tracking comment); skipped for Renovate branches, and with a notice should `ANTHROPIC_API_KEY` be missing | no: its findings are a Definition of Done item |
 
   Job ids stay stable across phases: the `main` ruleset and Vercel's Deployment Checks match them
   by name. Every job that runs project code ends with `.github/actions/clean-worktree`, which fails
   when the job left untracked or modified files: whatever a tool generates is committed or
   gitignored in the same PR (ADR 0008).
-- The independent reviewer is the `ai-review` job. It posts once the setup wizard
-  (`scripts/setup-wizard.sh`, runbook in `docs/runbooks/setup-wizard.md`) stores
-  `ANTHROPIC_API_KEY`; until then the Definition of Done item for it is ticked as "n/a".
+- The independent reviewer is the `ai-review` job. It posts on every same-repository pull request but Renovate's:
+  the setup wizard (`scripts/setup-wizard.sh`, runbook in `docs/runbooks/setup-wizard.md`) stored
+  `ANTHROPIC_API_KEY` (#18 tracks the key's expiry); its findings are a Definition of Done item.
 - Hosting is Vercel through its GitHub integration (ADR 0006): a preview deployment per pull
   request, production from `main` only, and Deployment Checks hold the production alias until the
   required jobs above pass. `vercel.json` is the whole configuration; the dashboard-only settings

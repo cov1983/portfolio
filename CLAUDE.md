@@ -4,8 +4,8 @@
 Thomas's personal website: an immersive, interactive 3D portfolio in which visitors steer an ice-hockey
 puck through a playful virtual world to discover his projects and background. Physics, hockey-inspired
 challenges and light storytelling make exploring the portfolio an experience that itself demonstrates
-his development skills. Status: **Phase 3, increment-1 in progress** (plan `docs/plan/increment-1.md`;
-T8b #33 adds the capability hints and the failure boundary with its readable message).
+his development skills. Status: **increment-1 live** (spec `docs/spec/increment-1.md`, plan `docs/plan/increment-1.md`,
+shipped by T10 #35). Next: increment 2 (#59) behind its own spec; T11 touch steering is optional, behind #38.
 The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the model owns Rapier, the scene mirrors it.
 
 ## Environment
@@ -16,10 +16,10 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
 - The World at `/` (T5b, plan §2): preloaded after the hydration mark, mounted paused behind the Title Screen through
   the store; the perf run, the e2e canary and the Owner's checks all use `/` (the `?world` guard of plan §9 risk 10 is gone).
 - Team: solo. No required human approvals; the independent reviewer is the `ai-review` CI job
-  (posts once the setup wizard stores `ANTHROPIC_API_KEY`; skipped with a notice before). The owner merges.
+  (posts on every same-repo PR but Renovate's; the setup wizard stored `ANTHROPIC_API_KEY`, #18 tracks its expiry). The owner merges.
 - `main` is protected by a ruleset: PR required, no force-push, no deletion. Required status checks:
-  `lint`, `test`, `gitleaks`, plus `build`, `e2e`, `perf`, `sast`, `deps`, `spec-freeze` once the
-  wizard's ruleset stage has run (job ids are stable across phases).
+  `lint`, `test`, `build`, `e2e`, `perf`, `sast`, `deps`, `gitleaks`, `spec-freeze` (the wizard's
+  ruleset stage has run; job ids are stable across phases).
 - Branches: `chore/<topic>`, `feat/<topic>`, `fix/<topic>`. One ticket = one branch = one PR.
 - Commits carry the agent trailer (`Co-Authored-By: …`). Every PR carries the label `ai-assisted`.
 - Pushes are run by the owner. The agent stops at `git push` and asks; it never holds push credentials.
@@ -62,10 +62,10 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
 - `renovate.json`           Renovate: grouped patch automerge, majors behind the Dependency Dashboard (ADR 0007)
 - `.devcontainer/`          Dockerfile + devcontainer.json: the reference toolchain
 - `src/`                    application code: `main.tsx` (hydrates `/`), `entry-prerender.tsx`
-                            (both documents as strings for `build/build.ts`), `site/` (the HTML surfaces: TitleScreen, FallbackPage,
+                            (both documents as strings for `build/build.ts`), `site/` (the HTML surfaces: TitleScreen, FallbackPage, FallbackLink,
                             Exhibit, ExhibitPanel, Picture, Contact, Meta, WorldOverlay, WorldFailure, `site.css`; no three, Rapier or World model), `world/` (`model/`: layout, Rapier
                             model, pure camera; `input/`: keys by physical code; `scene/`: the R3F mirror; `World.tsx`), `perf/` (the marks),
-                            `content/` (ADR 0011: schema, types, `loadContent`, variant planner, `mailto.ts`), `app/` (plan §5: store, keys, focus, capability, preload, FailureBoundary; `App.tsx` the hydrated root)
+                            `content/` (ADR 0011: schema, types, `loadContent`, variant planner, `mailto.ts`), `app/` (plan §5: store, keys, focus, caption, capability, preload, FailureBoundary; `App.tsx` the hydrated root)
 - `build/`                  the build's I/O (plan §2, ADR 0010): `build.ts` (`make build`: client build, SSR build, both documents),
                             `prerender.ts` (pure: routes, shell fill, preview `cleanUrl`, `siteOrigin`), `content-plugin.ts` (validates
                             `content/`, serves `virtual:content`, emits `dist/media/`, dev media; `CONTENT_DIR`), `images.ts` (sharp)
