@@ -38,7 +38,7 @@ describe('the built site', () => {
     await removeBuild(build)
   })
 
-  it('lists both documents and the ice texture, so the walk below is not empty', () => {
+  it('lists both documents and the ice texture, so the list the cases below filter is not empty', () => {
     expect(files).toContain('index.html')
     expect(files).toContain('exhibits/index.html')
     expect(files.some((file) => /^assets\/ice-[^/]*\.webp$/.test(file))).toBe(true)

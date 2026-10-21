@@ -222,15 +222,20 @@ async function withPrivacyInstruments(page: Page): Promise<void> {
   )
 }
 
-type Seen = { url: string; type: string }
-type Answered = { url: string; contentType: string }
+type RequestSeen = { url: string; type: string }
+type ResponseSeen = { url: string; contentType: string }
 /** Every request and response from now on, as Playwright sees them (installed before any navigation). */
-type Visit = { requests: Seen[]; responses: Answered[] }
+type Visit = { requests: RequestSeen[]; responses: ResponseSeen[] }
 
 function watched(page: Page): Visit {
   const visit: Visit = { requests: [], responses: [] }
   page.on('request', (request) => {
     visit.requests.push({ url: request.url(), type: request.resourceType() })
+  })
+  // A failed request is still a request to an origin: logged a second time under its own type,
+  // after the `request` event every request fires first.
+  page.on('requestfailed', (request) => {
+    visit.requests.push({ url: request.url(), type: 'failed' })
   })
   page.on('response', (response) => {
     visit.responses.push({
@@ -331,21 +336,21 @@ test.describe('a full visit (US-28)', () => {
     // (a) AC-28.1: the union of the listener and both documents' resource timing. Not vacuous: the
     // log holds the World chunk, the Panel's media and the Fallback Page document.
     const urls = [...visit.requests.map((r) => r.url), ...onRoot.resources, ...onFallback.resources]
+    expect(onRoot.resources.length, 'resource timing on /').toBeGreaterThan(0)
+    expect(onFallback.resources.length, 'resource timing on /exhibits').toBeGreaterThan(0)
     expect(onRoot.bufferFull + onFallback.bufferFull, 'the resource-timing buffer overflowed').toBe(
       0,
     )
+    const pathnames = urls.map((url) => new URL(url).pathname)
     expect(
       urls.some((url) => WORLD_CHUNK.test(url)),
       'the World chunk in the log',
     ).toBe(true)
     expect(
-      urls.some((url) => new URL(url).pathname.startsWith(EXHIBIT_MEDIA)),
+      pathnames.some((pathname) => pathname.startsWith(EXHIBIT_MEDIA)),
       'the Panel’s media in the log',
     ).toBe(true)
-    expect(
-      urls.some((url) => new URL(url).pathname === '/exhibits'),
-      'the Fallback Page document in the log',
-    ).toBe(true)
+    expect(pathnames.includes('/exhibits'), 'the Fallback Page document in the log').toBe(true)
     expect(offOrigin(urls, origin), 'requests off the site’s origin').toEqual([])
 
     // (b) AC-28.2: every store empty on both documents, and from outside the page (HttpOnly cookies

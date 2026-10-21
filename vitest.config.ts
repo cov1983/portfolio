@@ -6,7 +6,7 @@ import { defineConfig } from 'vitest/config'
 // spawned into the scratch dir and its output checked as text. The first seam proper, the built
 // site in a browser, is Playwright (playwright.config.ts, tests/e2e). React rendering is proven
 // there, so the coverage ratchet below measures only model code and instruments (plus the perf
-// budget evaluator under scripts/), never components.
+// budget and link-check evaluators under scripts/), never components.
 export default defineConfig({
   test: {
     projects: [
