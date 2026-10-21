@@ -55,8 +55,8 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
                             commands (`/phase` plans a ticket, `/fix-review` works a PR review), skill symlinks (`skills/`)
 - `.agents/skills/`         vendored engineering skills from `mattpocock/skills`; `.claude/skills/*` link here
 - `skills-lock.json`        pins the vendored skills (source, path, content hash)
-- `.github/`                CI (`workflows/ci.yml`), weekly audit (`workflows/audit.yml`), composite setup action (`actions/setup/`), PR template, CODEOWNERS
-- `scripts/`                `perf-budget.ts` (+ `perf/budget.ts`, the pure evaluator and its test), `check-links.ts` (+ `links/check.ts`, the pure evaluator and its test; the weekly link check), `spec-freeze.sh` (+ its test),
+- `.github/`                CI (`workflows/ci.yml`), weekly audit (`workflows/audit.yml`), weekly link check (`workflows/links.yml`, non-blocking), composite setup action (`actions/setup/`), PR template, CODEOWNERS
+- `scripts/`                `perf-budget.ts` (+ `perf/budget.ts`, the pure evaluator and its test), `check-links.ts` (+ `links/check.ts`, the pure evaluator and its test; the weekly link check of `links.yml`), `spec-freeze.sh` (+ its test),
                             `ice-texture.ts` (`make ice-texture`; source and licence in `assets/ice/SOURCE.md`, the photo crop is not committed) and `setup-wizard.sh` (the Owner's dashboard steps; never run by an agent); TypeScript runs under plain Node 24
 - `perf/budget.json`        the performance budget: throttling profile, the three limits and the long-task bound; nowhere else
 - `renovate.json`           Renovate: grouped patch automerge, majors behind the Dependency Dashboard (ADR 0007)
