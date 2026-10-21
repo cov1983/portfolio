@@ -204,4 +204,52 @@ signatures before the conversion, green after; on the PR every required job gree
 
 ## As delivered
 
-Written in the PR, after commit 12.
+Commit order as planned, the Owner's go before each commit, `make verify` green before each:
+
+| # | commit | sha |
+|---|---|---|
+| 1 | `docs(plan): retro fold 2 plan of record` | 53d55a4 |
+| 2 | `chore(claude): run.sh --prove runs a new deny fixture against the committed hook` | 0bb3e9d |
+| 3 | `ci(ai-review): upload the execution file when the review step fails` | 14e91ec |
+| 4 | `chore(lint): a contract's callbacks are function-typed properties` | 8aede60 |
+| 5 | `test(build): no asset is inlined as a data: URL in the chunks or stylesheets` | dc18c74 |
+| 6 | `chore(claude): /phase probes plan premises and posts the plan first` | f7151c8 |
+| 7 | `docs(agents): overrides for plans and probes, /tdd, /diagnosing-bugs, /prototype, /wizard` | b728e8f |
+| 8 | `test(e2e): the suite's craft rules in the fixture header` | 893f514 |
+| 9 | `docs(spec): the index is not frozen; an outgrown sentence is amended in the PR that outgrows it` | 4f28a86 |
+| 10a | `docs(claude): fold the 22 rows into CLAUDE.md` | 361663f |
+| 10b | `docs: the PR template's review bound and post-merge line, the retro header, the ratchet-drift note` | 5a7f205 |
+| 10c | `docs(adr): 0015 retro fold 2` | e502a6e |
+| 11 | `docs(retro): the line for #76` | 97deb39 |
+| 12 | this section, then `/code-review` and the PR | see the PR |
+
+Deviations from the plan, each decided by the Owner on the tracker or in the review of the commit:
+
+- **Item 10: 12 signatures in four files, not 11 in three.** With the rule on, `make lint` found an
+  inline type literal in `scripts/links/check.ts` that the plan's line-anchored grep had missed. All
+  12 converted in the rule's commit; `make lint` red with 12 errors before, green after.
+- **`/phase` step 5 condensed.** The command carries the instruction (a premise is probed, the count
+  is taken now) and a pointer to "Plans and probes" with "a plan that skips one says why"; the
+  row-level rules (items 9, 12, 15, 23 and the probe shape) have that section as their single home.
+- **The Vercel wording (item 56).** The runbook (lines 28–29) and the Owner's #70 comment record the
+  fallthrough: without a `vercel.json` in the Root Directory, Vercel applies the repository root's.
+  The `/wizard` sentence keeps it as cause and effect, not as an "or" clause.
+- **The ratchet-drift rule (item 65) is a clause in `CLAUDE.md`**, "Lowering one needs an ADR, also
+  for toolchain drift (…); never a silent edit or a toolchain pin"; the full rule is in the
+  `vitest.config.ts` thresholds comment and `/diagnosing-bugs`.
+- **The `data:` case (item 39) is named for the CSP's `'self'` sources**, not `img-src`: an inlined
+  font or media file is caught by the same check. The real build carried no `data:` URL, so the
+  pattern stayed unnarrowed (Q5's narrowing not needed).
+- **`run.sh --prove` takes an optional previous hook.** Its PASS path cannot occur against `HEAD`
+  without a hook change, so the proof ran against two stub hooks (one allows everything, one denies
+  everything) and showed PASS, "already denied", "already allowed" and the usage exit.
+- **actionlint and the push ran on the Owner's host.** The devcontainer has no docker, podman or
+  actionlint binary (clean on 14e91ec from the host); the agent's push of commit 1 failed with
+  `Host key verification failed.` and the Owner pushed. No remote was changed.
+- **ADR 0015 is dated 2026-10-22**, the commit date in the Owner's local time; the plan's acceptance
+  stays 2026-10-21.
+- **CLAUDE.md:** fourteen lines replaced in place, none added or freed; at the cap a fold adds width,
+  not lines (the retro line's rule; fold 3 frees lines before it adds rules).
+
+Denied in the implementation session: none. The one denial of the planning session (the guard hook
+on a read-only command naming the ADR 0013 file) is quoted in Context and on #62.
