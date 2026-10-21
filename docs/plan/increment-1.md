@@ -714,7 +714,7 @@ and ADR 0012's Consequences carry it (the Owner may also disable the toolbar for
 Vercel dashboard). CI runs against `vite preview` and is unaffected.
 
 **Coverage ratchet scope** (vitest.config.ts): the current scope (`src/**` plus `scripts/perf/budget.ts`,
-CLAUDE.md) extended by `build/**/*.ts`, minus
+CLAUDE.md; later `scripts/ice/process.ts` by #55 and `scripts/links/check.ts` by T9) extended by `build/**/*.ts`, minus
 `src/main.tsx`, `src/entry-prerender.tsx`, every `*.tsx` (components are proven by seam 1),
 `build/build.ts` (I/O glue) and `build/content-plugin.ts` (Vite glue); the pure `src/content/validate.ts`,
 `build/images.ts`'s variant planner, the model, the reducer and the camera math are inside it. T0

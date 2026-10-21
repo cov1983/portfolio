@@ -1,0 +1,29 @@
+# Weekly external-link check (T9 #34, spec US-28's ticket scope). Non-blocking: no pull request and
+# no ruleset waits for it; a red run is the notification. The build never fetches a link
+# (src/content/validate.ts check 5 is syntax only); this workflow does, once a week, from the
+# content as the build reads it (scripts/check-links.ts). Same shape as audit.yml, two differences:
+# persist-credentials false, since the job talks to third-party hosts and needs no token afterwards,
+# and timeout-minutes 10, since those hosts may hang (the script's own timeout is 10 s per link).
+name: links
+
+on:
+  schedule:
+    - cron: '30 6 * * 1' # Monday 06:30 UTC, after audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  links:
+    name: links
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+
+      - name: Every external links[].url of the content answers 2xx
+        run: node scripts/check-links.ts

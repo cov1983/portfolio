@@ -6,7 +6,7 @@ import { defineConfig } from 'vitest/config'
 // spawned into the scratch dir and its output checked as text. The first seam proper, the built
 // site in a browser, is Playwright (playwright.config.ts, tests/e2e). React rendering is proven
 // there, so the coverage ratchet below measures only model code and instruments (plus the perf
-// budget evaluator under scripts/), never components.
+// budget and link-check evaluators under scripts/), never components.
 export default defineConfig({
   test: {
     projects: [
@@ -40,7 +40,13 @@ export default defineConfig({
       // build/ and the perf evaluator. Every *.tsx (src/main.tsx, src/entry-prerender.tsx,
       // components) is outside through the include pattern: seam 1 proves rendering. build/build.ts
       // (I/O glue) and build/content-plugin.ts (Vite glue) are outside by name.
-      include: ['src/**/*.ts', 'build/**/*.ts', 'scripts/perf/budget.ts', 'scripts/ice/process.ts'],
+      include: [
+        'src/**/*.ts',
+        'build/**/*.ts',
+        'scripts/perf/budget.ts',
+        'scripts/links/check.ts',
+        'scripts/ice/process.ts',
+      ],
       exclude: ['**/*.d.ts', '**/*.test.ts', 'build/build.ts', 'build/content-plugin.ts'],
       reporter: ['text', 'lcov'],
       // Ratchet: the floor never moves on its own. `make coverage-ratchet` sets COVERAGE_RATCHET=1,
