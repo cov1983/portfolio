@@ -31,6 +31,13 @@ A term goes to `GLOSSARY.md`, a decision to `docs/adr/`, and everything else a g
 (scope, rules, targets, open questions) to a tracker issue, as #3 did for increment 1. The glossary
 stays a glossary: no field lists, increment scope or rules in it (retro 2026-10-07; ADR 0008).
 
+## ADRs and the plan rows that cite them
+
+A threshold an ADR measures is reconciled in every plan row that cites it when the ADR is accepted
+(T5b carried two long-task numbers), and an open question whose answer lands in an ADR is answered
+before that ADR is accepted, never scheduled to edit it afterwards (retro 2026-10-10,
+docs/plan-increment-1; 2026-10-13, T5b #29; ADR 0015).
+
 ## Use the glossary's vocabulary
 
 When your output names a domain concept (in an issue title, a refactor proposal, a hypothesis, a test name), use the term as defined in `GLOSSARY.md`. Don't drift to synonyms the glossary explicitly avoids.
