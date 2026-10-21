@@ -1,8 +1,9 @@
 # Weekly external-link check (T9 #34, spec US-28's ticket scope). Non-blocking: no pull request and
 # no ruleset waits for it; a red run is the notification. The build never fetches a link
 # (src/content/validate.ts check 5 is syntax only); this workflow does, once a week, from the
-# content as the build reads it (scripts/check-links.ts). Same shape as audit.yml, one difference:
-# persist-credentials false, since the job talks to third-party hosts and needs no token afterwards.
+# content as the build reads it (scripts/check-links.ts). Same shape as audit.yml, two differences:
+# persist-credentials false, since the job talks to third-party hosts and needs no token afterwards,
+# and timeout-minutes 10, since those hosts may hang (the script's own timeout is 10 s per link).
 name: links
 
 on:
