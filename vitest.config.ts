@@ -52,12 +52,13 @@ export default defineConfig({
       // Ratchet: the floor never moves on its own. `make coverage-ratchet` sets COVERAGE_RATCHET=1,
       // which lets autoUpdate rewrite these numbers to the measured coverage; commit the result.
       // Lowering a number needs an ADR (CLAUDE.md).
-      // ratchet starting floor, 2026-10-09; autoUpdate raises it
+      // ratchet starting floor 80, 2026-10-09; raised by T10 (#35) on 2026-10-21 to the coverage measured
+      // at 1bf12bd, increment-1 as shipped (two runs on the new floor, the lower reading committed)
       thresholds: {
-        lines: 80,
-        functions: 80,
-        branches: 80,
-        statements: 80,
+        lines: 100,
+        functions: 100,
+        branches: 94.03,
+        statements: 99.27,
         autoUpdate: process.env.COVERAGE_RATCHET === '1',
       },
     },
