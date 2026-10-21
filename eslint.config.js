@@ -27,6 +27,12 @@ export default defineConfig([
         tsconfigRootDir: import.meta.dirname,
       },
     },
+    rules: {
+      // A contract's callbacks are function-typed properties, never method signatures: a method
+      // signature is bivariant and `unbound-method` fires on its destructured use (T1 #24, T5a #28;
+      // ADR 0015).
+      '@typescript-eslint/method-signature-style': ['error', 'property'],
+    },
   },
   prettier,
 ])

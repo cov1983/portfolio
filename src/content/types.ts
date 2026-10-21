@@ -56,10 +56,10 @@ export type Content = {
  */
 export type ContentFs = {
   /** The file's text, or undefined when it does not exist. */
-  readText(path: string): string | undefined
+  readText: (path: string) => string | undefined
   /** The names of the subdirectories, sorted; [] when the directory does not exist. */
-  listDirectories(path: string): string[]
-  exists(path: string): boolean
+  listDirectories: (path: string) => string[]
+  exists: (path: string) => boolean
   /** Pixel dimensions of an image file, or undefined when it does not exist. */
-  imageSize(path: string): { width: number; height: number } | undefined
+  imageSize: (path: string) => { width: number; height: number } | undefined
 }

@@ -35,7 +35,7 @@ export const REQUEST_HEADERS = {
 export type FetchLike = (
   url: string,
   init: RequestInit,
-) => Promise<{ status: number; body?: { cancel(): Promise<void> } | null }>
+) => Promise<{ status: number; body?: { cancel: () => Promise<void> } | null }>
 
 /** One link's result: `status` null when the fetch threw, `detail` its message then (or a body cancel's). */
 export type Outcome = { link: ExternalLink; ok: boolean; status: number | null; detail: string }
