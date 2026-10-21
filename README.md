@@ -61,7 +61,7 @@ touch steering is optional, behind its spec amendment (#38).
   by name. Every job that runs project code ends with `.github/actions/clean-worktree`, which fails
   when the job left untracked or modified files: whatever a tool generates is committed or
   gitignored in the same PR (ADR 0008).
-- The independent reviewer is the `ai-review` job. It posts on every same-repository pull request:
+- The independent reviewer is the `ai-review` job. It posts on every same-repository pull request but Renovate's:
   the setup wizard (`scripts/setup-wizard.sh`, runbook in `docs/runbooks/setup-wizard.md`) stored
   `ANTHROPIC_API_KEY` (#18 tracks the key's expiry); its findings are a Definition of Done item.
 - Hosting is Vercel through its GitHub integration (ADR 0006): a preview deployment per pull

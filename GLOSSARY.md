@@ -79,7 +79,7 @@ Assistive technology reads the Overlay; it never reads the canvas.
 _Avoid_: HUD, UI layer, game overlay
 
 **Key legend**:
-The Overlay's one line naming the keys that steer the Puck, Reset, and leave the World.
+The Overlay's single line naming the keys that steer the Puck, Reset, and leave the World.
 _Avoid_: controls hint, help text, instructions
 
 ## Content
@@ -111,18 +111,18 @@ the Title Screen.
 _Avoid_: modal, popup, dialog, detail view
 
 **One line**:
-The Title Screen's single sentence under the Owner's name, written by the Owner (`site.yaml`
-`oneLine`).
+The Title Screen's single sentence under the Owner's name, written by the Owner.
 _Avoid_: tagline, slogan, strapline
 
 **Way-in control**:
 The Title Screen's control that begins entry into the World, activated by Enter, Space or a pointer;
-it shows loading while the World's code is still arriving.
+it shows loading while the World bundle is still arriving.
 _Avoid_: play button, start button, call to action
 
 **Title Screen**:
-The first screen a Visitor sees, at the site's root address: the Owner's name, its One line, the
-Way-in control, the list of all Exhibits for direct access, and the link to the Fallback Page.
+The first screen a Visitor sees, at the site's root address: the Owner's name, the One line, the
+Contact line, the Way-in control, the list of all Exhibits for direct access, and the link to the
+Fallback Page.
 _Avoid_: landing page, splash, menu, loading screen
 
 **Fallback Page**:

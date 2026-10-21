@@ -5,7 +5,7 @@ Status line at the top: `draft | approved | amended`.
 
 - A spec is produced by `/to-spec` after `/grill-with-docs` (Phase 1, guide §4.1).
 - Approval is a commit `spec: approve <feature>`; afterwards the file is frozen.
-- Changes to an approved spec are explicit `amend:` commits — agents must not edit this directory otherwise.
+- Changes to an approved spec are explicit `amend:` commits — agents must not edit a spec otherwise (this index is not a spec).
   The CI job `spec-freeze` (`scripts/spec-freeze.sh`) fails a pull request that touches a frozen spec
   through any other commit.
 - Required sections: user stories with Given/When/Then acceptance criteria, non-functional requirements, data classification, non-goals, open-questions list, empty before approval.

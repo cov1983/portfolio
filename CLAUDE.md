@@ -16,7 +16,7 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
 - The World at `/` (T5b, plan §2): preloaded after the hydration mark, mounted paused behind the Title Screen through
   the store; the perf run, the e2e canary and the Owner's checks all use `/` (the `?world` guard of plan §9 risk 10 is gone).
 - Team: solo. No required human approvals; the independent reviewer is the `ai-review` CI job
-  (posts on every same-repo PR; the setup wizard stored `ANTHROPIC_API_KEY`, #18 tracks its expiry). The owner merges.
+  (posts on every same-repo PR but Renovate's; the setup wizard stored `ANTHROPIC_API_KEY`, #18 tracks its expiry). The owner merges.
 - `main` is protected by a ruleset: PR required, no force-push, no deletion. Required status checks:
   `lint`, `test`, `build`, `e2e`, `perf`, `sast`, `deps`, `gitleaks`, `spec-freeze` (the wizard's
   ruleset stage has run; job ids are stable across phases).
