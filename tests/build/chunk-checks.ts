@@ -15,3 +15,13 @@ export function scriptSources(html: string): string[] {
 export function staticImports(js: string): string[] {
   return [...js.matchAll(STATIC_IMPORT)].map((match) => match[1] ?? '')
 }
+
+// A `data:` URL as a bundler inlines an asset under its inline limit (Vite: build.assetsInlineLimit,
+// 4 KiB by default): the scheme, a media type and the comma before the payload. A regex literal such
+// as three's `data:(.*?)` or prose with "data:" has no media type and never matches.
+const DATA_URL = /\bdata:[a-z][a-z0-9.+-]*\/[a-z0-9.+-]+(?:;[a-z0-9=-]+)*,/gi
+
+/** Every `data:` URL (scheme, media type, parameters and the comma) in a chunk or stylesheet, in source order. */
+export function dataUrls(text: string): string[] {
+  return [...text.matchAll(DATA_URL)].map((match) => match[0])
+}
