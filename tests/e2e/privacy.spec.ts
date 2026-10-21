@@ -179,6 +179,10 @@ test.describe('Exhibit media', () => {
 //   listener alone: /'s resource timing is read before the navigation. The backstop is the CSP's
 //   `connect-src 'self'`, whose violation the shared fixture turns into a failure (ai-review on
 //   #73, finding 1).
+// - navigator.serviceWorker is present in all three engines on the served site (probe of
+//   2026-10-21 from the journey itself), so the registration count under AC-28.2 is a real check
+//   in each; the `in navigator` guard stays for an engine that drops the API on plain http
+//   (ai-review on #73, second pass, C).
 
 /** The user-timing mark the init script records once per audio constructor call. */
 const AUDIO_CONSTRUCTED_MARK = 'audio-constructed'
@@ -226,7 +230,8 @@ async function withPrivacyInstruments(page: Page): Promise<void> {
   )
 }
 
-type RequestSeen = { url: string; type: string }
+/** `error` is Playwright's failure text on a `failed` entry (ai-review on #73, second pass, A). */
+type RequestSeen = { url: string; type: string; error?: string }
 type ResponseSeen = { url: string; contentType: string }
 /** Every request and response from now on, as Playwright sees them (installed before any navigation). */
 type Visit = { requests: RequestSeen[]; responses: ResponseSeen[] }
@@ -240,7 +245,11 @@ function watched(page: Page): Visit {
   // after the `request` event every request fires first, so the journey can assert that none
   // failed (a silently failing same-origin request is a wiring bug; ai-review on #73, finding 5).
   page.on('requestfailed', (request) => {
-    visit.requests.push({ url: request.url(), type: 'failed' })
+    visit.requests.push({
+      url: request.url(),
+      type: 'failed',
+      error: request.failure()?.errorText ?? '',
+    })
   })
   page.on('response', (response) => {
     visit.responses.push({
@@ -334,7 +343,16 @@ test.describe('a full visit (US-28)', () => {
     await page.keyboard.up('ArrowUp')
     expect(await exhibitPanel(page).isVisible(), 'the Goal within GOAL_BUDGET_S').toBe(true)
 
-    // The Panel over the paused World; Escape back into the World; Escape to the Title Screen.
+    // The Panel over the paused World, every image of it loaded before it unmounts (an image still
+    // in flight when the Panel leaves is aborted, which the engine reports as a failed request;
+    // ai-review on #73, second pass, A); Escape back into the World; Escape to the Title Screen.
+    await expect
+      .poll(() =>
+        exhibitPanel(page)
+          .locator('img')
+          .evaluateAll((images) => images.every((image) => (image as HTMLImageElement).complete)),
+      )
+      .toBe(true)
     await page.keyboard.press('Escape')
     await expect(exhibitPanel(page)).toHaveCount(0)
     await expect(worldContainer(page)).toBeFocused()
@@ -364,8 +382,8 @@ test.describe('a full visit (US-28)', () => {
     expect(pathnames.includes('/exhibits'), 'the Fallback Page document in the log').toBe(true)
     expect(offOrigin(urls, origin), 'requests off the site’s origin').toEqual([])
     expect(
-      visit.requests.filter((r) => r.type === 'failed').map((r) => r.url),
-      'requests that failed during the visit',
+      visit.requests.filter((r) => r.type === 'failed').map((r) => `${r.url} (${r.error ?? ''})`),
+      'requests that failed during the visit, with the engine’s failure text',
     ).toEqual([])
 
     // (b) AC-28.2: every store empty on both documents, and from outside the page (HttpOnly cookies

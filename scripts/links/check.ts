@@ -37,7 +37,7 @@ export type FetchLike = (
   init: RequestInit,
 ) => Promise<{ status: number; body?: { cancel(): Promise<void> } | null }>
 
-/** One link's result: `status` null when the fetch threw, `detail` its message then. */
+/** One link's result: `status` null when the fetch threw, `detail` its message then (or a body cancel's). */
 export type Outcome = { link: ExternalLink; ok: boolean; status: number | null; detail: string }
 
 /** The error's message, with its cause's: Node's fetch throws "fetch failed" and keeps the reason underneath. */
@@ -47,24 +47,36 @@ function messageOf(error: unknown): string {
 }
 
 /**
- * GET (some hosts answer HEAD with 405), redirects followed, TIMEOUT_MS: ok on a final 2xx. The
- * body is cancelled once the status is read, never consumed (undici holds the connection until
- * a body is consumed or cancelled; ai-review on #73, finding 3). A throw (network, timeout) is a
- * failure carrying the message.
+ * GET (some hosts answer HEAD with 405), redirects followed, TIMEOUT_MS: ok on a final 2xx. A
+ * throw (network, timeout) is a failure carrying the message. The status is read first; the body
+ * is then cancelled, never consumed (undici holds the connection until a body is consumed or
+ * cancelled; ai-review on #73, finding 3). A cancel that rejects (a stream that already errored)
+ * is reported as `detail` on an outcome that keeps the status (ai-review on #73, second pass, B).
  */
 export async function checkLink(link: ExternalLink, fetchLike: FetchLike): Promise<Outcome> {
+  let response: Awaited<ReturnType<FetchLike>>
   try {
-    const response = await fetchLike(link.url, {
+    response = await fetchLike(link.url, {
       method: 'GET',
       redirect: 'follow',
       headers: REQUEST_HEADERS,
       signal: AbortSignal.timeout(TIMEOUT_MS),
     })
-    await response.body?.cancel()
-    const { status } = response
-    return { link, ok: status >= 200 && status < 300, status, detail: '' }
   } catch (error) {
     return { link, ok: false, status: null, detail: messageOf(error) }
+  }
+  const { status } = response
+  const detail = await cancelled(response.body)
+  return { link, ok: status >= 200 && status < 300, status, detail }
+}
+
+/** Cancels the body if there is one; a rejection is the detail, never thrown (the status stands). */
+async function cancelled(body: Awaited<ReturnType<FetchLike>>['body']): Promise<string> {
+  try {
+    await body?.cancel()
+    return ''
+  } catch (error) {
+    return `body not cancelled: ${messageOf(error)}`
   }
 }
 

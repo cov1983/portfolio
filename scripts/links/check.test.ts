@@ -145,6 +145,17 @@ describe('checkLink', () => {
     expect(cancelled).toBe(1)
   })
 
+  it('keeps the status and reports a body cancel that rejects as the detail', async () => {
+    const fetch: FetchLike = () =>
+      Promise.resolve({
+        status: 200,
+        body: { cancel: () => Promise.reject(new Error('stream already errored')) },
+      })
+    expect(await checkLink(link('https://x.example/one'), fetch)).toEqual(
+      outcome(true, 200, 'body not cancelled: stream already errored'),
+    )
+  })
+
   it('accepts an answer without a body (a 304, a stub)', async () => {
     const fetch: FetchLike = () => Promise.resolve({ status: 200, body: null })
     expect((await checkLink(link('https://x.example/one'), fetch)).ok).toBe(true)
