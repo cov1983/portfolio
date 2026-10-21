@@ -1,9 +1,11 @@
 # Retro log
 
 One line per ticket, appended in the ticket's own PR. Append, don't edit (guide §4.0.3).
-Every 3–5 tickets, fold the lines into a `CLAUDE.md` rule, a skill edit, a lint rule or a CI gate.
-Folded: rows up to 2026-10-10 (phase-0a … phase-0b PR 4) are in ADR 0008 (fold 1); rows are never edited, the
-ADR carries the verdicts.
+Every 3–5 tickets, fold the lines into a `CLAUDE.md` rule, a skill edit, a lint rule or a CI gate; the count is
+taken at planning time from the last folded row, and a count past the window becomes a hand-off issue with the
+inventory, never a bigger ticket (T10 #35). Folded: rows up to 2026-10-10 (phase-0a … phase-0b PR 4) are in
+ADR 0008 (fold 1); rows 2026-10-10 chore/retro-fold … 2026-10-21 T10 #35 are in ADR 0015 (fold 2); rows are
+never edited, the ADR carries the verdicts.
 
 | date | ticket | what cost time | what I overrode | rule I would add |
 |---|---|---|---|---|

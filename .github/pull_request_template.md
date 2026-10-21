@@ -13,7 +13,7 @@ Ticket: #…   Spec: docs/spec/<feature>.md §…   Plan: docs/plan/<feature>.md
 - [ ] Docs updated (README/API/ADR/runbook as applicable); CHANGELOG entry once one exists
 - [ ] Observability: new paths emit logs/metrics/traces per plan
 - [ ] Infra changes: `plan` output attached; no `apply` performed by an agent
-- [ ] Independent AI review (`ai-review`) findings addressed or explicitly dismissed with reason
+- [ ] Independent AI review (`ai-review`) findings addressed or explicitly dismissed with reason; one fix commit per round, at most two rounds, then a follow-up issue
 - [ ] Commits conventional, one task per commit, agent trailer present; PR labelled `ai-assisted`
 - [ ] One line appended to `docs/retro.md` in this PR (main is protected; a separate PR per retro line is not worth it)
 
@@ -24,3 +24,4 @@ Ticket: #…   Spec: docs/spec/<feature>.md §…   Plan: docs/plan/<feature>.md
 <!-- what could break, how to detect it, how to roll back -->
 
 ### Reviewer notes (what to look at first)
+<!-- post-merge checks: a gate change that waits on the runner or a deploy names its acceptance as runs on main after the merge, and where to read them -->

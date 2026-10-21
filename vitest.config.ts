@@ -51,7 +51,11 @@ export default defineConfig({
       reporter: ['text', 'lcov'],
       // Ratchet: the floor never moves on its own. `make coverage-ratchet` sets COVERAGE_RATCHET=1,
       // which lets autoUpdate rewrite these numbers to the measured coverage; commit the result.
-      // Lowering a number needs an ADR (CLAUDE.md).
+      // Lowering a number needs an ADR (CLAUDE.md). The floors sit on V8's readings: a Node, Vitest
+      // or @vitest/coverage-v8 bump can move branches or statements by a hundredth with no code
+      // change, so a `test` failure on a Renovate PR with no src/ change is toolchain drift first;
+      // the fix is an ADR lowering the floor to the new reading, never a silent edit here and never
+      // a toolchain pin (the #77 review on #76; ADR 0015).
       // ratchet starting floor 80, 2026-10-09; raised by T10 (#35) on 2026-10-21 to the coverage
       // measured at 1bf12bd, increment-1 as shipped (two runs on the new floor agreed; had they
       // differed, the lower reading would have been committed)
