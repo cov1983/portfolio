@@ -128,6 +128,27 @@ describe('checkLink', () => {
     })
     expect(calls[0]?.init.signal).toBeInstanceOf(AbortSignal)
   })
+
+  it('cancels the response body once the status is read, so the connection is released', async () => {
+    let cancelled = 0
+    const fetch: FetchLike = () =>
+      Promise.resolve({
+        status: 200,
+        body: {
+          cancel: () => {
+            cancelled += 1
+            return Promise.resolve()
+          },
+        },
+      })
+    expect((await checkLink(link('https://x.example/one'), fetch)).ok).toBe(true)
+    expect(cancelled).toBe(1)
+  })
+
+  it('accepts an answer without a body (a 304, a stub)', async () => {
+    const fetch: FetchLike = () => Promise.resolve({ status: 200, body: null })
+    expect((await checkLink(link('https://x.example/one'), fetch)).ok).toBe(true)
+  })
 })
 
 describe('checkLinks', () => {

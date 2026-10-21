@@ -175,6 +175,10 @@ test.describe('Exhibit media', () => {
 //   such an element that plays still makes a media request, which the log catches.
 // - Firefox answers a cached stylesheet on /exhibits with 304 and no content-type: a missing or
 //   empty content-type is not audio.
+// - A request sent while / unloads (a beacon or a keepalive fetch on pagehide) is seen by the
+//   listener alone: /'s resource timing is read before the navigation. The backstop is the CSP's
+//   `connect-src 'self'`, whose violation the shared fixture turns into a failure (ai-review on
+//   #73, finding 1).
 
 /** The user-timing mark the init script records once per audio constructor call. */
 const AUDIO_CONSTRUCTED_MARK = 'audio-constructed'
@@ -233,7 +237,8 @@ function watched(page: Page): Visit {
     visit.requests.push({ url: request.url(), type: request.resourceType() })
   })
   // A failed request is still a request to an origin: logged a second time under its own type,
-  // after the `request` event every request fires first.
+  // after the `request` event every request fires first, so the journey can assert that none
+  // failed (a silently failing same-origin request is a wiring bug; ai-review on #73, finding 5).
   page.on('requestfailed', (request) => {
     visit.requests.push({ url: request.url(), type: 'failed' })
   })
@@ -254,6 +259,8 @@ type Observed = {
   session: number
   databases: number
   caches: number
+  /** Service worker registrations: persistent state too (ai-review on #73, finding 2). */
+  workers: number
   audioConstructed: number
   bufferFull: number
   audioElements: number
@@ -268,6 +275,10 @@ function observed(page: Page): Promise<Observed> {
       session: sessionStorage.length,
       databases: (await indexedDB.databases()).length,
       caches: (await caches.keys()).length,
+      workers:
+        'serviceWorker' in navigator
+          ? (await navigator.serviceWorker.getRegistrations()).length
+          : 0,
       audioConstructed: performance.getEntriesByName(audioMark, 'mark').length,
       bufferFull: performance.getEntriesByName(bufferMark, 'mark').length,
       audioElements: document.querySelectorAll('audio').length,
@@ -276,15 +287,15 @@ function observed(page: Page): Promise<Observed> {
   )
 }
 
-/** The stores AC-28.2 names, plus the Cache API ("any storage", the ticket). */
+/** The stores AC-28.2 names, plus the Cache API and service worker registrations ("any storage", the ticket). */
 function stores(
   seen: Observed,
-): Pick<Observed, 'cookie' | 'local' | 'session' | 'databases' | 'caches'> {
-  const { cookie, local, session, databases, caches } = seen
-  return { cookie, local, session, databases, caches }
+): Pick<Observed, 'cookie' | 'local' | 'session' | 'databases' | 'caches' | 'workers'> {
+  const { cookie, local, session, databases, caches, workers } = seen
+  return { cookie, local, session, databases, caches, workers }
 }
 
-const EMPTY_STORES = { cookie: '', local: 0, session: 0, databases: 0, caches: 0 }
+const EMPTY_STORES = { cookie: '', local: 0, session: 0, databases: 0, caches: 0, workers: 0 }
 
 /** The URLs that went to another origin; document-local schemes are no request at all. */
 function offOrigin(urls: string[], origin: string): string[] {
@@ -352,6 +363,10 @@ test.describe('a full visit (US-28)', () => {
     ).toBe(true)
     expect(pathnames.includes('/exhibits'), 'the Fallback Page document in the log').toBe(true)
     expect(offOrigin(urls, origin), 'requests off the site’s origin').toEqual([])
+    expect(
+      visit.requests.filter((r) => r.type === 'failed').map((r) => r.url),
+      'requests that failed during the visit',
+    ).toEqual([])
 
     // (b) AC-28.2: every store empty on both documents, and from outside the page (HttpOnly cookies
     // document.cookie cannot see; any origin with storage).

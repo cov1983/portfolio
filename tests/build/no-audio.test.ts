@@ -52,7 +52,8 @@ describe('the built site', () => {
   it('renders no audio element and no audio source on either document (AC-28.3)', () => {
     for (const html of [build.indexHtml, build.exhibitsHtml]) {
       expect(html).not.toMatch(/<audio\b/i)
-      expect(html).not.toMatch(/type="audio\//i)
+      // Double-quoted by React's prerender; single-quoted or unquoted closed too (ai-review on #73, 6).
+      expect(html).not.toMatch(/type=["']?audio\//i)
     }
   })
 })

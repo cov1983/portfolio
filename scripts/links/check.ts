@@ -31,8 +31,11 @@ export const REQUEST_HEADERS = {
   accept: 'text/html,*/*',
 }
 
-/** What the evaluator needs of fetch; the global one fits. */
-export type FetchLike = (url: string, init: RequestInit) => Promise<{ status: number }>
+/** What the evaluator needs of fetch; the global one fits. A body, when there is one, is cancelled, never read. */
+export type FetchLike = (
+  url: string,
+  init: RequestInit,
+) => Promise<{ status: number; body?: { cancel(): Promise<void> } | null }>
 
 /** One link's result: `status` null when the fetch threw, `detail` its message then. */
 export type Outcome = { link: ExternalLink; ok: boolean; status: number | null; detail: string }
@@ -45,16 +48,20 @@ function messageOf(error: unknown): string {
 
 /**
  * GET (some hosts answer HEAD with 405), redirects followed, TIMEOUT_MS: ok on a final 2xx. The
- * body is never read. A throw (network, timeout) is a failure carrying the message.
+ * body is cancelled once the status is read, never consumed (undici holds the connection until
+ * a body is consumed or cancelled; ai-review on #73, finding 3). A throw (network, timeout) is a
+ * failure carrying the message.
  */
 export async function checkLink(link: ExternalLink, fetchLike: FetchLike): Promise<Outcome> {
   try {
-    const { status } = await fetchLike(link.url, {
+    const response = await fetchLike(link.url, {
       method: 'GET',
       redirect: 'follow',
       headers: REQUEST_HEADERS,
       signal: AbortSignal.timeout(TIMEOUT_MS),
     })
+    await response.body?.cancel()
+    const { status } = response
     return { link, ok: status >= 200 && status < 300, status, detail: '' }
   } catch (error) {
     return { link, ok: false, status: null, detail: messageOf(error) }

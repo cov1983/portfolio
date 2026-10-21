@@ -19,4 +19,14 @@ async function main(): Promise<number> {
   return exitCode(outcomes)
 }
 
-process.exitCode = await main()
+main().then(
+  (code) => {
+    process.exitCode = code
+  },
+  (error: unknown) => {
+    // A ContentError, or anything else that escapes main: its message as an annotation on
+    // stderr, never a bare stack trace alone (ai-review on #73, finding 4).
+    console.error(`::error::link check: ${error instanceof Error ? error.message : String(error)}`)
+    process.exitCode = 1
+  },
+)
