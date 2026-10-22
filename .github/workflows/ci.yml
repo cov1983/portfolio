@@ -1,6 +1,6 @@
 # Phase 0b CI. Job ids stay stable across phases: the `main` ruleset and Vercel's Deployment Checks
-# match them by name. Required today: lint, test, gitleaks; build, e2e, perf, sast, deps and
-# spec-freeze join them when the setup wizard updates the ruleset (Phase 0b PR 4). ai-review is never
+# match them by name. Required by the `main` ruleset: lint, test, build, e2e, perf, sast, deps,
+# gitleaks and spec-freeze (the setup wizard's ruleset stage has run, #35). ai-review is never
 # required: its findings are a Definition of Done item. Shape:
 #
 #   lint -> test -> build -> e2e
@@ -230,13 +230,13 @@ jobs:
       pull-requests: write
       issues: read
     steps:
-      - name: Is ANTHROPIC_API_KEY stored? (the setup wizard stores it, Phase 0b PR 4)
+      - name: 'Is ANTHROPIC_API_KEY stored? (the setup wizard stored it; #18 tracks its expiry)'
         id: key
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           if [ -z "$ANTHROPIC_API_KEY" ]; then
-            echo "::notice::ANTHROPIC_API_KEY is not stored yet; the independent AI review is skipped until the setup wizard stores it"
+            echo "::notice::ANTHROPIC_API_KEY is absent (expired or removed; the setup wizard stores it, #18 tracks its expiry); the independent AI review is skipped"
             echo "present=false" >> "$GITHUB_OUTPUT"
           else
             echo "present=true" >> "$GITHUB_OUTPUT"
