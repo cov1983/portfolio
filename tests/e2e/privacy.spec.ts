@@ -163,8 +163,9 @@ test.describe('Exhibit media', () => {
 //
 // Probe of 2026-10-21 against the installed Playwright 1.64 engines (#34, step 1a), folded in here:
 // - The request listener and the page's resource timing agree in Chromium and WebKit. Firefox
-//   fetches /favicon.ico on its own: resource timing records it (initiator "other"), the listener
-//   and the response event never see it. The log is therefore the union of both sources, read per
+//   fetches the icon on its own (probed with /favicon.ico; the documents declare /favicon.svg since
+//   #75): resource timing records it (initiator "other"), the listener and the response event
+//   never see it. The log is therefore the union of both sources, read per
 //   document before it is left (resource timing, marks and the DOM are per document).
 // - blob:, data: and about: URLs are document-local and excluded from the origin check (Owner's
 //   amendment); the visit produced 0 / 0 / 0 of them in all three engines.
