@@ -13,6 +13,7 @@ does; an agent never does them (the setup wizard does not know this project eith
 | where | value | why |
 |---|---|---|
 | Vercel project | `tc-discovery-9k2v`, linked to `cov1983/portfolio` | one repository, two projects |
+| Production URL | `tc-discovery-9k2v-blush.vercel.app` | Vercel appended `-blush` to the project name; the production deployment is where the checks below run |
 | Settings → General → Root Directory | `mockups/project-discovery` | Vercel sees only this folder; `vercel.json` is read from here, not from the repository root |
 | Settings → Build and Deployment → Framework Preset | Other | a static folder, no framework |
 | Install Command, Build Command, Output Directory | empty, empty, `.` | no install, no build; the folder is the site |
@@ -40,9 +41,12 @@ download is a `blob:` URL with the `download` attribute, which no CSP fetch dire
 
 ## After a deploy
 
+The steps run on the production deployment, after the merge to `main` (#72); a preview may sit
+behind Deployment Protection.
+
 1. The deployment's Build log shows no install and no build step.
-2. On the production URL (a preview may sit behind Deployment Protection):
-   `curl -sI https://<production-url>/ | grep -i -e x-robots-tag -e x-content-type-options -e referrer-policy -e content-security-policy`
+2. On the production URL:
+   `curl -sI https://tc-discovery-9k2v-blush.vercel.app/ | grep -i -e x-robots-tag -e x-content-type-options -e referrer-policy -e content-security-policy`
    prints the four headers.
 3. In a browser: the page renders, the questionnaire moves through its sections, "download brief"
    saves `project-discovery-brief.txt`, and the DevTools console shows no CSP report. A blocked

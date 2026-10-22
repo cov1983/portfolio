@@ -10,9 +10,9 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
 
 ## Environment
 - Code: GitHub, public repository `cov1983/portfolio`. CI: GitHub Actions (`.github/workflows/ci.yml`).
-- Site: Vercel through its Git integration (ADR 0006). `vercel.json` is the only hosting config:
-  a preview per PR, production from `main`, held by Deployment Checks until the CI gates pass.
-  Dashboard settings (project, checks, domain, ruleset, secret) are stages of the setup wizard.
+- Site: Vercel through its Git integration (ADR 0006). `vercel.json` is the hosting config of thomascova.dev:
+  a preview per PR, production from `main`, held by Deployment Checks until the CI gates pass. A second project serves
+  `mockups/project-discovery/` read-only under its own `vercel.json` (ADR 0006 note, #72; `docs/runbooks/mockup-preview.md`). Dashboard settings (project, checks, domain, ruleset, secret) are stages of the setup wizard.
 - The World at `/` (T5b, plan §2): preloaded after the hydration mark, mounted paused behind the Title Screen through
   the store; the perf run, the e2e canary and the Owner's checks all use `/` (the `?world` guard of plan §9 risk 10 is gone).
 - Team: solo. No required human approvals; the independent reviewer is the `ai-review` CI job
@@ -77,7 +77,7 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
                             failing with file and field), `model/` (headless Rapier, seam 2)
 - `.githooks/`              `pre-commit`: lint-staged (Prettier, ESLint) then gitleaks; wired by `make setup`
 - root configs              `vite.config.ts`, `vitest.config.ts`, `playwright.config.ts`, `eslint.config.js`, `tsconfig*.json`, `.prettierrc`
-- `vercel.json`             the whole hosting configuration (ADR 0006), response headers included (ADR 0012); owned by the Owner in
+- `vercel.json`             the site's hosting configuration (ADR 0006; the mockup project's is its own, under `mockups/project-discovery/`), response headers included (ADR 0012); owned by the Owner in
                             CODEOWNERS. `vercel-headers.ts` reads its headers for `vite.config.ts` and the e2e fixture
 - `infra/`                  does not exist: no infrastructure beyond Vercel
 - `GLOSSARY.md`             shared vocabulary (called CONTEXT.md in docs/workflow-guide.md); produced by `/grill-with-docs` in Phase 1

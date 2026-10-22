@@ -15,10 +15,18 @@
 # before the change gets it wrong (retro 2026-10-10, chore/retro-fold: a deny fixture that the old
 # hook already denied was proving an old hole, not the change). A denied-* fixture must be allowed
 # by the previous hook and denied by the working tree; an allowed-* fixture the reverse. The
-# previous hook is `git show HEAD:.claude/hooks/guard-bash.sh` unless a path is given (for example
-# main's hook written to a file). "already denied at HEAD" or "already allowed at HEAD" is a FAIL:
-# the fixture is not new to the change. Local only, run before the commit that adds the fixture;
-# `make test-shell` does not call it (ADR 0015, Q7).
+# previous hook is guard-bash.sh at the merge base of origin/main and HEAD, the hook before the
+# branch's change, so the PASS still shows once the change is committed (ai-review on #79, 2; #80);
+# without a merge base with origin/main (no such ref, or no common history) HEAD stands in and a
+# line says so, after git's own message. Fetch origin/main first (`git fetch origin main`): a stale
+# ref moves the base back, and an older hook than main's stands in for the previous one (ai-review
+# on #81, 3). A path as the third argument replaces either (for example main's hook written to a
+# file).
+# "already denied at main@<sha>" or "already allowed at main@<sha>" is a FAIL: the fixture is not
+# new to the change. A real fixture is proved locally only, never by CI (ADR 0015, Q7);
+# `make test-shell` runs --prove against the stubs under prove/ alone, to prove its four outcomes:
+# PASS, "already denied", the working tree wrong (exit 1) and a previous hook that crashes (exit 2),
+# each with an explicit previous hook, never the default (#80).
 #
 # guard-bash.sh's dotenv pattern (HEAD_PATTERNS, guard-bash.sh:26) is a delimiter class on both
 # sides of `.env`: before it the start of the text, whitespace, `/`, `"`, `'`, `=` or `(`; after it
@@ -70,21 +78,29 @@ if [[ "${1-}" == "--prove" ]]; then
     previous="$3"; previous_name="$3"
   else
     PREVIOUS_TMP="$(mktemp)"
-    if ! git -C "$root" show HEAD:.claude/hooks/guard-bash.sh >"$PREVIOUS_TMP" 2>/dev/null; then
-      echo "FAIL  no guard-bash.sh committed at HEAD" >&2
+    if base="$(git -C "$root" merge-base origin/main HEAD)"; then
+      previous_name="main@${base:0:7}"
+    else
+      echo "note  no merge base with origin/main; the previous hook is HEAD's" >&2
+      base=HEAD; previous_name="HEAD"
+    fi
+    if ! git -C "$root" show "$base:.claude/hooks/guard-bash.sh" >"$PREVIOUS_TMP" 2>/dev/null; then
+      echo "FAIL  no guard-bash.sh committed at $previous_name" >&2
       exit 2
     fi
     chmod +x "$PREVIOUS_TMP"
-    previous="$PREVIOUS_TMP"; previous_name="HEAD"
+    previous="$PREVIOUS_TMP"
   fi
   before="$(decision "$previous" "$fixture")"
   after="$(decision "$hook" "$fixture")"
-  for verdict in "$before at $previous_name" "$after by the working tree"; do
-    if [[ "$verdict" == error* ]]; then
-      echo "FAIL  $name: the hook exited non-zero (${verdict#error }); no decision to compare" >&2
+  ran() { # decision, where it ran
+    if [[ "$1" == error* ]]; then
+      echo "FAIL  $name: the hook exited non-zero (${1#error }) at $2; no decision to compare" >&2
       exit 2
     fi
-  done
+  }
+  ran "$before" "$previous_name"
+  ran "$after" "the working tree"
   if [[ "$after" != "$expect" ]]; then
     echo "FAIL  $name: $(outcome_word "$after") by the working tree hook; the fixture expects $(outcome_word "$expect")"
     exit 1
@@ -114,6 +130,20 @@ fixtures=("$here"/*.json)
 lines="$(wc -l <"$GUARD_BASH_LOG")"
 expected="${#fixtures[@]}"
 if [[ "$lines" -eq "$expected" ]]; then echo "PASS  audit log has $lines entries"; else echo "FAIL  audit log has $lines entries, expected $expected"; fail=1; fi
+
+# --- --prove against the stubs under prove/: its four outcomes (#80) ---------------------------
+# Each call names its previous hook, so no case depends on origin/main (a CI checkout may lack it);
+# each child run.sh takes its own audit log, so the count above is untouched. A real fixture is
+# never proved here (ADR 0015, Q7).
+prove_case() {
+  local want_rc="$1" want_text="$2" fixture="$3" stub="$4" out rc
+  out="$("$here/run.sh" --prove "$here/$fixture" "$here/prove/$stub" 2>&1)"; rc=$?
+  if [[ $rc -eq $want_rc && "$out" == *"$want_text"* ]]; then echo "PASS  --prove $fixture against prove/$stub: exit $rc, \"$want_text\""; else echo "FAIL  --prove $fixture against prove/$stub: exit $rc (expected $want_rc), out=$out"; fail=1; fi
+}
+prove_case 0 'the fixture proves the change' denied.json allow-all.sh
+prove_case 1 'already denied at' denied.json deny-all.sh
+prove_case 1 'allowed by the working tree hook; the fixture expects denied' prove/denied-harmless.json allow-all.sh
+prove_case 2 'the hook exited non-zero (3) at' denied.json crash.sh
 
 # --- format-file.sh --------------------------------------------------------------------------
 format="$here/../format-file.sh"

@@ -1,6 +1,9 @@
 # ADR 0012 — Response headers: CSP and companions in vercel.json, mirrored into vite preview
 
-Status: Accepted (2026-10-10)
+Status: Accepted (2026-10-10); note 2026-10-22 (#72): `Strict-Transport-Security` is not in the
+file: Vercel sets it on every deployment it serves (platform-provided, `max-age=63072000` read on
+thomascova.dev by the Owner, #72; `docs/plan/increment-1.md` "HSTS is set by Vercel on the
+domain"), so the list is the site's own headers, not every header a response carries
 
 ## Context
 

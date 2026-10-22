@@ -95,9 +95,9 @@ function plural(count: number, noun: string): string {
 }
 
 /**
- * One line per link (verdict, status, Exhibit, label, URL, the detail of a throw), then on any
- * failure a `::error::` annotation for the run page, then the summary line. The exit code is
- * `exitCode`'s.
+ * One line per link (verdict, status, Exhibit, label, URL, the detail: a throw's message, or a body
+ * cancel's), then on any failure a `::error::` annotation for the run page, then the summary line.
+ * The exit code is `exitCode`'s.
  */
 export function formatLines(outcomes: readonly Outcome[]): string[] {
   const exhibitWidth = Math.max(0, ...outcomes.map((o) => o.link.exhibit.length))

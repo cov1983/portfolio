@@ -1,6 +1,6 @@
 # Phase 0b CI. Job ids stay stable across phases: the `main` ruleset and Vercel's Deployment Checks
-# match them by name. Required today: lint, test, gitleaks; build, e2e, perf, sast, deps and
-# spec-freeze join them when the setup wizard updates the ruleset (Phase 0b PR 4). ai-review is never
+# match them by name. Required by the `main` ruleset: lint, test, build, e2e, perf, sast, deps,
+# gitleaks and spec-freeze (the setup wizard's ruleset stage has run, #35). ai-review is never
 # required: its findings are a Definition of Done item. Shape:
 #
 #   lint -> test -> build -> e2e
@@ -230,13 +230,15 @@ jobs:
       pull-requests: write
       issues: read
     steps:
-      - name: Is ANTHROPIC_API_KEY stored? (the setup wizard stores it, Phase 0b PR 4)
+      # Absence only: an expired key is still stored, so this step passes and the review step fails
+      # on auth; #18 tracks the expiry.
+      - name: 'Is ANTHROPIC_API_KEY stored? (the setup wizard stored it; #18 tracks its expiry)'
         id: key
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           if [ -z "$ANTHROPIC_API_KEY" ]; then
-            echo "::notice::ANTHROPIC_API_KEY is not stored yet; the independent AI review is skipped until the setup wizard stores it"
+            echo "::notice::ANTHROPIC_API_KEY is not stored (removed, or the setup wizard has not run); the independent AI review is skipped"
             echo "present=false" >> "$GITHUB_OUTPUT"
           else
             echo "present=true" >> "$GITHUB_OUTPUT"
@@ -289,6 +291,9 @@ jobs:
       # sets the output on every failure path once the file exists (base-action/src/run-claude-sdk.ts
       # line 222 writes it before each failure throw; src/entrypoints/run.ts line 318 sets the output
       # in its catch, before setFailed at 324); a failure before Claude runs leaves it empty.
+      # On a public repository the artifact is downloadable by any signed-in GitHub user for its 14 days;
+      # whoever copies this step to a private repository rereads this paragraph with that in mind
+      # (ai-review on #79, 6).
       - name: Upload review execution file on failure
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure() && steps.review.outputs.execution_file != ''

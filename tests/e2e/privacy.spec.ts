@@ -163,8 +163,9 @@ test.describe('Exhibit media', () => {
 //
 // Probe of 2026-10-21 against the installed Playwright 1.64 engines (#34, step 1a), folded in here:
 // - The request listener and the page's resource timing agree in Chromium and WebKit. Firefox
-//   fetches /favicon.ico on its own: resource timing records it (initiator "other"), the listener
-//   and the response event never see it. The log is therefore the union of both sources, read per
+//   fetches the icon on its own (probed with /favicon.ico; the documents declare /favicon.svg since
+//   #75): resource timing records it (initiator "other"), the listener and the response event
+//   never see it. The log is therefore the union of both sources, read per
 //   document before it is left (resource timing, marks and the DOM are per document).
 // - blob:, data: and about: URLs are document-local and excluded from the origin check (Owner's
 //   amendment); the visit produced 0 / 0 / 0 of them in all three engines.
@@ -346,11 +347,17 @@ test.describe('a full visit (US-28)', () => {
     // The Panel over the paused World, every image of it loaded before it unmounts (an image still
     // in flight when the Panel leaves is aborted, which the engine reports as a failed request;
     // ai-review on #73, second pass, A); Escape back into the World; Escape to the Title Screen.
+    // Empty currentSrc = lazy, not started; the poll assumes the Panel's images are in view (#74).
     await expect
       .poll(() =>
         exhibitPanel(page)
           .locator('img')
-          .evaluateAll((images) => images.every((image) => (image as HTMLImageElement).complete)),
+          .evaluateAll((images) =>
+            images.every((image) => {
+              const { complete, currentSrc } = image as HTMLImageElement
+              return complete || currentSrc === ''
+            }),
+          ),
       )
       .toBe(true)
     await page.keyboard.press('Escape')
