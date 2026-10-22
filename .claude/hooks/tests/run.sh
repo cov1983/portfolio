@@ -18,8 +18,10 @@
 # previous hook is guard-bash.sh at the merge base of origin/main and HEAD, the hook before the
 # branch's change, so the PASS still shows once the change is committed (ai-review on #79, 2; #80);
 # without a merge base with origin/main (no such ref, or no common history) HEAD stands in and a
-# line says so, after git's own message. A path as the third argument replaces either (for example
-# main's hook written to a file).
+# line says so, after git's own message. Fetch origin/main first (`git fetch origin main`): a stale
+# ref moves the base back, and an older hook than main's stands in for the previous one (ai-review
+# on #81, 3). A path as the third argument replaces either (for example main's hook written to a
+# file).
 # "already denied at main@<sha>" or "already allowed at main@<sha>" is a FAIL: the fixture is not
 # new to the change. A real fixture is proved locally only, never by CI (ADR 0015, Q7);
 # `make test-shell` runs --prove against the stubs under prove/ alone, to prove its four outcomes:

@@ -230,13 +230,15 @@ jobs:
       pull-requests: write
       issues: read
     steps:
+      # Absence only: an expired key is still stored, so this step passes and the review step fails
+      # on auth; #18 tracks the expiry.
       - name: 'Is ANTHROPIC_API_KEY stored? (the setup wizard stored it; #18 tracks its expiry)'
         id: key
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           if [ -z "$ANTHROPIC_API_KEY" ]; then
-            echo "::notice::ANTHROPIC_API_KEY is absent (expired or removed; the setup wizard stores it, #18 tracks its expiry); the independent AI review is skipped"
+            echo "::notice::ANTHROPIC_API_KEY is not stored (removed, or the setup wizard has not run); the independent AI review is skipped"
             echo "present=false" >> "$GITHUB_OUTPUT"
           else
             echo "present=true" >> "$GITHUB_OUTPUT"
