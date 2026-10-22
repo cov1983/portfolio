@@ -1,6 +1,6 @@
 # ADR 0015 — Retro fold 2: where the increment-1 lessons went
 
-Status: Accepted (2026-10-22)
+Status: Accepted (2026-10-22); note 2026-10-22 (#80): `run.sh --prove` defaults its previous hook to the merge base with `origin/main`, not HEAD, and `make test-shell` proves its four outcomes against stubs under `.claude/hooks/tests/prove/` (a real fixture is still proved locally only); the Consequences bullet on `--prove` reads so, the rest stands
 
 ## Context
 
