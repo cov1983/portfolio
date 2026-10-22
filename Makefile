@@ -7,7 +7,8 @@
 PNPM ?= pnpm
 # Headed Firefox (playwright.config.ts) needs a display: a virtual one where xvfb-run exists.
 XVFB_RUN := $(shell command -v xvfb-run >/dev/null 2>&1 && echo 'xvfb-run -a')
-# Every shell script in the repo: hooks, their test runner, the pre-commit hook, the gates and their tests.
+# Every shell script in the repo: hooks, their test runner and its --prove stubs, the pre-commit
+# hook, the gates and their tests.
 SHELL_FILES := .claude/hooks/*.sh .claude/hooks/tests/run.sh .claude/hooks/tests/prove/*.sh .githooks/pre-commit scripts/*.sh
 
 help:

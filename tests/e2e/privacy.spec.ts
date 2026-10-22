@@ -344,12 +344,10 @@ test.describe('a full visit (US-28)', () => {
     await page.keyboard.up('ArrowUp')
     expect(await exhibitPanel(page).isVisible(), 'the Goal within GOAL_BUDGET_S').toBe(true)
 
-    // The Panel over the paused World, every image of it that started loading loaded before it
-    // unmounts (an image still in flight when the Panel leaves is aborted, which the engine reports
-    // as a failed request; ai-review on #73, second pass, A). An img with an empty currentSrc has
-    // not started (Picture.tsx loads lazily) and is never waited on: the poll assumes the Panel's
-    // images are in view (ai-review on #73, third pass, 1; #74). Escape back into the World;
-    // Escape to the Title Screen.
+    // The Panel over the paused World, every image of it loaded before it unmounts (an image still
+    // in flight when the Panel leaves is aborted, which the engine reports as a failed request;
+    // ai-review on #73, second pass, A); Escape back into the World; Escape to the Title Screen.
+    // Empty currentSrc = lazy, not started; the poll assumes the Panel's images are in view (#74).
     await expect
       .poll(() =>
         exhibitPanel(page)

@@ -1,6 +1,11 @@
 # ADR 0006 — Vercel hosts the site through its Git integration; `vercel.json` is the only hosting config
 
-Status: Accepted (2026-10-10); note 2026-10-22 (#72): since #66 and #70 the repository is linked to a second Vercel project, `tc-discovery-9k2v`, Root Directory `mockups/project-discovery`, its own `vercel.json` (no build, headers, `ignoreCommand`), serving the project-discovery mockup read-only as the reference for increment 2 (#59); not thomascova.dev: a separate origin, no domain, no Deployment Checks (`docs/runbooks/mockup-preview.md`). "the only hosting configuration" reads: of thomascova.dev; the rest stands
+Status: Accepted (2026-10-10); note 2026-10-22 (#72): since #66 and #70 the repository is linked to
+a second Vercel project, `tc-discovery-9k2v`, Root Directory `mockups/project-discovery`, its own
+`vercel.json` (no build, headers, `ignoreCommand`), serving the project-discovery mockup read-only
+as the reference for increment 2 (#59); not thomascova.dev: a separate origin, no domain, no
+Deployment Checks (`docs/runbooks/mockup-preview.md`). "the only hosting configuration" reads: of
+thomascova.dev; the rest stands
 
 ## Context
 

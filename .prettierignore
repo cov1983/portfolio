@@ -11,7 +11,8 @@ node_modules/
 # Prose is written by hand and reviewed as text; docs/spec/** is frozen (amend: commits only).
 *.md
 
-# Hook test fixtures (the self-test's under prove/ too) mirror the one-line JSON payload Claude Code sends; kept compact on purpose.
+# Hook test fixtures (the self-test's under prove/ too) mirror the one-line JSON payload Claude Code
+# sends; kept compact on purpose.
 .claude/hooks/tests/**/*.json
 
 # Reference mockups served by a second Vercel project, not product code (#66): the delivered files stay

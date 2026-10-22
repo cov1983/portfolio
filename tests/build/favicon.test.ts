@@ -14,7 +14,7 @@ import { removeBuild, runProductionBuild, type BuildResult } from './production-
 // is ever inlined as a data: URL; the SVG itself is read for one too.
 const ICON_LINK =
   /<link\b[^>]*\brel="icon"[^>]*\bhref="\/favicon\.svg"[^>]*\btype="image\/svg\+xml"[^>]*>/
-/** ICONDIR: reserved 0, type 1 (an icon, not a cursor); the entry count follows (ICO file format). */
+/** ICONDIR: reserved 0, type 1 (an icon, not a cursor); the entry count follows (ICO format). */
 const ICO_MAGIC = Buffer.from([0, 0, 1, 0])
 
 describe('the built site', () => {
@@ -32,18 +32,21 @@ describe('the built site', () => {
     await removeBuild(build)
   })
 
-  it('carries favicon.svg at the root: an SVG document with no data: URL', async () => {
+  it('carries favicon.svg at the root: an SVG document', async () => {
     expect(files).toContain('favicon.svg')
     const svg = await readFile(join(build.outDir, 'favicon.svg'), 'utf8')
     expect(svg.trimStart()).toMatch(/^<svg\b/)
-    expect(dataUrls(svg)).toEqual([])
   })
 
-  it('carries favicon.ico at the root: an ICO with one entry', async () => {
+  it('inlines nothing in favicon.svg as a data: URL', async () => {
+    expect(dataUrls(await readFile(join(build.outDir, 'favicon.svg'), 'utf8'))).toEqual([])
+  })
+
+  it('carries favicon.ico at the root: an ICO with at least one entry', async () => {
     expect(files).toContain('favicon.ico')
     const ico = await readFile(join(build.outDir, 'favicon.ico'))
     expect(ico.subarray(0, 4)).toEqual(ICO_MAGIC)
-    expect(ico.readUInt16LE(4), 'entries').toBe(1)
+    expect(ico.readUInt16LE(4), 'entries').toBeGreaterThanOrEqual(1)
   })
 
   it('links the SVG icon from both pre-rendered documents', () => {

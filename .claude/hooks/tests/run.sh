@@ -17,8 +17,9 @@
 # by the previous hook and denied by the working tree; an allowed-* fixture the reverse. The
 # previous hook is guard-bash.sh at the merge base of origin/main and HEAD, the hook before the
 # branch's change, so the PASS still shows once the change is committed (ai-review on #79, 2; #80);
-# without origin/main (a clone with no remote, a shallow checkout) HEAD stands in and a line says
-# so. A path as the third argument replaces either (for example main's hook written to a file).
+# without a merge base with origin/main (no such ref, or no common history) HEAD stands in and a
+# line says so, after git's own message. A path as the third argument replaces either (for example
+# main's hook written to a file).
 # "already denied at main@<sha>" or "already allowed at main@<sha>" is a FAIL: the fixture is not
 # new to the change. A real fixture is proved locally only, never by CI (ADR 0015, Q7);
 # `make test-shell` runs --prove against the stubs under prove/ alone, to prove its four outcomes:
@@ -75,10 +76,10 @@ if [[ "${1-}" == "--prove" ]]; then
     previous="$3"; previous_name="$3"
   else
     PREVIOUS_TMP="$(mktemp)"
-    if base="$(git -C "$root" merge-base origin/main HEAD 2>/dev/null)"; then
+    if base="$(git -C "$root" merge-base origin/main HEAD)"; then
       previous_name="main@${base:0:7}"
     else
-      echo "note  origin/main is absent; the previous hook is HEAD's" >&2
+      echo "note  no merge base with origin/main; the previous hook is HEAD's" >&2
       base=HEAD; previous_name="HEAD"
     fi
     if ! git -C "$root" show "$base:.claude/hooks/guard-bash.sh" >"$PREVIOUS_TMP" 2>/dev/null; then
@@ -90,12 +91,14 @@ if [[ "${1-}" == "--prove" ]]; then
   fi
   before="$(decision "$previous" "$fixture")"
   after="$(decision "$hook" "$fixture")"
-  for verdict in "$before at $previous_name" "$after by the working tree"; do
-    if [[ "$verdict" == error* ]]; then
-      echo "FAIL  $name: the hook exited non-zero (${verdict#error }); no decision to compare" >&2
+  ran() { # decision, where it ran
+    if [[ "$1" == error* ]]; then
+      echo "FAIL  $name: the hook exited non-zero (${1#error }) at $2; no decision to compare" >&2
       exit 2
     fi
-  done
+  }
+  ran "$before" "$previous_name"
+  ran "$after" "the working tree"
   if [[ "$after" != "$expect" ]]; then
     echo "FAIL  $name: $(outcome_word "$after") by the working tree hook; the fixture expects $(outcome_word "$expect")"
     exit 1
@@ -130,15 +133,15 @@ if [[ "$lines" -eq "$expected" ]]; then echo "PASS  audit log has $lines entries
 # Each call names its previous hook, so no case depends on origin/main (a CI checkout may lack it);
 # each child run.sh takes its own audit log, so the count above is untouched. A real fixture is
 # never proved here (ADR 0015, Q7).
-prove_case() { # expected exit code, expected text, fixture, stub under prove/
-  local out rc
-  out="$("$here/run.sh" --prove "$here/$3" "$here/prove/$4" 2>&1)"; rc=$?
-  if [[ $rc -eq $1 && "$out" == *"$2"* ]]; then echo "PASS  --prove $3 against prove/$4: exit $rc, \"$2\""; else echo "FAIL  --prove $3 against prove/$4: exit $rc (expected $1), out=$out"; fail=1; fi
+prove_case() {
+  local want_rc="$1" want_text="$2" fixture="$3" stub="$4" out rc
+  out="$("$here/run.sh" --prove "$here/$fixture" "$here/prove/$stub" 2>&1)"; rc=$?
+  if [[ $rc -eq $want_rc && "$out" == *"$want_text"* ]]; then echo "PASS  --prove $fixture against prove/$stub: exit $rc, \"$want_text\""; else echo "FAIL  --prove $fixture against prove/$stub: exit $rc (expected $want_rc), out=$out"; fail=1; fi
 }
 prove_case 0 'the fixture proves the change' denied.json allow-all.sh
 prove_case 1 'already denied at' denied.json deny-all.sh
 prove_case 1 'allowed by the working tree hook; the fixture expects denied' prove/denied-harmless.json allow-all.sh
-prove_case 2 'the hook exited non-zero (3 at' denied.json crash.sh
+prove_case 2 'the hook exited non-zero (3) at' denied.json crash.sh
 
 # --- format-file.sh --------------------------------------------------------------------------
 format="$here/../format-file.sh"
