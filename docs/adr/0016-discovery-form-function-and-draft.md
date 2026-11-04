@@ -1,16 +1,15 @@
-# ADR 0016 — One serverless function at the discovery form's boundary, and a first-party draft
+# ADR 0016 — One serverless function at the Discovery Form's boundary, and a first-party Draft
 
 Status: Accepted (2026-11-04) — constitution v1.1, principles 5 and 10; issue #59
 
 ## Context
 
-Increment 2 adds an invited discovery form at /start/discovery: a Client answers a long
-questionnaire and the Owner receives the answers by mail. The site is static (principle 5), stores
-nothing and loads no third-party script (principle 10). Considered: a hosted form service
-(third-party script, refused by principle 10); a backend with a database (nothing to run it for
-one form, and a Brief lives only in the Owner's mailbox — Owner decision Q6 on #59; principle 8
-keeps it out of the repository and prompts); mailto: (no structure, no way to verify an Invite);
-one serverless function.
+Increment 2 adds an invited Discovery Form at /start/discovery: a Client fills it in and the Owner
+receives the answers by mail. The site is static (principle 5), stores nothing and loads no
+third-party script (principle 10). Considered: a hosted form service (third-party script, refused
+by principle 10); a backend with a database (nothing to run it for one form, and a Brief lives only
+in the Owner's mailbox — Owner decision Q6 on #59; principle 8 keeps it out of the repository and
+prompts); mailto: (no structure, no way to verify an Invite); one serverless function.
 
 ## Decision
 
@@ -28,10 +27,12 @@ a visible control.
 
 ## Consequences
 
-- Constitution v1.1: principle 5 names the exception and no longer says "until a spec says
-  otherwise" — any backend beyond this function needs its own amendment and ADR (Supabase was
-  named as the likely direction); principle 10 names first-party storage and keeps counting
-  behind a spec.
+- Constitution v1.1: principle 5 allows a serverless function at a form's submit boundary as a
+  class, each introduced by its own spec and ADR, and no longer says "until a spec says
+  otherwise" — any backend beyond a form-boundary function (a database, server-side storage, a
+  scheduled job) needs its own amendment and ADR (Supabase was named as the likely direction);
+  principle 10 names first-party browser storage as the only storage a spec can introduce, and
+  keeps counting behind a spec.
 - vercel.json and the CSP (connect-src 'self') change under the spec's function ticket; ADR 0006
   gets a note there.
 - The function is tested at its own seam with SMTP mocked; one real send is a recorded Owner
