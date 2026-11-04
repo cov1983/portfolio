@@ -23,7 +23,7 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
 - Branches: `chore/<topic>`, `feat/<topic>`, `fix/<topic>`. One ticket = one branch = one PR.
 - Commits carry the agent trailer (`Co-Authored-By: …`). Every PR carries the label `ai-assisted`.
 - Pushes are run by the owner. The agent stops at `git push` and asks; it never holds push credentials.
-- Process guide: `docs/workflow-guide.md`. Constitution: `docs/constitution.md` (v1.0, ratified 2026-10-08).
+- Process guide: `docs/workflow-guide.md`. Constitution: `docs/constitution.md` (v1.1, ratified 2026-10-08, amended 2026-11-04, ADR 0016).
 - Toolchain: Node 24 (`.nvmrc`), pnpm via `packageManager`, make, jq, shellcheck, gitleaks. The devcontainer
   (`.devcontainer/`) has all of them; CI runs the same make targets, so local verify == CI. A host without
   Node 24 or shellcheck runs make through the devcontainer image, never around it.
@@ -44,7 +44,7 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
 
 ## Repository map
 - `docs/workflow-guide.md`  the process this repo follows; templates in §7
-- `docs/constitution.md`    principles, v1.0 ratified 2026-10-08; an amendment names its target principle, bumps the version, gets an ADR
+- `docs/constitution.md`    principles, v1.1, ratified 2026-10-08, amended 2026-11-04 (ADR 0016); an amendment names its target principle, bumps the version, gets an ADR
 - `docs/spec/`              frozen specs — never edit without an `amend:` commit
 - `docs/plan/`              implementation plans per feature
 - `docs/adr/`               decision records, `NNNN-<slug>.md`

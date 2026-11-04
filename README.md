@@ -31,7 +31,7 @@ touch steering is optional, behind its spec amendment (#38).
 ## Where to look
 - `CLAUDE.md` / `AGENTS.md` — instructions for AI coding agents (identical files)
 - `docs/workflow-guide.md` — the development process this repo follows
-- `docs/constitution.md` — principles (v1.0, ratified 2026-10-08)
+- `docs/constitution.md` — principles (v1.1, ratified 2026-10-08, amended 2026-11-04, ADR 0016)
 - `docs/spec/`, `docs/plan/`, `docs/adr/`, `docs/runbooks/`, `docs/retro.md`
 - `docs/runbooks/setup-wizard.md` — the one-time dashboard setup (`scripts/setup-wizard.sh`) and how to revert it
 - `mockups/` — reference mockups (today `project-discovery`, #66), served read-only by a second Vercel project rooted there; not part of the portfolio build; no repo-wide tool formats, lints or tests it
