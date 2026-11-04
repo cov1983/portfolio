@@ -95,11 +95,11 @@ Only an Invite opens the Discovery Form.
 _Avoid_: token, magic link, access code
 
 **Discovery Form**:
-The questionnaire at /start/discovery a Client fills in to describe a project.
+The form at /start/discovery a Client fills in to describe a project.
 _Avoid_: intake form, survey, wizard, questionnaire
 
 **Brief**:
-A Client's answers, sent once as one text mail to the Owner. A Brief lives only in the Owner's
+One sending of a Client's answers, as one text mail to the Owner. A Brief lives only in the Owner's
 mailbox.
 _Avoid_: submission, lead, spec, request
 

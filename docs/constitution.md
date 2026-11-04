@@ -25,10 +25,10 @@ Applies to all code, infra, docs and agent configuration in this repository.
    profile.
 9. Nothing gates content: a Challenge, a device check or a missing capability may add a hint, never
    remove access to an Exhibit.
-10. No third-party embeds or scripts on the site. Nothing is stored and nothing is counted, except
-   first-party storage in the Visitor's own browser that the Visitor can see and clear, scoped to
-   one path and named by the spec that introduces it. Audio, when added, is off until the Visitor
-   turns it on.
+10. No third-party embeds or scripts on the site. Nothing is stored, except first-party storage in
+   the Visitor's own browser that the Visitor can see and clear, kept under one key and read and
+   written only by the page named by the spec that introduces it. Nothing is counted until a spec
+   says otherwise. Audio, when added, is off until the Visitor turns it on.
 
 ## Governance
 - Amendments via PR touching this file, labelled `constitution`, approved by @cov1983.
