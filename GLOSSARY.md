@@ -83,6 +83,30 @@ _Avoid_: HUD, UI layer, game overlay
 The Overlay's single line naming the keys that steer the Puck, Reset, and leave the World.
 _Avoid_: controls hint, help text, instructions
 
+## Intake
+
+**Client**:
+A person the Owner has invited to describe a project. A Client is a Visitor with an Invite.
+_Avoid_: customer, user, lead, prospect
+
+**Invite**:
+A signed link the Owner creates for one Client, carrying their name, e-mail, language and expiry.
+Only an Invite opens the Discovery Form.
+_Avoid_: token, magic link, access code
+
+**Discovery Form**:
+The questionnaire at /start/discovery a Client fills in to describe a project.
+_Avoid_: intake form, survey, wizard, questionnaire
+
+**Brief**:
+A Client's answers, sent once as one text mail to the Owner. A Brief lives only in the Owner's
+mailbox.
+_Avoid_: submission, lead, spec, request
+
+**Draft**:
+A Client's unsent answers, kept in their own browser until they submit or clear them.
+_Avoid_: autosave, session, cache
+
 ## Content
 
 **Exhibit**:

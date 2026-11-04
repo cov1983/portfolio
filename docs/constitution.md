@@ -1,4 +1,4 @@
-# Constitution — Portfolio   v1.0 (ratified 2026-10-08)
+# Constitution — Portfolio   v1.1 (ratified 2026-10-08; amended 2026-11-04, ADR 0016)
 
 ## Scope
 Applies to all code, infra, docs and agent configuration in this repository.
@@ -9,8 +9,10 @@ Applies to all code, infra, docs and agent configuration in this repository.
    Owner measurement where no automated seam exists.
 3. Small tickets: a ticket is one PR, reviewable in ≤ 30 min.
 4. Secure by default: least privilege, no secrets in repo/prompts, input validated at boundaries.
-5. Observable: the site is static with no backend until a spec says otherwise. Observability means
-   uptime checks and client-side performance metrics, not server health; every alert has a runbook.
+5. Observable: the site is static with no backend. The one exception is a serverless function at a
+   form's submit boundary, introduced by a spec that names it and by an ADR; it stores nothing.
+   Observability means uptime checks and client-side performance metrics, not server health;
+   every alert has a runbook.
 6. Reproducible: builds are deterministic; dependencies and CI actions pinned; infra from code only.
 7. Human accountability: the owner merges, approves infra apply, and accepts risk. The independent
    reviewer is an AI reviewer running in CI; its findings are addressed or dismissed with a reason
@@ -23,8 +25,10 @@ Applies to all code, infra, docs and agent configuration in this repository.
    profile.
 9. Nothing gates content: a Challenge, a device check or a missing capability may add a hint, never
    remove access to an Exhibit.
-10. No third-party embeds or scripts on the site. Nothing is stored and nothing is counted until a
-   spec says otherwise. Audio, when added, is off until the Visitor turns it on.
+10. No third-party embeds or scripts on the site. Nothing is stored and nothing is counted, except
+   first-party storage in the Visitor's own browser that the Visitor can see and clear, scoped to
+   one path and named by the spec that introduces it. Audio, when added, is off until the Visitor
+   turns it on.
 
 ## Governance
 - Amendments via PR touching this file, labelled `constitution`, approved by @cov1983.
