@@ -15,6 +15,9 @@ Index
 - [increment-1](increment-1.md) — feature plan (guide §4.2), reviewed 2026-10-10 (plan-mode and independent review
   folded in), approved 2026-10-10 (`plan: approve increment-1`, 88e978e), shipped by T10 (#35); architecture, content schema, contracts, the test per acceptance
   criterion, the perf gate's instruments, headers, risks and the ticket slices T0–T11 for `/to-tickets`; ADR stubs 0009–0012.
+- [increment-2](increment-2.md) — feature plan (guide §4.2), draft 2026-11-05 with the Owner's plan-mode review folded in
+  (Blockers B1 and B2 decided); architecture, the Invite, Draft, question and Brief formats, the page–function contract,
+  the test per acceptance criterion with the Owner acceptance checklist, risks and the ticket slices T0a–T7; ADR stubs 0017–0021.
 - [Phase 0b — harden the repository](phase-0b.md) — process plan (guide §4.0.2), Owner-accepted 2026-10-09;
   four sequential PRs with the Owner decisions folded in and each PR's outcome recorded. Not a feature
   plan.
