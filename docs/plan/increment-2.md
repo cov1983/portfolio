@@ -1,6 +1,8 @@
 # Plan: increment-2
 
-Status: draft, 2026-11-05 (Phase 2, guide §4.2). Spec: `docs/spec/increment-2.md`, approved 2026-11-05
+Status: approved, 2026-11-05 (commit `plan: approve increment-2`): the Owner's plan review, `/code-review` and
+the independent review (`ai-review` on #96, two rounds folded; round 3's three minors carried into T2 and
+T3b by name) are folded in; `/to-tickets` cuts §10 into tracker issues in the PR of that commit. Spec: `docs/spec/increment-2.md`, approved 2026-11-05
 (commit ad7db39). Inputs: issues #59 and #67 with their comments, constitution v1.1, ADR 0003, 0006,
 0010, 0011, 0012, 0016. The Owner's plan review of 2026-11-05 decided the two Blockers of §11, the
 ticket order and AC-13.7's proof, recorded in [#59, Owner comment of 2026-11-05](https://github.com/cov1983/portfolio/issues/59#issuecomment-6662855247) (items 1–5, cited by number below), and five fixes
