@@ -1,4 +1,4 @@
-# Spec: increment-2            Status: draft    Owner: Thomas (@cov1983)
+# Spec: increment-2            Status: approved   Owner: Thomas (@cov1983)
 
 Written 2026-11-05 by `/to-spec` from issue #59 (body of 2026-10-19 and the Owner's consolidated
 Phase 1 answers of 2026-11-04, Q1–Q18 and D1–D8), issue #67, constitution v1.1, ADR 0016 and the
@@ -225,8 +225,8 @@ holding on the re-skinned surface; this spec adds to it and does not restate it.
     the page sends one POST to the site's own origin, with the Invite in a request header and never
     in the URL, and on acceptance shows an on-screen confirmation.
   - AC-10.2 Given the function cannot send the Brief, When the Client submits, Then the page shows
-    an error that names hello@thomascova.dev as the way out, the Draft is kept, and the only
-    outbound calls recorded are to the SMTP mock and no file is written (Q13).
+    an error that names hello@thomascova.dev as the way out, and the Draft is kept (Q13; that the
+    function stores nothing is AC-13.7).
   - AC-10.3 Given an Invite within its expiry has been used to send a Brief, When the Client submits
     again, Then a further Brief is sent. Each sending is its own Brief, and the newest wins (Q11).
   - AC-10.4 Given the Brief is sent and the confirmation mail fails, When the function answers,
@@ -317,8 +317,9 @@ This spec names it, as principle 5 requires: **the Discovery Form's submit funct
   - AC-14.3 Given a language other than `en`, When `make invite` runs, Then it fails: increment-2 is
     English only.
   - AC-14.4 Given an e-mail that is not exactly one address, or a name or e-mail containing CR, LF
-    or any other control character (U+0085 and U+2028 included), When `make invite` runs, Then it
-    fails and prints no link.
+    or any other control character (U+0085 and U+2028 included), or a name longer than 80
+    characters, When `make invite` runs, Then it fails and prints no link. The page's 80-character
+    cap (AC-6.1) is defence in depth.
 
 ### Quality
 
@@ -497,6 +498,8 @@ Decisions below come from the sources named at the top. There are no file paths 
   - request rejected (method, size or validation): an error naming hello@, the Draft kept
     (AC-10.6);
   - send failed (the Brief could not be sent): an error naming hello@, the Draft kept (AC-10.2).
+- How each class is encoded on the wire (a status code or a fixed body field) is a plan decision,
+  shared by the page and the function.
 - Mail through Infomaniak authenticated SMTP on port 465, logged in as postmaster@thomascova.dev
   with a device password of postmaster@. Both mails are From forms@thomascova.dev (an alias of
   postmaster@, which redirects to hello@).
@@ -553,9 +556,9 @@ look random (CLAUDE.md, secret-scanner fixtures).
    failed Brief gives the error response; a failed confirmation after a sent Brief gives success;
    each response class is distinguishable; a non-ASCII name and the confirmation's emoji Subject
    are encoded per RFC 2047 in the Subject and display name; the only outbound calls recorded are
-   to the SMTP mock and no file is written (AC-10.2, AC-13.7).
+   to the SMTP mock and no file is written (AC-13.7).
    The same verify module is exercised by the invite CLI's tests (mint, then verify; missing secret;
-   non-`en` language; AC-14.4's address and control-character refusals).
+   non-`en` language; AC-14.4's address, control-character and name-length refusals).
 
 **Vitest for form logic.** Validation (required answers, "Not sure — please advise"), section
 navigation and progress, the review step's content, Draft read, write and clear (including the
