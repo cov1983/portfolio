@@ -63,7 +63,7 @@ at build time or in the browser.
 | `/` (`dist/index.html`) | pre-rendered Title Screen (the hero) + the `site` chunk, which hydrates it and lazy-loads `world` | as increment-1 |
 | `/exhibits` | pre-rendered Fallback Page | none |
 | `/start` (`dist/start/index.html`) | pre-rendered /start page | none |
-| `/start/discovery` (`dist/start/discovery/index.html`) | pre-rendered shell: the no-script message (AC-6.5) and the consent statement (AC-9.3) + the `discovery` entry chunk | yes: the Discovery Form renders on the client (`createRoot`, not `hydrateRoot`) |
+| `/start/discovery` (`dist/start/discovery/index.html`) | pre-rendered shell: the sticky bar (AC-3.1, AC-3.4), the no-script message (AC-6.5) and the consent statement (AC-9.3) + the `discovery` entry chunk | yes: the Discovery Form renders on the client (`createRoot`, not `hydrateRoot`) |
 | `POST /api/discovery` | `api/discovery.ts`, a Vercel Node function | n/a |
 
 ### Module boundaries
@@ -148,7 +148,7 @@ Latin-subset variable woff2 (Geist Sans or Manrope, the Owner's pick on T0a's pr
 the site's origin; the headline reveal and the Title Screen–World crossfade in CSS transitions and
 keyframes, switched off by the existing `prefers-reduced-motion` rule. *Consequences*: ADR 0012's
 "System fonts" consequence no longer holds (a note on 0012 in T0a; `font-src 'self'` already
-allows it); no Motion dependency, by the spec amendment of §11 B2; Radix primitives stay out of the
+allows it); no Motion dependency; the spec's two Motion sentences are amended by T0b's first commit (plan §11 B2), so ADR 0017, written in T0a, cites the plan decision, not the amend; Radix primitives stay out of the
 root's chunks unless a surface there needs one; a new colour is a token, never a literal, and the
 build half enforces it (AC-1.1).
 
@@ -193,7 +193,7 @@ counter that cancels at the limit; every answer is JSON `{ "result": … }` with
 `invite-rejected`, `request-rejected`, `send-failed`, and the page decides on that field alone; a
 response without it (Vercel's own 413, 500 or 504, a network error) is handled as `send-failed`; the
 send step is one module (`src/intake/server/send.ts`) over nodemailer, injected into the handler.
-*Consequences*: only an explicit `invite-rejected` from the function clears the Draft (spec, "The
+*Consequences*: besides `accepted` (AC-8.4), only an explicit `invite-rejected` from the function clears the Draft (spec, "The
 function": "Invite rejected … the Draft cleared"; "request rejected … the Draft kept"; "send failed …
 the Draft kept"; and "Draft (Q5, principle 10, ADR 0016)": "A failed Brief, a rejected request … leave
 it as it is"); a platform answer can never cost the Client their Draft; the Web signature is what the
@@ -206,7 +206,7 @@ transport mocked; the Owner approved it in the plan-mode review of 2026-11-05 (�
 `tests/function/` is a Vitest project `function`; each test builds a `Request`, calls the handler built
 with an in-memory send module, a fixed clock and a captured log, and asserts the `Response`, the mails
 handed to the mock and the log lines; the CLAUDE.md and AGENTS.md "Two seams only" lines become three
-in the PR that first adds the directory (T5), reviewed as a protected change. *Consequences*: still no
+in the PR that first adds the directory (T5), reviewed by the Owner like a protected path (CLAUDE.md is not under CODEOWNERS). *Consequences*: still no
 jsdom and no component tests; the CLI's tests stay in the `unit` project; the seam proves what the
 function hands to SMTP, never delivery, which stays the Owner's one real send.
 
@@ -322,7 +322,7 @@ Reply-To: <Invite name, CR/LF stripped> <Invite e-mail>
 Subject: Brief: <Invite name, CR/LF stripped>        (RFC 2047 when not ASCII)
 
 # Brief
-Name: <Invite name>
+Name: <Invite name, CR/LF stripped>
 E-mail: <Invite e-mail>
 Sent: 2026-11-05T14:03:00Z
 
@@ -356,9 +356,15 @@ export function checkName(name: string): 'ok' | 'empty' | 'too-long' | 'control'
 export function checkEmail(email: string): 'ok' | 'invalid'
 export function stripCrLf(s: string): string
 // questions.ts, validate.ts
+export type QuestionId = string & { readonly __brand: 'QuestionId' }   // only the content schema produces one
 export type QuestionKind = 'text' | 'email' | 'long' | 'single' | 'multi'
-export type Question = { id: QuestionId; kind: QuestionKind; label: string; hint?: string; required: boolean;
-  prefill?: 'name' | 'email'; options?: { id: string; label: string }[] }
+type QuestionBase = { id: QuestionId; label: string; hint?: string; required: boolean }
+export type Question =
+  | QuestionBase & { kind: 'text' | 'email'; prefill?: 'name' | 'email' }
+  | QuestionBase & { kind: 'long' }
+  | QuestionBase & { kind: 'single' | 'multi'; options: { id: string; label: string }[] }   // only choices carry options
+export type Answer = { value: string } | { values: string[] } | { notSure: true }      // as §4
+export type Answers = Record<QuestionId, Answer>                                         // §4's Draft and SubmitBody use this
 export type Section = { id: string; title: string; intro: string; questions: Question[] }
 export type AnswerIssue = { questionId: QuestionId; problem: 'required' | 'too-long' | 'unknown-option' | 'control' | 'shape' }
 export function validateAnswers(sections: Section[], answers: unknown): { ok: true; answers: Answers } | { ok: false; issues: AnswerIssue[] }
@@ -368,7 +374,7 @@ export const CAPS = { text: 200, email: 254, long: 4_000, optionId: 40, options:
 // result.ts
 export type SubmitResult = 'accepted' | 'invite-rejected' | 'request-rejected' | 'send-failed'
 export const STATUS: Record<SubmitResult, number> = { accepted: 200, 'invite-rejected': 403,
-  'request-rejected': 400, 'send-failed': 502 }                    // 405 and 413 also carry request-rejected
+  'request-rejected': 400, 'send-failed': 502 }                    // for HTTP semantics and logs only (405 and 413 also carry request-rejected); the page never reads it
 export function classify(response: { status: number; body: unknown } | 'network-error'): SubmitResult
 //   body.result when it is one of the four, else 'send-failed'; the status code is never read
 // brief.ts
@@ -387,6 +393,7 @@ export function verifyInvite(token: string, secret: string, nowSeconds: number):
   { ok: true; payload: InvitePayload } | { ok: false; reason: 'unreadable' | 'signature' | 'expired' }
 //   recomputes the HMAC and compares with timingSafeEqual before any expiry or field check
 // send.ts
+export class SendError extends Error { readonly stage: 'connect' | 'auth' | 'send' }   // no address or text in the message
 export type SendMail = (mail: Mail) => Promise<void>                // throws SendError on any failure
 export function smtpSender(env: { password: string }): SendMail     // Infomaniak, port 465, TLS, user postmaster@
 // handler.ts
@@ -412,9 +419,12 @@ export type PageState =
   | { screen: 'no-invite' } | { screen: 'invalid-invite' }          // AC-6.4, AC-6.3
   | { screen: 'form'; invite: InvitePayload; token: string; section: number | 'review';
       answers: Answers; storage: 'draft' | 'memory'; submit: 'idle' | 'sending' | SubmitResult }
-export function openPage(fragment: string, now: number, storage: DraftStore): PageState   // pure given the store
+export function openPage(fragment: string, nowSeconds: number, storage: DraftStore): PageState   // pure given the store; seconds, like the Invite's x
 //   clears the Draft only for: an expired Invite, a stored inviteExpiry in the past, a readable unexpired
 //   Invite whose signature differs; no Invite and an unreadable Invite leave it (§4, §11 B2)
+export type FormAction =
+  | { type: 'answer'; questionId: QuestionId; answer: Answer | null } | { type: 'go'; section: number | 'review' }
+  | { type: 'consent'; ticked: boolean } | { type: 'submit' } | { type: 'result'; result: SubmitResult } | { type: 'clear' }
 export function reduceForm(state: PageState, action: FormAction): PageState
 export function progress(sections: Section[], answers: Answers): { complete: number; total: 7 }
 export interface DraftStore { read(): Draft | null; write(d: Draft): void; clear(): void; available: boolean }
@@ -458,7 +468,7 @@ stub never verifies, as the page cannot.
 
 | AC | level | test (seam · file · what it proves) | ticket |
 |---|---|---|---|
-| 1.1 | build + e2e | build `tokens.test`: no colour literal (hex, `rgb()`, `hsl()`, `oklch()`, named colours) in the emitted site CSS outside the `--color-*` declarations of the token layer, and none in `src/site/**`, `src/discovery/**` outside `tokens.css` (World scene colours are outside "HTML surface"); no `prefers-color-scheme` in the emitted CSS · e2e `look.spec`: on each of the six surfaces, the computed `background-color` of `body` and the accent of the primary control equal the two token values | T0a, T1, T3a |
+| 1.1 | build + e2e | build `tokens.test`: no colour literal (hex, `rgb()`, `hsl()`, `oklch()`, named colours) in the emitted site CSS outside the `--color-*` declarations of the token layer, and none in `src/site/**`, `src/discovery/**` outside `tokens.css`, with one declared exception: the mark's one drawing `src/site/mark.svg` and the `public/favicon.*` made from it, whose colours are literal since a standalone favicon cannot read custom properties (World scene colours are outside "HTML surface"); no `prefers-color-scheme` in the emitted CSS · e2e `look.spec`: on each of the six surfaces (Title Screen, Exhibit Panel, Fallback Page, World overlay, /start, Discovery Form), the computed `background-color` of `body` and the accent of the primary control equal the two token values | T0a, T1, T3a |
 | 1.2 | e2e + Owner | e2e `look.spec`: on each surface, `document.getAnimations()` after load lists only the headline reveal (on `/`) and nothing elsewhere; that the edge glow is static is a computed-style read (no animation on its element) · Owner: "exactly two effects" (checklist) | T0b |
 | 1.3 | build + Owner | build `favicon.test` (extended): `public/favicon.svg` and the bar's mark are emitted from the one source `src/site/mark.svg` (identical path data) · Owner: likeness (checklist) | T0a |
 | 1.4 | e2e | `privacy.spec` (extended): full visit incl. /start and the Discovery Form with a stubbed `accepted` submit: every request URL has the site's origin; exactly one font request, a `.woff2` from the origin | T6 |
@@ -471,7 +481,7 @@ stub never verifies, as the page cannot.
 | 3.1 | e2e | `sticky-bar.spec`: on `/`, `/exhibits`, `/start`, `/start/discovery`, after scrolling to the bottom the bar is in the viewport; mark first; "Exhibits" → `/exhibits`, "Start a project" → `/start` | T0b, T3a |
 | 3.2 | e2e | `sticky-bar.spec`: on `/start` and `/start/discovery` the "Start a project" link has `aria-current="page"`; on the others it has none | T0b, T3a |
 | 3.3 | e2e | `sticky-bar.spec`: in the World the bar is not visible, `inert`, and absent from the accessibility snapshot; Tab never reaches it | T0b |
-| 3.4 | e2e | `sticky-bar.spec`, no script: both links navigate from every page | T0b |
+| 3.4 | e2e | `sticky-bar.spec`, no script: both links navigate from every page | T0b, T3a |
 | 4.1 | e2e | `exhibit-panel.spec`, `fallback-page.spec` unchanged (increment-1 US-16, US-19, US-20, 320 px, focus) | T0a |
 | 4.2 | e2e | `world.spec`, `capability.spec`: the overlay holds exactly the caption, the Reset control, the key legend and the hints | T0a |
 | 4.3 | e2e | axe on every re-skinned surface, colour contrast on (the existing axe helper, run on the new look) | T0a, T0b |
@@ -481,7 +491,7 @@ stub never verifies, as the page cannot.
 | 5.4 | e2e | `privacy.spec` (extended): after a visit to /start, cookies, both storages and IndexedDB are empty | T1 |
 | 6.1 | unit + e2e + function | unit `invite.test`: `greetingName` of a 120-code-point name has 80 code points; NFC before counting · e2e `discovery-open.spec`: valid Invite → greeting with the name, contact fields prefilled and editable · e2e `discovery-submit.spec`: an edited contact value is in the POST body · function: Reply-To and confirmation recipient are the Invite's e-mail when the body's contact answer differs | T3a, T5, T6 |
 | 6.2 | e2e | `discovery-submit.spec`: every request URL of a visit with a submit (raw and percent-decoded) lacks the token and its payload part | T6 |
-| 6.3 | e2e | `discovery-open.spec`: expired and unreadable Invites → no form, the message with hello@thomascova.dev · `discovery-draft.spec`: an expired Invite removes a stored Draft (AC-6.3 as amended in T0b, §11 B2) | T3a, T4 |
+| 6.3 | unit + e2e | unit `invite.test`: `decodeInvite` of a malformed token, bad JSON and bad fields is `unreadable`; `isExpired` at, before and after `x` · e2e `discovery-open.spec`: expired and unreadable Invites → no form, the message with hello@thomascova.dev · `discovery-draft.spec`: an expired Invite removes a stored Draft (AC-6.3 as amended in T0b, §11 B2) | T3a, T4 |
 | 6.4 | e2e | `discovery-open.spec`: no fragment → no form, AC-6.5's message · `discovery-draft.spec`: an unexpired Draft is still stored after a visit with no Invite and after one with an unreadable Invite (§11 B2) | T3a, T4 |
 | 6.5 | build + e2e | build `discovery-html.test`: the pre-rendered page holds the no-script message and the Contact link · e2e no script: the message is visible, the form is not | T3a |
 | 6.6 | unit + e2e | unit `draft.test`: `openPage` with a different readable unexpired signature clears · e2e: Draft under Invite A, open with Invite B → empty form, storage holds B's signature | T4 |
@@ -489,7 +499,7 @@ stub never verifies, as the page cannot.
 | 6.8 | e2e | `discovery-open.spec`: no `world-*.js` request | T3a |
 | 7.1 | unit + e2e | unit: the content schema requires exactly seven sections · e2e: the section navigation lists the seven titles in order, then the review step | T3b |
 | 7.2 | unit + e2e | unit `form.test`: `progress` counts complete sections · e2e: every section and the review reachable from the navigation; the indicator reads n / 7 | T3b |
-| 7.3 | unit + e2e | unit `validate.test`: each unanswered required question yields `required` · e2e: submit with gaps → an error list linking each question, focus on the list, no POST | T3b |
+| 7.3 | unit + e2e | unit `validate.test`: each unanswered required question yields `required`, an answer over its cap (§4, code points after NFC) yields `too-long` · e2e: submit with gaps → an error list linking each question, focus on the list, no POST; an over-cap answer is named the same way before submit, never first at the function | T3b |
 | 7.4 | unit + e2e | unit: `{ notSure: true }` satisfies a required question of every kind · e2e: choosing it lets the section complete | T3b |
 | 7.5 | e2e | `discovery-review.spec`: every answer under its section; "Edit" reopens that section with the answer | T3b |
 | 7.6 | e2e | `discovery-keyboard.spec`: keyboard only, fill every section, review, submit (stubbed `accepted`); focus visible (computed outline) and on the section heading after each change | T3b, T6 |
@@ -525,7 +535,7 @@ stub never verifies, as the page cannot.
 | 14.3 | unit | `INVITE_LANG=de` → exit 1, no link | T2 |
 | 14.4 | unit | two addresses, CR, LF, U+0085, U+2028 in name or e-mail, an 81-code-point name → exit 1, no link | T2 |
 | 15.1 | e2e | the three Playwright projects run every spec (CI `e2e`) | all |
-| 15.2 | e2e | axe on /start and each Discovery Form screen; the keyboard pass of 7.6 | T1, T3b |
+| 15.2 | e2e | axe on /start and each Discovery Form screen; the keyboard pass of 7.6; the re-skinned increment-1 surfaces keep their keyboard specs (`title-screen`, `exhibit-panel`, `fallback-page`, `world-entry`) green on the new look | T0a, T0b, T1, T3b |
 | 15.3 | Owner | the checklist below, in T7's PR | T7 |
 | 16.1 | perf | `make perf` on `/`, `perf/budget.json` unchanged | every ticket |
 | 16.2 | build | `chunks.test` (extended): the chunks reachable from `/`'s entry contain no module under `src/intake/` or `src/discovery/` and no `nodemailer` | T3a, T5 |
@@ -632,7 +642,7 @@ Riskiest first; each names the ticket that retires it.
 |---|---|---|---|
 | 1 | **The crossfade breaks increment-1's entry and Escape proofs**: replacing `hidden` with `inert` + `visibility` changes what `world-entry.spec`, `reduced-motion.spec` and focus routing see | change the hiding mechanism first, run the increment-1 suite before any styling, then add the transition; `transitionend` awaited, never a wait | **T0b** |
 | 2 | **The redesign breaks the Title Screen budget or hydration**: Tailwind CSS, the font and the hero on `/` push "Title Screen interactive" or the download line; new markup mismatches on hydration; a pre-rendered `style` attribute appears | `make perf` on every T0 PR; the font is `font-display: swap`; T0a decides whether to preload the one woff2 by `make perf` on the preview, not by taste; no Radix in the root's chunks; `index-html.test` (no style attribute, hydration proof) unchanged | **T0a**, T0b |
-| 3 | **Production shows a half-redesigned site** between T0a and T0b (the spec: "never looks like two sites") | T0a re-skins every surface at once on the new tokens; T0b adds hero, crossfade and bar on top; the Owner may hold T0a's merge until T0b's preview is approved and merge both the same day | T0a, T0b |
+| 3 | **Production shows a half-redesigned site** between T0a and T0b (the spec: "never looks like two sites") | T0a re-skins every surface at once on the new tokens, so production after T0a is one look; T1 and T0b add /start, then the hero, crossfade and bar on top of it (holding T0a until T0b's preview is approved is impossible: T0b waits for T1, which waits for T0a) | T0a, T0b |
 | 4 | **The function does not build or behave on Vercel as planned**: `api/` beside `framework: vite`, `.ts`-extension imports (`allowImportingTsExtensions`) under Vercel's TypeScript build, `content/discovery.yaml` traced into the bundle, and whether a Web `Request` body is buffered before the handler runs (the docs are silent) | T5's first tasks, before the handler: a probe function on the preview; read the Web-handler path in `@vercel/node`'s source for buffering; if the tracer misses the YAML, first a `readFileSync` with a statically analysable path (`join(__dirname, …)`; in this ESM package `join(import.meta.dirname, …)`, its tracing confirmed by the probe), then `includeFiles` in `vercel.json`; the handler-level guarantee (verify before read) holds either way and the platform caps at 4.5 MB | **T5** |
 | 5 | **SMTP from a Vercel function**: port 465 egress, TLS, the device password, cold start within the Client's patience | nodemailer with a connection timeout; `send-failed` on any error; the Owner's one real send before the first test Client | T5 |
 | 6 | **Owner content arrives late** (mark, /start sentence, final copy) | placeholders as long as the real content (skill-overrides, `/tdd`); T1 does not wait for the /start sentence: the agent writes a placeholder of realistic length and the Owner final-edits it on the PR; T3b's e2e reads labels from `content/discovery.yaml`, never literals | T0a, T1, T3b |
@@ -653,14 +663,14 @@ Riskiest first; each names the ticket that retires it.
 |---|---|---|---|---|
 | T0a | `feat/design-foundation` (#67) | Tailwind v4, the token file, the font (both measured, Owner picks), copied shadcn/ui base, Lucide, `site.css` replaced; Exhibit Panel, Fallback Page, World overlay, failure message and hints re-skinned; the mark and favicon from one drawing; ADR 0017; ADR 0012 note. Demo: every increment-1 surface in the new look | 1.1 (site), 1.3, 1.5, 4.1–4.3, 16.3 | — · Owner mark |
 | | | Owner: checklist (AC-1.3, font) | | |
-| T0b | `feat/hero-entry-bar` (#67) | **First task: the `amend:` commit of §11 B2.** Then the hiding change (risk 1), the hero over the static backdrop, the CSS headline reveal, the CSS crossfade, the sticky bar on `/`, `/exhibits` and `/start` ("Start a project" the current page on `/start`), hidden in the World. Demo: Title Screen → World entry and back | 1.2, 1.5, 2.1–2.5, 3.1–3.4 | T1 |
+| T0b | `feat/hero-entry-bar` (#67) | **First task: the `amend:` commit of §11 B2.** Then the hiding change (risk 1), the hero over the static backdrop, the CSS headline reveal, the CSS crossfade, the sticky bar on `/`, `/exhibits` and `/start` ("Start a project" the current page on `/start`), hidden in the World. Demo: Title Screen → World entry and back | 1.2, 1.5, 2.1–2.5, 3.1–3.4, 4.3, 15.2 | T1 |
 | | | Owner: checklist (AC-1.2, 2.1, 2.3), fps | | |
-| T1 | `feat/start-page` | `/start` pre-rendered, no script; the /start sentence in `site.yaml` as a placeholder of realistic length, final-edited by the Owner on the PR; ADR 0018 (both routes, `/start/discovery` reserved). Demo: /start without script | 5.1–5.4, 15.2 (/start) | T0a |
-| T2 | `feat/invite-cli` | `src/intake/invite.ts`, `src/intake/server/sign.ts`, `scripts/invite.ts`, `make invite`, `docs/runbooks/invite.md`; ADR 0019. Demo: the Owner mints a link on the host | 14.1–14.4 | — |
-| T3a | `feat/discovery-route` | `/start/discovery` route and `discovery` chunk; the pre-rendered no-script message and consent; Invite decode, greeting, prefill, expired/unreadable/no-Invite screens; `content/discovery.yaml` schema with the mockup's questions as placeholders; `MAX_BODY_BYTES` and `limits.test`; chunk isolation. Demo: open a minted link | 1.1 (form), 3.1, 3.2, 6.1 (page), 6.3–6.5 (page), 6.8, 9.3, 13.3 (unit), 16.2 | T1, T2 |
+| T1 | `feat/start-page` | `/start` pre-rendered, no script; the /start sentence in `site.yaml` as a placeholder of realistic length, final-edited by the Owner on the PR; ADR 0018 (both routes, `/start/discovery` reserved). Demo: /start without script | 1.1 (/start), 5.1–5.4, 15.2 (/start) | T0a |
+| T2 | `feat/invite-cli` | `src/intake/invite.ts`, `src/intake/server/sign.ts`, `scripts/invite.ts`, `make invite`, `docs/runbooks/invite.md`; ADR 0019; the CLAUDE.md and AGENTS.md command line for `make invite`. Demo: the Owner mints a link on the host | 14.1–14.4 | — |
+| T3a | `feat/discovery-route` | `/start/discovery` route and `discovery` chunk; the pre-rendered no-script message and consent; Invite decode, greeting, prefill, expired/unreadable/no-Invite screens; `content/discovery.yaml` schema with the mockup's questions as placeholders; `MAX_BODY_BYTES` and `limits.test`; chunk isolation. Demo: open a minted link | 1.1 (form), 3.1, 3.2, 3.4, 6.1 (page), 6.3–6.5 (page), 6.8, 9.3, 13.3 (unit), 16.2 | T1, T2 |
 | T3b | `feat/discovery-sections` | seven sections, navigation, progress, validation with "Not sure — please advise", review step, consent checkbox, keyboard pass; Radix primitives; the Owner's final copy as a content diff. Demo: fill in and review | 7.1–7.6, 9.1, 9.2, 15.2 | T3a · Owner copy |
 | T4 | `feat/discovery-draft` | the Draft: store, every trigger of §4, the clear control, unavailable storage. Demo: reload mid-form | 6.3, 6.4, 6.6, 6.7, 8.1–8.3, 8.5 | T3b |
-| T5 | `feat/discovery-function` | probes of risk 4 and the log probe of §8 first; `src/intake/server/handler.ts`, `send.ts`, `brief.ts`, `api/discovery.ts`; `tests/function` with ADR 0020 and 0021 and the CLAUDE.md/AGENTS.md seam lines; `docs/runbooks/discovery-function.md` (secrets, rotation, log finding); ADR 0006 note; `vercel.json` if needed. Demo: a POST with a minted Invite reaches hello@ | 10.3, 10.4 (log), 11.1–11.4, 12.1, 12.2, 13.1–13.7, 16.2 (function) | T2, T3a · Owner secrets |
+| T5 | `feat/discovery-function` | probes of risk 4 and the log probe of §8 first; `src/intake/server/handler.ts`, `send.ts`, `brief.ts`, `api/discovery.ts`; `tests/function` with ADR 0020 and 0021 and the CLAUDE.md/AGENTS.md lines it outdates (the seams, `make test`'s projects, the repository map for `api/`, `src/intake/`, `src/discovery/`, `tests/function/`, the ratchet scope's exclusions), within the 150-line cap by widening lines, not adding them (retro 2026-10-22); `docs/runbooks/discovery-function.md` (secrets, rotation, log finding); ADR 0006 note; `vercel.json` if needed. Demo: a POST with a minted Invite reaches hello@ | 6.1 (function), 10.3, 10.4 (log), 11.1–11.4, 12.1, 12.2, 13.1–13.7, 16.2 (function) | T2, T3a · Owner secrets |
 | | | Owner: one real send | | |
 | T6 | `feat/discovery-submit` | the page's POST, the four classes and their Draft effects, the confirmation; the full-visit privacy spec. Demo: submit on the preview, both mails arrive | 1.4, 6.1 (submit), 6.2, 7.6 (submit), 8.2, 8.4, 10.1, 10.2, 10.4–10.6 | T4, T5 |
 | T7 | `chore/increment-2-live` | the Owner's browser pass, coverage ratchet, README and CLAUDE.md status lines, `docs/spec/README.md`, glossary hand-off closed. Demo: the site as shipped | 15.1, 15.3, 16.1 | T6 |
@@ -681,7 +691,7 @@ Both raised in the plan's first draft and **decided by the Owner** in the plan-m
 
 - **B1 — CLAUDE.md "Two seams only" vs the spec's third seam** (spec, Testing decisions › "Seams",
   item 3). *Decided*: ADR 0021 as stubbed in §3; the CLAUDE.md and AGENTS.md "Two seams" lines change
-  in the PR that first adds `tests/function` (T5), reviewed as a protected path.
+  in the PR that first adds `tests/function` (T5), reviewed by the Owner like a protected path (CLAUDE.md is not under CODEOWNERS).
 - **B2 — The spec names Motion; the plan does the crossfade in CSS.** The spec's Implementation
   decisions › "Design system (T0, #67, D1–D8)" read "Motion for the crossfade and the headline reveal",
   and Non-functional requirements › "Motion" reads "Motion runs with `MotionConfig
