@@ -70,7 +70,7 @@ export default defineConfig(({ command, isPreview }) => {
     build: {
       // No source maps in the delivered site (constitution 10: nothing beyond the site's own code).
       sourcemap: false,
-      rollupOptions: {
+      rolldownOptions: {
         output: {
           // ADR 0010: one `world` chunk holds three, React Three Fiber and Rapier; React stays in
           // the entry chunk (no recursive dependencies). The World's own model and scene travel in
