@@ -73,12 +73,12 @@ at build time or in the browser.
 |---|---|---|---|
 | **tokens and site CSS** | `src/site/tokens.css`, `src/site/site.css` (replaced, Tailwind v4 entry) | the one dark token set; every colour literal of the HTML surfaces lives in `tokens.css` | — |
 | **site** | `src/site/` | as increment-1, re-skinned; adds `StickyBar`, `Hero` (backdrop + headline), `StartPage`, `Mark` (the Puck drawing) and the copied shadcn/ui primitives under `src/site/ui/` | three, Rapier, the World model, `src/intake/server/`, `src/discovery/` |
-| **intake (shared, pure)** | `src/intake/` | Invite decode and the field rules, the question types, answer validation, the Brief text, `MAX_BODY_BYTES`, the result classes | React, the DOM, `node:*`, three |
+| **intake (shared, pure)** | `src/intake/` | Invite decode and the field rules, the question types, answer validation, the Brief text, `MAX_BODY_BYTES`, the result classes | React, the DOM, three; `node:*` everywhere except `src/intake/server/` |
 | **intake (server)** | `src/intake/server/` | HMAC sign and verify (`node:crypto`), the handler factory, the send module (nodemailer) | React, the DOM |
 | **discovery (page)** | `src/discovery/` | the Discovery Form components and its pure state: sections, navigation, progress, review, the Draft, the submit classifier; `main.tsx` is the `discovery` entry | three, Rapier, `src/intake/server/`, `src/app/` |
 | **content** | `content/`, `src/content/` | adds `content/discovery.yaml` (the seven sections' questions) and the /start sentence in `site.yaml`, each with its zod schema; validated at build | as increment-1 |
 | **function** | `api/discovery.ts` | glue only: reads the environment, builds the handler from `src/intake/server/`, exports `POST` | React, the DOM, `src/discovery/` |
-| **invite CLI** | `scripts/invite.ts` | prompt, mint, print the link | anything outside `node:*` and `src/intake/` |
+| **invite CLI** | `scripts/invite.ts` | prompt, mint, print the link | anything outside `node:*`, `src/intake/invite.ts`, `src/intake/server/sign.ts` and what those two import; gated by an ESLint `no-restricted-imports` override on these files (T2) |
 | app, world, perf, build | as increment-1 | `build/prerender.ts` gains the two routes (ADR 0018) | as increment-1 |
 
 The `discovery` chunk and the function share `src/intake/` as source, never at runtime. The root
@@ -278,8 +278,9 @@ sections:                      # exactly seven, in the mockup's order (AC-7.1)
 
 Caps, in code points after NFC: `text` 200, `email` 254, `long` 4,000; an option id ≤ 40 ASCII
 characters, at most 16 options per question. `long` accepts tab and line feed; every other control
-character is a validation error. Wire text is canonical: the page sends every text answer
-`normalize('NFC')`-ed, and `validateAnswers` rejects text that is not well-formed (`!s.isWellFormed()`,
+character is a validation error. Wire text is canonical: one pure `toWire(answers)` in `src/intake/wire.ts`
+(`normalize('NFC')`, then `toWellFormed()`, on every text value) runs once at submit, never in
+`reduceForm`; the pre-submit `validateAnswers` and the request body both use its output; and `validateAnswers` rejects text that is not well-formed (`!s.isWellFormed()`,
 a lone surrogate) or not already NFC (`s !== s.normalize('NFC')`) with problem `shape`, so a counted code
 point is at most 4 UTF-8 bytes on the wire (ai-review on #96, M1). "Not sure — please advise" is not an option in the file: every
 question offers it (AC-7.4). The build validates the file with its zod schema like increment-1's
@@ -373,7 +374,9 @@ export type Answers = Record<QuestionId, Answer>                                
 export type Section = { id: string; title: string; intro: string; questions: Question[] }
 export type AnswerIssue = { questionId: QuestionId; problem: 'required' | 'too-long' | 'unknown-option' | 'control' | 'shape' }
 export function validateAnswers(sections: Section[], answers: unknown): { ok: true; answers: Answers } | { ok: false; issues: AnswerIssue[] }
-//   'shape' also for text that is not well-formed (lone surrogate) or not NFC: the page sends NFC (§4)
+//   'shape' also for text that is not well-formed (lone surrogate) or not NFC: the page sends toWire's output (§4)
+// wire.ts
+export function toWire(answers: Answers): Answers   // each text: s.normalize('NFC').toWellFormed(); pure, once at submit
 // limits.ts
 export const MAX_BODY_BYTES = 524_288
 export const CAPS = { text: 200, email: 254, long: 4_000, optionId: 40, options: 16 } as const
@@ -444,8 +447,9 @@ export interface DraftStore { read(): Draft | null; write(d: Draft): void; clear
 export function localDraftStore(storage: () => Storage): DraftStore  // any throw → available: false, no fallback (AC-8.5)
 ```
 
-The submit sends `fetch('/api/discovery', { method: 'POST', headers: { Authorization: 'Invite ' + token,
-'Content-Type': 'application/json' }, body })` to the site's own origin; the URL never carries the
+The submit computes `wire = toWire(answers)` once, runs `validateAnswers` on `wire`, and sends
+`fetch('/api/discovery', { method: 'POST', headers: { Authorization: 'Invite ' + token,
+'Content-Type': 'application/json' }, body: JSON.stringify({ v: 1, answers: wire }) })` to the site's own origin; the URL never carries the
 Invite (AC-6.2, AC-10.1).
 
 ### Invite CLI (`scripts/invite.ts`, `make invite`)
@@ -512,7 +516,7 @@ stub never verifies, as the page cannot.
 | 6.8 | e2e | `discovery-open.spec`: no `world-*.js` request | T3a |
 | 7.1 | unit + e2e | unit: the content schema requires exactly seven sections · e2e: the section navigation lists the seven titles in order, then the review step | T3b |
 | 7.2 | unit + e2e | unit `form.test`: `progress` counts complete sections · e2e: every section and the review reachable from the navigation; the indicator reads n / 7 | T3b |
-| 7.3 | unit + e2e | unit `validate.test`: each unanswered required question yields `required`, an answer over its cap (§4, code points after NFC) yields `too-long`, an NFD answer (`e` + U+0301) and a lone surrogate (`\uD800`) yield `shape`, and the page's NFC normalisation turns the NFD answer into a legal one · e2e: submit with gaps → an error list linking each question, focus on the list, no POST; an over-cap answer is named the same way before submit, never first at the function | T3b |
+| 7.3 | unit + e2e | unit `validate.test`: each unanswered required question yields `required`, an answer over its cap (§4, code points after NFC) yields `too-long`, an NFD answer (`e` + U+0301) and a lone surrogate (`\uD800`) yield `shape`, and unit `wire.test`: `toWire` of the NFD answer and of `\uD800` validates · e2e: submit with gaps → an error list linking each question, focus on the list, no POST; an over-cap answer is named the same way before submit, never first at the function | T3b |
 | 7.4 | unit + e2e | unit: `{ notSure: true }` satisfies a required question of every kind · e2e: choosing it lets the section complete | T3b |
 | 7.5 | e2e | `discovery-review.spec`: every answer under its section; "Edit" reopens that section with the answer | T3b |
 | 7.6 | e2e | `discovery-keyboard.spec`: keyboard only, fill every section, review, submit (stubbed `accepted`); focus visible (computed outline) and on the section heading after each change | T3b, T6 |
@@ -582,8 +586,12 @@ rate stays increment-1 AC-23.1's, re-measured in T0b (the crossfade touches entr
 fall inside `src/**/*.ts`; `api/discovery.ts` (glue) and `scripts/invite.ts`'s terminal I/O shell
 stay outside like `build/build.ts`; the CLI's logic lives in `scripts/invite/run.ts`, which T2 adds to
 the coverage `include` and to CLAUDE.md's scope line (scripts are named one by one there); one unit
-test spawns `node scripts/invite.ts` with an invented secret and the prompt answers on stdin, so an
-import outside `node:*` and `src/intake/` or a non-erasable syntax fails CI (ai-review on #96). T7 raises the floor with `make coverage-ratchet`.
+test spawns `node scripts/invite.ts` with a secret drawn from `randomBytes` at run time (never a
+committed literal) and the prompt answers on stdin, so a non-erasable syntax fails CI; the import
+closure is gated by ESLint (`no-restricted-imports` override on `scripts/invite.ts`,
+`scripts/invite/run.ts`, `src/intake/invite.ts`, `src/intake/server/sign.ts`: `node:*` and each
+other only) rather than by running the CLI from a bare temporary directory (ai-review on #96, rounds 1
+and 2). T7 raises the floor with `make coverage-ratchet`.
 
 ## 7. Observability
 
@@ -681,9 +689,9 @@ Riskiest first; each names the ticket that retires it.
 | T0b | `feat/hero-entry-bar` (#67) | **First task: the `amend:` commit of §11 B2** (three Motion sentences, the Owner-dependency sentence, the Draft rule in AC-6.3, the Data table and Implementation decisions, a pointer on PR #82 item (a), and `GLOSSARY.md`'s Draft definition). Then the hiding change (risk 1), the hero over the static backdrop, the CSS headline reveal, the CSS crossfade, the sticky bar on `/`, `/exhibits` and `/start` ("Start a project" the current page on `/start`), hidden in the World. Demo: Title Screen → World entry and back | 1.2, 1.5, 2.1–2.5, 3.1–3.4, 4.3, 15.2 | T1 |
 | | | Owner: checklist (AC-1.2, 2.1, 2.3), fps | | |
 | T1 | `feat/start-page` | `/start` pre-rendered, no script; the /start sentence in `site.yaml` as a placeholder of realistic length, final-edited by the Owner on the PR; ADR 0018 (both routes, `/start/discovery` reserved). Demo: /start without script | 1.1 (/start), 5.1–5.4, 15.2 (/start) | T0a |
-| T2 | `feat/invite-cli` | `src/intake/invite.ts`, `src/intake/server/sign.ts`, `scripts/invite.ts` + `scripts/invite/run.ts` (in the coverage include and CLAUDE.md's scope line), one spawn test, `make invite`, `docs/runbooks/invite.md`; ADR 0019; the CLAUDE.md and AGENTS.md command line for `make invite`. Demo: the Owner mints a link on the host | 14.1–14.4 | — |
+| T2 | `feat/invite-cli` | `src/intake/invite.ts`, `src/intake/server/sign.ts`, `scripts/invite.ts` + `scripts/invite/run.ts` (in the coverage include and CLAUDE.md's scope line), the ESLint `no-restricted-imports` override for the CLI's import closure, one spawn test for the syntax half (secret from `randomBytes` at run time), `make invite`, `docs/runbooks/invite.md`; ADR 0019; the CLAUDE.md and AGENTS.md lines it outdates (the command line for `make invite`, the ratchet scope line), within the 150-line cap by widening lines, not adding them (retro 2026-10-22). Demo: the Owner mints a link on the host | 14.1–14.4 | — |
 | T3a | `feat/discovery-route` | `/start/discovery` route and `discovery` chunk; the pre-rendered no-script message and consent; Invite decode, greeting, prefill, expired/unreadable/no-Invite screens; `content/discovery.yaml` schema with the mockup's questions as placeholders; `MAX_BODY_BYTES` and `limits.test`; chunk isolation. Demo: open a minted link | 1.1 (form), 3.1, 3.2, 3.4, 6.1 (page), 6.3–6.5 (page), 6.8, 9.3, 13.3 (unit), 16.2 | T0b, T1, T2 |
-| T3b | `feat/discovery-sections` | seven sections, navigation, progress, validation with "Not sure — please advise", the answer caps of §4 shown and named before submit (AC-7.3 path), review step, consent checkbox, keyboard pass; Radix primitives copied without their enter/exit animation classes; the Owner's final copy as a content diff. Demo: fill in and review | 7.1–7.6, 9.1, 9.2, 15.2 | T3a · Owner copy |
+| T3b | `feat/discovery-sections` | seven sections, navigation, progress, validation with "Not sure — please advise", the answer caps of §4 shown and named before submit (AC-7.3 path), `toWire` once at submit (never in `reduceForm`); the ES2024 `isWellFormed`/`toWellFormed` checked against the build's browser target and `tsconfig`'s `lib` (ES2023 today), or polyfilled, review step, consent checkbox, keyboard pass; Radix primitives copied without their enter/exit animation classes; the Owner's final copy as a content diff. Demo: fill in and review | 7.1–7.6, 9.1, 9.2, 15.2 | T3a · Owner copy |
 | T4 | `feat/discovery-draft` | the Draft: store, every trigger of §4, the clear control (a copied alert dialog without animation classes; AC-1.2's dialog check), unavailable storage. Demo: reload mid-form | 1.2 (dialog), 6.3, 6.4, 6.6, 6.7, 8.1–8.3, 8.5 | T3b |
 | T5 | `feat/discovery-function` | probes of risk 4 and the log probe of §8 first; `src/intake/server/handler.ts`, `send.ts`, `brief.ts`, `api/discovery.ts` (catches everything); a unit test of `smtpSender` over a failing nodemailer transport (no address in `SendError`'s message, no `cause`); the `config` reason; `tests/function` with ADR 0020 and 0021 and the CLAUDE.md/AGENTS.md lines it outdates (the seams, `make test`'s projects, the repository map for `api/`, `src/intake/`, `src/discovery/`, `tests/function/`, the ratchet scope's exclusions), within the 150-line cap by widening lines, not adding them (retro 2026-10-22); `docs/runbooks/discovery-function.md` (secrets, rotation, log finding); ADR 0006 note; `vercel.json` if needed. Demo: a POST with a minted Invite reaches hello@ | 6.1 (function), 10.3, 10.4 (log), 11.1–11.4, 12.1, 12.2, 13.1–13.7, 16.2 (function) | T2, T3a · Owner secrets |
 | | | Owner: one real send | | |
