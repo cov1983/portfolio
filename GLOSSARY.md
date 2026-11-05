@@ -104,7 +104,8 @@ mailbox.
 _Avoid_: submission, lead, spec, request
 
 **Draft**:
-A Client's unsent answers, kept in their own browser until they submit or clear them.
+A Client's unsent answers, kept in their own browser until they submit or clear them, or their
+Invite is no longer valid.
 _Avoid_: autosave, session, cache
 
 ## Content
