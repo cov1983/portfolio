@@ -50,7 +50,7 @@ third-party form service, a captcha, analytics, a database for Briefs, a Brief a
 repository or an agent's context, single-use Invites, another Vercel project.
 
 **Owner dependencies, due before the ticket that consumes them** (§10): the redrawn Puck mark (T0a),
-the font pick on T0a's preview, the final edit of the /start sentence on T1's PR (the agent writes a placeholder of realistic length), the final EN copy of the seven sections
+the font pick on T0a's preview, the final edit of the /start sentence on T1's PR (the agent writes a placeholder of realistic length; [#59, Owner read-back of 2026-11-05](https://github.com/cov1983/portfolio/issues/59#issuecomment-6663271301), 5a), the final EN copy of the seven sections
 (T3b; the agent drafts the diff from the mockup's text in that ticket), the signing secret and the
 mailbox's device password in Vercel's environment and on the host (T5), one real send (T5).
 
@@ -175,7 +175,7 @@ in Unix seconds; the link is `<origin>/start/discovery#i=<token>`; one field-rul
 (`src/intake/invite.ts`: name 1–80 code points after NFC with no control character, U+0085, U+2028
 or U+2029; exactly one address) shared by CLI, page and function, and the signing half in
 `src/intake/server/sign.ts` (`node:crypto`, `timingSafeEqual`); `make invite` runs
-`node scripts/invite.ts`, which needs no `node_modules`, reads the secret from `INVITE_SECRET`, the
+`node scripts/invite.ts` (logic in `scripts/invite/run.ts`), which needs no `node_modules` (pinned by a spawn test, §6), reads the secret from `INVITE_SECRET`, the
 name and e-mail from a prompt, `DAYS` and `ORIGIN` from make variables; with a Node older than 24 it
 fails and prints the devcontainer-image command, which passes the secret by name
 (`-e INVITE_SECRET`). *Consequences*: the page can decode and expiry-check but never verify;
@@ -278,7 +278,10 @@ sections:                      # exactly seven, in the mockup's order (AC-7.1)
 
 Caps, in code points after NFC: `text` 200, `email` 254, `long` 4,000; an option id ≤ 40 ASCII
 characters, at most 16 options per question. `long` accepts tab and line feed; every other control
-character is a validation error. "Not sure — please advise" is not an option in the file: every
+character is a validation error. Wire text is canonical: the page sends every text answer
+`normalize('NFC')`-ed, and `validateAnswers` rejects text that is not well-formed (`!s.isWellFormed()`,
+a lone surrogate) or not already NFC (`s !== s.normalize('NFC')`) with problem `shape`, so a counted code
+point is at most 4 UTF-8 bytes on the wire (ai-review on #96, M1). "Not sure — please advise" is not an option in the file: every
 question offers it (AC-7.4). The build validates the file with its zod schema like increment-1's
 content (`ContentError` with file and field); the mockup's 31 questions (4 `text`, 1 `email`, 20
 `long`, 2 `single`, 4 `multi`) are the size reference until the Owner's copy lands.
@@ -294,7 +297,8 @@ type SubmitBody = { v: 1; answers: Record<QuestionId, Answer> }              // 
 (512 KiB)**. Its derivation is a unit test, not a comment: the test builds the largest legal
 `SubmitBody` from the real `content/discovery.yaml` (every `long`/`text`/`email` answer at its cap,
 filled with a four-byte code point, U+1F680, the widest legal UTF-8 character that JSON leaves
-unescaped; every `multi` with all its options; every `single` with its longest option id), serialises
+unescaped, which holds because only well-formed NFC text is legal (above): a decomposed answer, three
+Hangul jamo at 9 bytes for one counted code point, never reaches the size; every `multi` with all its options; every `single` with its longest option id), serialises
 it, and fails if its byte length exceeds the constant. For the mockup's questions that body is about
 330 KB. Seam 3 keeps the +1 byte case: a body of `MAX_BODY_BYTES + 1` bytes gets `request-rejected`
 and no mail. Vercel's own cap is 4.5 MB (`FUNCTION_PAYLOAD_TOO_LARGE`, 413,
@@ -369,6 +373,7 @@ export type Answers = Record<QuestionId, Answer>                                
 export type Section = { id: string; title: string; intro: string; questions: Question[] }
 export type AnswerIssue = { questionId: QuestionId; problem: 'required' | 'too-long' | 'unknown-option' | 'control' | 'shape' }
 export function validateAnswers(sections: Section[], answers: unknown): { ok: true; answers: Answers } | { ok: false; issues: AnswerIssue[] }
+//   'shape' also for text that is not well-formed (lone surrogate) or not NFC: the page sends NFC (§4)
 // limits.ts
 export const MAX_BODY_BYTES = 524_288
 export const CAPS = { text: 200, email: 254, long: 4_000, optionId: 40, options: 16 } as const
@@ -392,14 +397,17 @@ export type Address = { name?: string; address: string }
 export function signInvite(payload: InvitePayload, secret: string): string          // the token
 export function verifyInvite(token: string, secret: string, nowSeconds: number):
   { ok: true; payload: InvitePayload } | { ok: false; reason: 'unreadable' | 'signature' | 'expired' }
-//   recomputes the HMAC and compares with timingSafeEqual before any expiry or field check
+//   recomputes the expected signature *string* (base64url of the HMAC) and, after a length check,
+//   compares the two ASCII byte strings with timingSafeEqual, before any expiry or field check; decoded
+//   bytes are never compared (base64url's spare bits would let distinct tokens verify; ai-review on #96)
 // send.ts
-export class SendError extends Error { readonly stage: 'connect' | 'auth' | 'send' }   // no address or text in the message
+export class SendError extends Error { readonly stage: 'connect' | 'auth' | 'send' }   // fixed message, no address,
+//   no `cause`: nodemailer's errors can name an address ("Recipient address rejected: …"), so none is kept to be logged
 export type SendMail = (mail: Mail) => Promise<void>                // throws SendError on any failure
 export function smtpSender(env: { password: string }): SendMail     // Infomaniak, port 465, TLS, user postmaster@
 // handler.ts
 export type LogLine = { event: 'discovery-submit'; result: SubmitResult;
-  reason?: 'method' | 'signature' | 'expired' | 'unreadable' | 'size' | 'json' | 'validation' | 'brief';
+  reason?: 'method' | 'signature' | 'expired' | 'unreadable' | 'size' | 'json' | 'validation' | 'brief' | 'config';
   confirmation?: 'sent' | 'failed' }                                 // nothing personal (AC-13.6)
 export function createHandler(deps: { secret: string; sections: Section[]; send: SendMail;
   now(): Date; log(line: LogLine): void }): (request: Request) => Promise<Response>
@@ -408,7 +416,9 @@ export function createHandler(deps: { secret: string; sections: Section[]; send:
 ```
 
 `api/discovery.ts` reads `INVITE_SECRET` and `SMTP_PASSWORD` from the environment (a missing one is a
-`send-failed` answer with a `reason`-free status line, never a crash that leaks), loads
+`send-failed` answer with `reason: 'config'`, so a misconfigured secret is told apart from a mail outage in
+the 1-hour log; seam 3 has the case), catches every
+throw around the handler (an uncaught error would reach Vercel's log with whatever it carries), loads
 `content/discovery.yaml` through the same zod schema once per instance, and exports
 `POST = createHandler({ …, log: (l) => console.log(JSON.stringify(l)) })`. Every other method gets
 `405` with `request-rejected` from the same export set (`GET`, `PUT`, … map to one function).
@@ -427,6 +437,8 @@ export type FormAction =
   | { type: 'answer'; questionId: QuestionId; answer: Answer | null } | { type: 'go'; section: number | 'review' }
   | { type: 'consent'; ticked: boolean } | { type: 'submit' } | { type: 'result'; result: SubmitResult } | { type: 'clear' }
 export function reduceForm(state: PageState, action: FormAction): PageState
+//   { type: 'result', result: 'invite-rejected' | 'accepted' } sets storage: 'memory' for the rest of the
+//   page's life: an edit after it never writes DRAFT_KEY again (AC-10.5 "nothing remains"; ai-review on #96, M2)
 export function progress(sections: Section[], answers: Answers): { complete: number; total: 7 }
 export interface DraftStore { read(): Draft | null; write(d: Draft): void; clear(): void; available: boolean }
 export function localDraftStore(storage: () => Storage): DraftStore  // any throw → available: false, no fallback (AC-8.5)
@@ -469,8 +481,8 @@ stub never verifies, as the page cannot.
 
 | AC | level | test (seam · file · what it proves) | ticket |
 |---|---|---|---|
-| 1.1 | build + e2e | build `tokens.test`: no colour literal (hex, `rgb()`, `hsl()`, `oklch()`, named colours) in the emitted site CSS outside the `--color-*` declarations of the token layer, and none in `src/site/**`, `src/discovery/**` outside `tokens.css`, with one declared exception: the mark's one drawing `src/site/mark.svg` and the `public/favicon.*` made from it, whose colours are literal since a standalone favicon cannot read custom properties (World scene colours are outside "HTML surface"); no `prefers-color-scheme` in the emitted CSS · e2e `look.spec`: on each of the six surfaces (Title Screen, Exhibit Panel, Fallback Page, World overlay, /start, Discovery Form), the computed `background-color` of `body` and the accent of the primary control equal the two token values | T0a, T1, T3a |
-| 1.2 | e2e + Owner | e2e `look.spec`: on each surface, `document.getAnimations()` after load lists only the headline reveal (on `/`) and nothing elsewhere; that the edge glow is static is a computed-style read (no animation on its element) · Owner: "exactly two effects" (checklist) | T0b |
+| 1.1 | build + e2e | build `tokens.test`: no colour literal (hex, `rgb()`, `hsl()`, `oklch()`, named colours) in the emitted site CSS outside the `--color-*` declarations of the token layer, and none in `src/site/**`, `src/discovery/**` outside `tokens.css`, with one declared exception: the mark's one drawing `src/site/mark.svg` and the `public/favicon.*` made from it, whose colours are literal since a standalone favicon cannot read custom properties (World scene colours are outside "HTML surface"); no `prefers-color-scheme` in the emitted CSS · e2e `look.spec`: on each of the six surfaces (Title Screen, Exhibit Panel, Fallback Page, World overlay, /start, Discovery Form), the computed `background-color` of `body` and the accent of the primary control equal the two token values | T0a (`/`, Exhibit Panel, Fallback Page, World overlay), T1, T3a |
+| 1.2 | e2e + Owner | e2e `look.spec`: on each surface, `document.getAnimations()` after load lists only the headline reveal (on `/`) and nothing elsewhere; on the Discovery Form the clear control's confirm dialog is opened and `getAnimations()` is empty while it shows (the copied shadcn/ui primitives keep no animation classes); that the edge glow is static is a computed-style read (no animation on its element) · Owner: "exactly two effects" (checklist) | T0b, T4 |
 | 1.3 | build + Owner | build `favicon.test` (extended): `public/favicon.svg` and the bar's mark are emitted from the one source `src/site/mark.svg` (identical path data) · Owner: likeness (checklist) | T0a |
 | 1.4 | e2e | `privacy.spec` (extended): full visit incl. /start and the Discovery Form with a stubbed `accepted` submit: every request URL has the site's origin; exactly one font request, a `.woff2` from the origin | T6 |
 | 1.5 | e2e + model + build | the increment-1 suites run unchanged in CI; any sentence of increment-1 T0 outgrows is amended in the same PR (spec, Constraints) | T0a, T0b |
@@ -500,7 +512,7 @@ stub never verifies, as the page cannot.
 | 6.8 | e2e | `discovery-open.spec`: no `world-*.js` request | T3a |
 | 7.1 | unit + e2e | unit: the content schema requires exactly seven sections · e2e: the section navigation lists the seven titles in order, then the review step | T3b |
 | 7.2 | unit + e2e | unit `form.test`: `progress` counts complete sections · e2e: every section and the review reachable from the navigation; the indicator reads n / 7 | T3b |
-| 7.3 | unit + e2e | unit `validate.test`: each unanswered required question yields `required`, an answer over its cap (§4, code points after NFC) yields `too-long` · e2e: submit with gaps → an error list linking each question, focus on the list, no POST; an over-cap answer is named the same way before submit, never first at the function | T3b |
+| 7.3 | unit + e2e | unit `validate.test`: each unanswered required question yields `required`, an answer over its cap (§4, code points after NFC) yields `too-long`, an NFD answer (`e` + U+0301) and a lone surrogate (`\uD800`) yield `shape`, and the page's NFC normalisation turns the NFD answer into a legal one · e2e: submit with gaps → an error list linking each question, focus on the list, no POST; an over-cap answer is named the same way before submit, never first at the function | T3b |
 | 7.4 | unit + e2e | unit: `{ notSure: true }` satisfies a required question of every kind · e2e: choosing it lets the section complete | T3b |
 | 7.5 | e2e | `discovery-review.spec`: every answer under its section; "Edit" reopens that section with the answer | T3b |
 | 7.6 | e2e | `discovery-keyboard.spec`: keyboard only, fill every section, review, submit (stubbed `accepted`); focus visible (computed outline) and on the section heading after each change | T3b, T6 |
@@ -516,7 +528,7 @@ stub never verifies, as the page cannot.
 | 10.2 | e2e + unit | e2e: stub `send-failed` → error naming hello@, Draft kept · unit `classify`: a body without `result` (status 500, 504, 413) and a network error give `send-failed` | T6 |
 | 10.3 | function | two POSTs with the same Invite → two Briefs and two confirmations handed to the mock | T5 |
 | 10.4 | function + e2e | function: second send fails → `accepted`, one log line `confirmation: 'failed'`, nothing personal · e2e: `accepted` clears the Draft (the page cannot tell, nor needs to) | T5, T6 |
-| 10.5 | e2e | stub `invite-rejected` → error over the review step with every answer on screen, `DRAFT_KEY` gone at that moment | T6 |
+| 10.5 | unit + e2e | stub `invite-rejected` → error over the review step with every answer on screen, `DRAFT_KEY` gone at that moment; an answer edited after the rejection leaves `DRAFT_KEY` absent · unit `draft.test`: after `invite-rejected` and after `accepted`, `reduceForm` reports `storage: 'memory'` and no later action writes the store | T6 |
 | 10.6 | e2e | stub `request-rejected` → error naming hello@, Draft kept | T6 |
 | 11.1 | function | valid Invite: the Brief to hello@, From forms@, Reply-To the Invite's e-mail, every answer in the body including typed contact values | T5 |
 | 11.2 | function + unit | unit `brief.test`: header block, then one `##` per section in order, each question then its answer · function: the handed body equals `briefMail`'s for the request | T5 |
@@ -524,9 +536,9 @@ stub never verifies, as the page cannot.
 | 11.4 | function | a body whose every answer carries a marker string and CR/LF: no header of either mail contains a marker | T5 |
 | 12.1 | function | the confirmation's To is the Invite's e-mail only (the body's e-mail answer differs), From forms@, Reply-To hello@ | T5 |
 | 12.2 | function | Subject and text equal the spec's text, emojis included (a fixture string copied from the spec), no answer marker in it; a non-ASCII name and the emoji Subject are RFC 2047 encoded in the serialised message (nodemailer's stream transport, in memory) | T5 |
-| 13.1 | function | tampered payload and tampered signature → `invite-rejected` (403), no mail | T5 |
+| 13.1 | function | tampered payload, a tampered signature whose flipped character changes the decoded bytes, and a signature that differs only in the last character's two spare bits (must also be rejected) → `invite-rejected` (403), no mail | T5 |
 | 13.2 | function | expired Invite (fixed clock) → `invite-rejected`, no mail | T5 |
-| 13.3 | function | `MAX_BODY_BYTES + 1` bytes → `request-rejected`, no mail; the body stream is not read past the limit (a counting stream) · unit `limits.test`: the largest legal body from the real schema fits under `MAX_BODY_BYTES` | T3a (unit), T5 |
+| 13.3 | function | two cases, each `MAX_BODY_BYTES + 1` bytes → `request-rejected`, no mail: with a truthful `Content-Length` (rejected before any read of the body) and with none (a chunked stream; the counter cancels it, not read past the limit) · unit `limits.test`: the largest legal body from the real schema fits under `MAX_BODY_BYTES` | T3a (unit), T5 |
 | 13.4 | function | `GET`, `PUT`, `DELETE` → `request-rejected` (405) | T5 |
 | 13.5 | function + unit | names with CR, LF, CRLF → stripped in display name, Subject and body · unit `stripCrLf` | T5 |
 | 13.6 | function | across every case of this file, each captured log line parses as `LogLine`, and none contains the Invite's name, e-mail, any answer marker or the token | T5 |
@@ -568,8 +580,10 @@ rate stays increment-1 AC-23.1's, re-measured in T0b (the crossfade touches entr
 
 **Coverage ratchet scope**: unchanged rule; `src/intake/**/*.ts` and the pure `src/discovery/*.ts`
 fall inside `src/**/*.ts`; `api/discovery.ts` (glue) and `scripts/invite.ts`'s terminal I/O shell
-stay outside like `build/build.ts`; `scripts/invite.ts`'s logic lives in an importable function under
-test. T7 raises the floor with `make coverage-ratchet`.
+stay outside like `build/build.ts`; the CLI's logic lives in `scripts/invite/run.ts`, which T2 adds to
+the coverage `include` and to CLAUDE.md's scope line (scripts are named one by one there); one unit
+test spawns `node scripts/invite.ts` with an invented secret and the prompt answers on stdin, so an
+import outside `node:*` and `src/intake/` or a non-erasable syntax fails CI (ai-review on #96). T7 raises the floor with `make coverage-ratchet`.
 
 ## 7. Observability
 
@@ -662,16 +676,16 @@ Riskiest first; each names the ticket that retires it.
 
 | # | branch | slice (demo) | ACs | blocked by |
 |---|---|---|---|---|
-| T0a | `feat/design-foundation` (#67) | Tailwind v4, the token file, the font (both measured, Owner picks), copied shadcn/ui base, Lucide, `site.css` replaced; Exhibit Panel, Fallback Page, World overlay, failure message and hints re-skinned; the mark and favicon from one drawing; ADR 0017; ADR 0012 note. Demo: every increment-1 surface in the new look | 1.1 (site), 1.3, 1.5, 4.1–4.3, 16.3 | — · Owner mark |
+| T0a | `feat/design-foundation` (#67) | Tailwind v4, the token file, the font (both measured, Owner picks), copied shadcn/ui base, Lucide, `site.css` replaced; the Title Screen (tokens and font, before T0b's hero), Exhibit Panel, Fallback Page, World overlay, failure message and hints re-skinned; the mark and favicon from one drawing; ADR 0017; ADR 0012 note. Demo: every increment-1 surface in the new look | 1.1 (site), 1.3, 1.5, 4.1–4.3, 16.3 | — · Owner mark |
 | | | Owner: checklist (AC-1.3, font) | | |
-| T0b | `feat/hero-entry-bar` (#67) | **First task: the `amend:` commit of §11 B2.** Then the hiding change (risk 1), the hero over the static backdrop, the CSS headline reveal, the CSS crossfade, the sticky bar on `/`, `/exhibits` and `/start` ("Start a project" the current page on `/start`), hidden in the World. Demo: Title Screen → World entry and back | 1.2, 1.5, 2.1–2.5, 3.1–3.4, 4.3, 15.2 | T1 |
+| T0b | `feat/hero-entry-bar` (#67) | **First task: the `amend:` commit of §11 B2** (three Motion sentences, the Owner-dependency sentence, the Draft rule in AC-6.3, the Data table and Implementation decisions, a pointer on PR #82 item (a), and `GLOSSARY.md`'s Draft definition). Then the hiding change (risk 1), the hero over the static backdrop, the CSS headline reveal, the CSS crossfade, the sticky bar on `/`, `/exhibits` and `/start` ("Start a project" the current page on `/start`), hidden in the World. Demo: Title Screen → World entry and back | 1.2, 1.5, 2.1–2.5, 3.1–3.4, 4.3, 15.2 | T1 |
 | | | Owner: checklist (AC-1.2, 2.1, 2.3), fps | | |
 | T1 | `feat/start-page` | `/start` pre-rendered, no script; the /start sentence in `site.yaml` as a placeholder of realistic length, final-edited by the Owner on the PR; ADR 0018 (both routes, `/start/discovery` reserved). Demo: /start without script | 1.1 (/start), 5.1–5.4, 15.2 (/start) | T0a |
-| T2 | `feat/invite-cli` | `src/intake/invite.ts`, `src/intake/server/sign.ts`, `scripts/invite.ts`, `make invite`, `docs/runbooks/invite.md`; ADR 0019; the CLAUDE.md and AGENTS.md command line for `make invite`. Demo: the Owner mints a link on the host | 14.1–14.4 | — |
+| T2 | `feat/invite-cli` | `src/intake/invite.ts`, `src/intake/server/sign.ts`, `scripts/invite.ts` + `scripts/invite/run.ts` (in the coverage include and CLAUDE.md's scope line), one spawn test, `make invite`, `docs/runbooks/invite.md`; ADR 0019; the CLAUDE.md and AGENTS.md command line for `make invite`. Demo: the Owner mints a link on the host | 14.1–14.4 | — |
 | T3a | `feat/discovery-route` | `/start/discovery` route and `discovery` chunk; the pre-rendered no-script message and consent; Invite decode, greeting, prefill, expired/unreadable/no-Invite screens; `content/discovery.yaml` schema with the mockup's questions as placeholders; `MAX_BODY_BYTES` and `limits.test`; chunk isolation. Demo: open a minted link | 1.1 (form), 3.1, 3.2, 3.4, 6.1 (page), 6.3–6.5 (page), 6.8, 9.3, 13.3 (unit), 16.2 | T0b, T1, T2 |
-| T3b | `feat/discovery-sections` | seven sections, navigation, progress, validation with "Not sure — please advise", the answer caps of §4 shown and named before submit (AC-7.3 path), review step, consent checkbox, keyboard pass; Radix primitives; the Owner's final copy as a content diff. Demo: fill in and review | 7.1–7.6, 9.1, 9.2, 15.2 | T3a · Owner copy |
-| T4 | `feat/discovery-draft` | the Draft: store, every trigger of §4, the clear control, unavailable storage. Demo: reload mid-form | 6.3, 6.4, 6.6, 6.7, 8.1–8.3, 8.5 | T3b |
-| T5 | `feat/discovery-function` | probes of risk 4 and the log probe of §8 first; `src/intake/server/handler.ts`, `send.ts`, `brief.ts`, `api/discovery.ts`; `tests/function` with ADR 0020 and 0021 and the CLAUDE.md/AGENTS.md lines it outdates (the seams, `make test`'s projects, the repository map for `api/`, `src/intake/`, `src/discovery/`, `tests/function/`, the ratchet scope's exclusions), within the 150-line cap by widening lines, not adding them (retro 2026-10-22); `docs/runbooks/discovery-function.md` (secrets, rotation, log finding); ADR 0006 note; `vercel.json` if needed. Demo: a POST with a minted Invite reaches hello@ | 6.1 (function), 10.3, 10.4 (log), 11.1–11.4, 12.1, 12.2, 13.1–13.7, 16.2 (function) | T2, T3a · Owner secrets |
+| T3b | `feat/discovery-sections` | seven sections, navigation, progress, validation with "Not sure — please advise", the answer caps of §4 shown and named before submit (AC-7.3 path), review step, consent checkbox, keyboard pass; Radix primitives copied without their enter/exit animation classes; the Owner's final copy as a content diff. Demo: fill in and review | 7.1–7.6, 9.1, 9.2, 15.2 | T3a · Owner copy |
+| T4 | `feat/discovery-draft` | the Draft: store, every trigger of §4, the clear control (a copied alert dialog without animation classes; AC-1.2's dialog check), unavailable storage. Demo: reload mid-form | 1.2 (dialog), 6.3, 6.4, 6.6, 6.7, 8.1–8.3, 8.5 | T3b |
+| T5 | `feat/discovery-function` | probes of risk 4 and the log probe of §8 first; `src/intake/server/handler.ts`, `send.ts`, `brief.ts`, `api/discovery.ts` (catches everything); a unit test of `smtpSender` over a failing nodemailer transport (no address in `SendError`'s message, no `cause`); the `config` reason; `tests/function` with ADR 0020 and 0021 and the CLAUDE.md/AGENTS.md lines it outdates (the seams, `make test`'s projects, the repository map for `api/`, `src/intake/`, `src/discovery/`, `tests/function/`, the ratchet scope's exclusions), within the 150-line cap by widening lines, not adding them (retro 2026-10-22); `docs/runbooks/discovery-function.md` (secrets, rotation, log finding); ADR 0006 note; `vercel.json` if needed. Demo: a POST with a minted Invite reaches hello@ | 6.1 (function), 10.3, 10.4 (log), 11.1–11.4, 12.1, 12.2, 13.1–13.7, 16.2 (function) | T2, T3a · Owner secrets |
 | | | Owner: one real send | | |
 | T6 | `feat/discovery-submit` | the page's POST, the four classes and their Draft effects, the confirmation; the full-visit privacy spec. Demo: submit on the preview, both mails arrive | 1.4, 6.1 (submit), 6.2, 7.6 (submit), 8.2, 8.4, 10.1, 10.2, 10.4–10.6 | T4, T5 |
 | T7 | `chore/increment-2-live` | the Owner's browser pass, coverage ratchet, README and CLAUDE.md status lines, `docs/spec/README.md`, glossary hand-off closed. Demo: the site as shipped | 15.1, 15.3, 16.1 | T6 |
@@ -690,7 +704,7 @@ retro line, the checklist where it is a UI ticket, `make perf` green.
 ## 11. Blockers
 
 Both raised in the plan's first draft and **decided by the Owner** in the plan review of 2026-11-05,
-recorded in [#59, Owner comment of 2026-11-05](https://github.com/cov1983/portfolio/issues/59#issuecomment-6662855247): B1 is item 1, B2 items 2 and 3.
+recorded in [#59, Owner comment of 2026-11-05](https://github.com/cov1983/portfolio/issues/59#issuecomment-6662855247): B1 is item 1, B2 items 2 and 3; items 2 and 5 are amended by [the read-back after ai-review on #96](https://github.com/cov1983/portfolio/issues/59#issuecomment-6663271301) (2a, 5a).
 
 - **B1 — CLAUDE.md "Two seams only" vs the spec's third seam** (spec, Testing decisions › "Seams",
   item 3). *Decided*: ADR 0021 as stubbed in §3; the CLAUDE.md and AGENTS.md "Two seams" lines change
@@ -701,8 +715,16 @@ recorded in [#59, Owner comment of 2026-11-05](https://github.com/cov1983/portfo
   reducedMotion="user"`". CSS can do both (§2), so the Owner asked for CSS. *Decided: amend the spec,
   not keep Motion.* T0b's first task is an `amend:` commit to `docs/spec/increment-2.md` that rewrites
   those two sentences to CSS transitions and the `prefers-reduced-motion` media query and sets the
-  status line to `amended`; Motion is not in the dependency table. *Second sentence of the same
-  commit (item 3)*: an unreadable Invite leaves the Draft alone,
+  status line to `amended`; Motion is not in the dependency table. *A third Motion sentence* ([#59, Owner read-back of 2026-11-05](https://github.com/cov1983/portfolio/issues/59#issuecomment-6663271301),
+  2a; ai-review on #96, M3): Constraints & dependencies, "New dependencies (Tailwind v4, Motion, Lucide
+  React, shadcn/ui's peers, the SMTP client, the font files) are each researched in the plan …", loses
+  Motion. Item (a) of the PR #82 list in the spec's Traceability ("the Draft is cleared on an expired
+  or invalid Invite"; the read-back calls it Further notes item (a)) stays as the historical record and
+  gains a pointer to the amend. *The Owner-dependency sentence* (5a; ai-review on #96, minor 7): the
+  Constraints' "The Owner provides before Phase 3 … the final EN copy of the seven sections …, the
+  /start sentence and the redrawn Puck mark" is amended: the /start sentence and the EN copy are
+  placeholders the agent drafts and the Owner final-edits on T1's and T3b's PR; the mark stays due
+  before T0a starts. *Second rule of the same commit (item 3)*: an unreadable Invite leaves the Draft alone,
   like no Invite; only an expired Invite, a stored expiry in the past, or a readable unexpired Invite
   with a different signature clears it. AC-6.3 reads today: "Given an Invite that is expired or
   cannot be read, When the page loads, Then the Discovery Form is not shown, a message says the
