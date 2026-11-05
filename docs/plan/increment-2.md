@@ -49,7 +49,7 @@ third-party form service, a captcha, analytics, a database for Briefs, a Brief a
 repository or an agent's context, single-use Invites, another Vercel project.
 
 **Owner dependencies, due before the ticket that consumes them** (§10): the redrawn Puck mark (T0a),
-the font pick on T0a's preview, the /start sentence (T1), the final EN copy of the seven sections
+the font pick on T0a's preview, the final edit of the /start sentence on T1's PR (the agent writes a placeholder of realistic length), the final EN copy of the seven sections
 (T3b; the agent drafts the diff from the mockup's text in that ticket), the signing secret and the
 mailbox's device password in Vercel's environment and on the host (T5), one real send (T5).
 
@@ -468,10 +468,10 @@ stub never verifies, as the page cannot.
 | 2.3 | e2e + Owner | `world-entry.spec` (extended): one Enter → the World container visible and the Title Screen `inert` and not visible after its transition ends (`transitionend` awaited), no second press; without reduced motion the Title Screen's computed `transition-property` includes `opacity` and `transform` (the control) · Owner: the fade and lift (checklist) | T0b |
 | 2.4 | e2e | `reduced-motion.spec` (extended): with `reduce`, `getAnimations()` is empty on `/` at load and immediately after Enter | T0b |
 | 2.5 | e2e | `world-entry.spec`: Escape then Enter: increment-1 AC-6.1/6.2's assertions through the crossfade | T0b |
-| 3.1 | e2e | `sticky-bar.spec`: on `/`, `/exhibits`, `/start`, `/start/discovery`, after scrolling to the bottom the bar is in the viewport; mark first; "Exhibits" → `/exhibits`, "Start a project" → `/start` | T0b, T1, T3a |
-| 3.2 | e2e | `sticky-bar.spec`: on `/start` and `/start/discovery` the "Start a project" link has `aria-current="page"`; on the others it has none | T1, T3a |
+| 3.1 | e2e | `sticky-bar.spec`: on `/`, `/exhibits`, `/start`, `/start/discovery`, after scrolling to the bottom the bar is in the viewport; mark first; "Exhibits" → `/exhibits`, "Start a project" → `/start` | T0b, T3a |
+| 3.2 | e2e | `sticky-bar.spec`: on `/start` and `/start/discovery` the "Start a project" link has `aria-current="page"`; on the others it has none | T0b, T3a |
 | 3.3 | e2e | `sticky-bar.spec`: in the World the bar is not visible, `inert`, and absent from the accessibility snapshot; Tab never reaches it | T0b |
-| 3.4 | e2e | `sticky-bar.spec`, no script: both links navigate from every page | T0b, T1 |
+| 3.4 | e2e | `sticky-bar.spec`, no script: both links navigate from every page | T0b |
 | 4.1 | e2e | `exhibit-panel.spec`, `fallback-page.spec` unchanged (increment-1 US-16, US-19, US-20, 320 px, focus) | T0a |
 | 4.2 | e2e | `world.spec`, `capability.spec`: the overlay holds exactly the caption, the Reset control, the key legend and the hints | T0a |
 | 4.3 | e2e | axe on every re-skinned surface, colour contrast on (the existing axe helper, run on the new look) | T0a, T0b |
@@ -635,9 +635,9 @@ Riskiest first; each names the ticket that retires it.
 | 3 | **Production shows a half-redesigned site** between T0a and T0b (the spec: "never looks like two sites") | T0a re-skins every surface at once on the new tokens; T0b adds hero, crossfade and bar on top; the Owner may hold T0a's merge until T0b's preview is approved and merge both the same day | T0a, T0b |
 | 4 | **The function does not build or behave on Vercel as planned**: `api/` beside `framework: vite`, `.ts`-extension imports (`allowImportingTsExtensions`) under Vercel's TypeScript build, `content/discovery.yaml` traced into the bundle, and whether a Web `Request` body is buffered before the handler runs (the docs are silent) | T5's first tasks, before the handler: a probe function on the preview; read the Web-handler path in `@vercel/node`'s source for buffering; if the tracer misses the YAML, first a `readFileSync` with a statically analysable path (`join(__dirname, …)`; in this ESM package `join(import.meta.dirname, …)`, its tracing confirmed by the probe), then `includeFiles` in `vercel.json`; the handler-level guarantee (verify before read) holds either way and the platform caps at 4.5 MB | **T5** |
 | 5 | **SMTP from a Vercel function**: port 465 egress, TLS, the device password, cold start within the Client's patience | nodemailer with a connection timeout; `send-failed` on any error; the Owner's one real send before the first test Client | T5 |
-| 6 | **Owner content arrives late** (mark, /start sentence, final copy) | placeholders as long as the real content (skill-overrides, `/tdd`); T3b's e2e reads labels from `content/discovery.yaml`, never literals | T0a, T1, T3b |
+| 6 | **Owner content arrives late** (mark, /start sentence, final copy) | placeholders as long as the real content (skill-overrides, `/tdd`); T1 does not wait for the /start sentence: the agent writes a placeholder of realistic length and the Owner final-edits it on the PR; T3b's e2e reads labels from `content/discovery.yaml`, never literals | T0a, T1, T3b |
 | 7 | **The derived body limit drifts from the questions**: the Owner adds questions and the constant becomes too small | `limits.test` rebuilds the largest legal body from the real file and fails the content PR that outgrows it | T3a |
-| 8 | **Time**: nine tickets at ~4 h a week | tickets ≤ ~400 lines; T2 depends on nothing and runs parallel to T0a and T0b; T2 and T5 are UI-free and may be reviewed while the Owner works on content | all |
+| 8 | **Time**: nine tickets at ~4 h a week | tickets ≤ ~400 lines; T0a and T2 start in parallel (T2 depends on nothing); T2 and T5 are UI-free and may be reviewed while the Owner works on content | all |
 
 ## 10. Rollout
 
@@ -653,19 +653,24 @@ Riskiest first; each names the ticket that retires it.
 |---|---|---|---|---|
 | T0a | `feat/design-foundation` (#67) | Tailwind v4, the token file, the font (both measured, Owner picks), copied shadcn/ui base, Lucide, `site.css` replaced; Exhibit Panel, Fallback Page, World overlay, failure message and hints re-skinned; the mark and favicon from one drawing; ADR 0017; ADR 0012 note. Demo: every increment-1 surface in the new look | 1.1 (site), 1.3, 1.5, 4.1–4.3, 16.3 | — · Owner mark |
 | | | Owner: checklist (AC-1.3, font) | | |
-| T0b | `feat/hero-entry-bar` (#67) | **First task: the `amend:` commit of §11 B2.** Then the hiding change (risk 1), the hero over the static backdrop, the CSS headline reveal, the CSS crossfade, the sticky bar on `/` and `/exhibits`, hidden in the World. Demo: Title Screen → World entry and back | 1.2, 1.5, 2.1–2.5, 3.1, 3.3, 3.4 | T0a |
+| T0b | `feat/hero-entry-bar` (#67) | **First task: the `amend:` commit of §11 B2.** Then the hiding change (risk 1), the hero over the static backdrop, the CSS headline reveal, the CSS crossfade, the sticky bar on `/`, `/exhibits` and `/start` ("Start a project" the current page on `/start`), hidden in the World. Demo: Title Screen → World entry and back | 1.2, 1.5, 2.1–2.5, 3.1–3.4 | T1 |
 | | | Owner: checklist (AC-1.2, 2.1, 2.3), fps | | |
-| T1 | `feat/start-page` | `/start` pre-rendered, no script; the /start sentence in `site.yaml`; the bar's current page; ADR 0018 (both routes, `/start/discovery` reserved). Demo: /start without script | 3.1, 3.2, 3.4, 5.1–5.4, 15.2 (/start) | T0b · Owner sentence |
+| T1 | `feat/start-page` | `/start` pre-rendered, no script; the /start sentence in `site.yaml` as a placeholder of realistic length, final-edited by the Owner on the PR; ADR 0018 (both routes, `/start/discovery` reserved). Demo: /start without script | 5.1–5.4, 15.2 (/start) | T0a |
 | T2 | `feat/invite-cli` | `src/intake/invite.ts`, `src/intake/server/sign.ts`, `scripts/invite.ts`, `make invite`, `docs/runbooks/invite.md`; ADR 0019. Demo: the Owner mints a link on the host | 14.1–14.4 | — |
 | T3a | `feat/discovery-route` | `/start/discovery` route and `discovery` chunk; the pre-rendered no-script message and consent; Invite decode, greeting, prefill, expired/unreadable/no-Invite screens; `content/discovery.yaml` schema with the mockup's questions as placeholders; `MAX_BODY_BYTES` and `limits.test`; chunk isolation. Demo: open a minted link | 1.1 (form), 3.1, 3.2, 6.1 (page), 6.3–6.5 (page), 6.8, 9.3, 13.3 (unit), 16.2 | T1, T2 |
 | T3b | `feat/discovery-sections` | seven sections, navigation, progress, validation with "Not sure — please advise", review step, consent checkbox, keyboard pass; Radix primitives; the Owner's final copy as a content diff. Demo: fill in and review | 7.1–7.6, 9.1, 9.2, 15.2 | T3a · Owner copy |
 | T4 | `feat/discovery-draft` | the Draft: store, every trigger of §4, the clear control, unavailable storage. Demo: reload mid-form | 6.3, 6.4, 6.6, 6.7, 8.1–8.3, 8.5 | T3b |
-| T5 | `feat/discovery-function` | probes of risk 4 and the log probe of §8 first; `src/intake/server/handler.ts`, `send.ts`, `brief.ts`, `api/discovery.ts`; `tests/function` with ADR 0020 and 0021 and the CLAUDE.md/AGENTS.md seam lines; `docs/runbooks/discovery-function.md` (secrets, rotation, log finding); ADR 0006 note; `vercel.json` if needed. Demo: a POST with a minted Invite reaches hello@ | 10.3, 10.4 (log), 11.1–11.4, 12.1, 12.2, 13.1–13.7, 16.2 (function) | T2 · Owner secrets |
+| T5 | `feat/discovery-function` | probes of risk 4 and the log probe of §8 first; `src/intake/server/handler.ts`, `send.ts`, `brief.ts`, `api/discovery.ts`; `tests/function` with ADR 0020 and 0021 and the CLAUDE.md/AGENTS.md seam lines; `docs/runbooks/discovery-function.md` (secrets, rotation, log finding); ADR 0006 note; `vercel.json` if needed. Demo: a POST with a minted Invite reaches hello@ | 10.3, 10.4 (log), 11.1–11.4, 12.1, 12.2, 13.1–13.7, 16.2 (function) | T2, T3a · Owner secrets |
 | | | Owner: one real send | | |
 | T6 | `feat/discovery-submit` | the page's POST, the four classes and their Draft effects, the confirmation; the full-visit privacy spec. Demo: submit on the preview, both mails arrive | 1.4, 6.1 (submit), 6.2, 7.6 (submit), 8.2, 8.4, 10.1, 10.2, 10.4–10.6 | T4, T5 |
 | T7 | `chore/increment-2-live` | the Owner's browser pass, coverage ratchet, README and CLAUDE.md status lines, `docs/spec/README.md`, glossary hand-off closed. Demo: the site as shipped | 15.1, 15.3, 16.1 | T6 |
 
-Blocking edges: T0b←T0a; T1←T0b; T3a←T1,T2; T3b←T3a; T4←T3b; T5←T2; T6←T4,T5; T7←T6.
+Blocking edges: T1←T0a; T0b←T1; T3a←T1,T2; T3b←T3a; T4←T3b; T5←T2,T3a; T6←T4,T5; T7←T6. T0a and T2
+have no blockers and start in parallel. T1 comes before T0b so the bar's "Start a project" never
+points at a missing page in production; T5 needs T3a's `content/discovery.yaml` and its schema.
+
+Tracker (created after `plan: approve`): T0a and T0b are `Part of #67`, T1–T7 `Part of #59`; the
+Owner closes #67 at T0b's merge and #59 at T7's, by comment, never with `Closes`.
 Every ticket: `make verify` per task, `/code-review` before `gh pr create --label ai-assisted`, a
 retro line, the checklist where it is a UI ticket, `make perf` green.
 
