@@ -9,7 +9,8 @@ receives the answers by mail. The site is static (principle 5), stores nothing a
 third-party script (principle 10). Considered: a hosted form service (third-party script, refused
 by principle 10); a backend with a database (nothing to run it for one form, and a Brief lives only
 in the Owner's mailbox — Owner decision Q6 on #59; principle 8 keeps it out of the repository and
-prompts); mailto: (no structure, no way to verify an Invite); one serverless function.
+prompts); a hosted database (Supabase), a possible later direction, not decided; mailto: (no
+structure, no way to verify an Invite); one serverless function.
 
 ## Decision
 
@@ -28,11 +29,10 @@ a visible control.
 ## Consequences
 
 - Constitution v1.1: principle 5 allows a serverless function at a form's submit boundary as a
-  class, each introduced by its own spec and ADR, and no longer says "until a spec says
-  otherwise" — any backend beyond a form-boundary function (a database, server-side storage, a
-  scheduled job) needs its own amendment and ADR (Supabase was named as the likely direction);
-  principle 10 names first-party browser storage as the only storage a spec can introduce, and
-  keeps counting behind a spec.
+  class, each introduced by its own spec and ADR, and no longer says "until a spec says otherwise" —
+  any backend beyond a form-boundary function (a database, server-side storage, a scheduled job)
+  needs its own amendment and ADR; principle 10 names first-party browser storage as the only
+  storage a spec can introduce, and keeps counting behind a spec.
 - vercel.json and the CSP (connect-src 'self') change under the spec's function ticket; ADR 0006
   gets a note there.
 - The function is tested at its own seam with SMTP mocked; one real send is a recorded Owner
