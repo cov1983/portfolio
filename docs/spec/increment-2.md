@@ -1,4 +1,4 @@
-# Spec: increment-2            Status: draft    Owner: Thomas (@cov1983)
+# Spec: increment-2            Status: approved   Owner: Thomas (@cov1983)
 
 Written 2026-11-05 by `/to-spec` from issue #59 (body of 2026-10-19 and the Owner's consolidated
 Phase 1 answers of 2026-11-04, Q1–Q18 and D1–D8), issue #67, constitution v1.1, ADR 0016 and the
