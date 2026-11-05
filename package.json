@@ -10,7 +10,7 @@
     "node": ">=24"
   },
   "dependencies": {
-    "@dimforge/rapier3d-compat": "0.19.2",
+    "@dimforge/rapier3d-compat": "0.21.0",
     "@react-three/fiber": "9.8.2",
     "markdown-it": "15.0.3",
     "react": "19.3.1",
