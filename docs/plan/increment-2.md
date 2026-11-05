@@ -2,8 +2,9 @@
 
 Status: draft, 2026-11-05 (Phase 2, guide §4.2). Spec: `docs/spec/increment-2.md`, approved 2026-11-05
 (commit ad7db39). Inputs: issues #59 and #67 with their comments, constitution v1.1, ADR 0003, 0006,
-0010, 0011, 0012, 0016. The Owner's plan-mode review of 2026-11-05 decided the two Blockers of §11 and
-five fixes to the first draft; they are folded in below.
+0010, 0011, 0012, 0016. The Owner's plan review of 2026-11-05 decided the two Blockers of §11, the
+ticket order and AC-13.7's proof, recorded in [#59, Owner comment of 2026-11-05](https://github.com/cov1983/portfolio/issues/59#issuecomment-6662855247) (items 1–5, cited by number below), and five fixes
+to the first draft; all are folded in below.
 
 Vocabulary is `GLOSSARY.md`. Spec words the glossary does not define yet (the *sticky bar*, the
 *hero* and its *backdrop*, *the function*, the *review step*, the *Start a project* control) are
@@ -202,7 +203,7 @@ seam calls, so seam 3 needs no Vercel SDK.
 **ADR 0021 — A third test seam: the function under Node with SMTP mocked.**
 *Context*: CLAUDE.md allows two seams (the built site in a browser, the World model under Node); the
 spec's Testing decisions › "Seams" add a third, the function called as Vercel calls it with the SMTP
-transport mocked; the Owner approved it in the plan-mode review of 2026-11-05 (§11 B1). *Decision*:
+transport mocked; the Owner approved it ([#59, Owner comment of 2026-11-05](https://github.com/cov1983/portfolio/issues/59#issuecomment-6662855247), item 1; §11 B1). *Decision*:
 `tests/function/` is a Vitest project `function`; each test builds a `Request`, calls the handler built
 with an in-memory send module, a fixed clock and a captured log, and asserts the `Response`, the mails
 handed to the mock and the log lines; the CLAUDE.md and AGENTS.md "Two seams only" lines become three
@@ -312,7 +313,7 @@ clear control after confirmation, a page seeing an expired Invite, an `invite-re
 result, a readable unexpired Invite whose signature differs from `inviteSignature`, and any visit
 once `inviteExpiry` has passed (with or without an Invite). Kept on: `send-failed`,
 `request-rejected`, a page without an Invite, a page with an unreadable Invite (spec, "Draft (Q5,
-principle 10, ADR 0016)"; the unreadable case by Owner decision of 2026-11-05, amended in T0b, §11 B2).
+principle 10, ADR 0016)"; the unreadable case by [#59, Owner comment of 2026-11-05](https://github.com/cov1983/portfolio/issues/59#issuecomment-6662855247), item 3, amended in T0b, §11 B2).
 
 ### The Brief and the confirmation
 
@@ -529,7 +530,7 @@ stub never verifies, as the page cannot.
 | 13.4 | function | `GET`, `PUT`, `DELETE` → `request-rejected` (405) | T5 |
 | 13.5 | function + unit | names with CR, LF, CRLF → stripped in display name, Subject and body · unit `stripCrLf` | T5 |
 | 13.6 | function | across every case of this file, each captured log line parses as `LogLine`, and none contains the Invite's name, e-mail, any answer marker or the token | T5 |
-| 13.7 | function (**weaker than the AC**) | the handler's only outbound path is the injected `SendMail`, so every case records calls to the mock alone; `fetch`, `node:net`/`node:tls` connect and the `node:fs` write functions are spied and never called. A spy proves only the calls made through those module objects in this process, not every way a file or socket could be reached; kept by Owner decision (plan-mode review, 2026-11-05) | T5 |
+| 13.7 | function (**weaker than the AC**) | the handler's only outbound path is the injected `SendMail`, so every case records calls to the mock alone; `fetch`, `node:net`/`node:tls` connect and the `node:fs` write functions are spied and never called. A spy proves only the calls made through those module objects in this process, not every way a file or socket could be reached; kept by Owner decision ([#59, Owner comment of 2026-11-05](https://github.com/cov1983/portfolio/issues/59#issuecomment-6662855247), item 4; not Owner-measured) | T5 |
 | 14.1 | unit | `invite.test` (CLI through injected I/O): secret, name and e-mail given → one line, origin `https://thomascova.dev`, path `/start/discovery#i=`, payload `l: 'en'`, `x` = now + 30 days; `DAYS=7` and `ORIGIN=<preview>` honoured; `verifyInvite` accepts the token | T2 |
 | 14.2 | unit | no `INVITE_SECRET` → exit 1, stderr names `INVITE_SECRET`, stdout empty | T2 |
 | 14.3 | unit | `INVITE_LANG=de` → exit 1, no link | T2 |
@@ -667,27 +668,29 @@ Riskiest first; each names the ticket that retires it.
 | | | Owner: checklist (AC-1.2, 2.1, 2.3), fps | | |
 | T1 | `feat/start-page` | `/start` pre-rendered, no script; the /start sentence in `site.yaml` as a placeholder of realistic length, final-edited by the Owner on the PR; ADR 0018 (both routes, `/start/discovery` reserved). Demo: /start without script | 1.1 (/start), 5.1–5.4, 15.2 (/start) | T0a |
 | T2 | `feat/invite-cli` | `src/intake/invite.ts`, `src/intake/server/sign.ts`, `scripts/invite.ts`, `make invite`, `docs/runbooks/invite.md`; ADR 0019; the CLAUDE.md and AGENTS.md command line for `make invite`. Demo: the Owner mints a link on the host | 14.1–14.4 | — |
-| T3a | `feat/discovery-route` | `/start/discovery` route and `discovery` chunk; the pre-rendered no-script message and consent; Invite decode, greeting, prefill, expired/unreadable/no-Invite screens; `content/discovery.yaml` schema with the mockup's questions as placeholders; `MAX_BODY_BYTES` and `limits.test`; chunk isolation. Demo: open a minted link | 1.1 (form), 3.1, 3.2, 3.4, 6.1 (page), 6.3–6.5 (page), 6.8, 9.3, 13.3 (unit), 16.2 | T1, T2 |
-| T3b | `feat/discovery-sections` | seven sections, navigation, progress, validation with "Not sure — please advise", review step, consent checkbox, keyboard pass; Radix primitives; the Owner's final copy as a content diff. Demo: fill in and review | 7.1–7.6, 9.1, 9.2, 15.2 | T3a · Owner copy |
+| T3a | `feat/discovery-route` | `/start/discovery` route and `discovery` chunk; the pre-rendered no-script message and consent; Invite decode, greeting, prefill, expired/unreadable/no-Invite screens; `content/discovery.yaml` schema with the mockup's questions as placeholders; `MAX_BODY_BYTES` and `limits.test`; chunk isolation. Demo: open a minted link | 1.1 (form), 3.1, 3.2, 3.4, 6.1 (page), 6.3–6.5 (page), 6.8, 9.3, 13.3 (unit), 16.2 | T0b, T1, T2 |
+| T3b | `feat/discovery-sections` | seven sections, navigation, progress, validation with "Not sure — please advise", the answer caps of §4 shown and named before submit (AC-7.3 path), review step, consent checkbox, keyboard pass; Radix primitives; the Owner's final copy as a content diff. Demo: fill in and review | 7.1–7.6, 9.1, 9.2, 15.2 | T3a · Owner copy |
 | T4 | `feat/discovery-draft` | the Draft: store, every trigger of §4, the clear control, unavailable storage. Demo: reload mid-form | 6.3, 6.4, 6.6, 6.7, 8.1–8.3, 8.5 | T3b |
 | T5 | `feat/discovery-function` | probes of risk 4 and the log probe of §8 first; `src/intake/server/handler.ts`, `send.ts`, `brief.ts`, `api/discovery.ts`; `tests/function` with ADR 0020 and 0021 and the CLAUDE.md/AGENTS.md lines it outdates (the seams, `make test`'s projects, the repository map for `api/`, `src/intake/`, `src/discovery/`, `tests/function/`, the ratchet scope's exclusions), within the 150-line cap by widening lines, not adding them (retro 2026-10-22); `docs/runbooks/discovery-function.md` (secrets, rotation, log finding); ADR 0006 note; `vercel.json` if needed. Demo: a POST with a minted Invite reaches hello@ | 6.1 (function), 10.3, 10.4 (log), 11.1–11.4, 12.1, 12.2, 13.1–13.7, 16.2 (function) | T2, T3a · Owner secrets |
 | | | Owner: one real send | | |
 | T6 | `feat/discovery-submit` | the page's POST, the four classes and their Draft effects, the confirmation; the full-visit privacy spec. Demo: submit on the preview, both mails arrive | 1.4, 6.1 (submit), 6.2, 7.6 (submit), 8.2, 8.4, 10.1, 10.2, 10.4–10.6 | T4, T5 |
 | T7 | `chore/increment-2-live` | the Owner's browser pass, coverage ratchet, README and CLAUDE.md status lines, `docs/spec/README.md`, glossary hand-off closed. Demo: the site as shipped | 15.1, 15.3, 16.1 | T6 |
 
-Blocking edges: T1←T0a; T0b←T1; T3a←T1,T2; T3b←T3a; T4←T3b; T5←T2,T3a; T6←T4,T5; T7←T6. T0a and T2
+Blocking edges: T1←T0a; T0b←T1; T3a←T0b,T1,T2; T3b←T3a; T4←T3b; T5←T2,T3a; T6←T4,T5; T7←T6. T0a and T2
 have no blockers and start in parallel. T1 comes before T0b so the bar's "Start a project" never
-points at a missing page in production; T5 needs T3a's `content/discovery.yaml` and its schema.
+points at a missing page in production; T3a waits for T0b so the form lands on the finished look and
+on T0b's sticky bar; T5 needs T3a's `content/discovery.yaml` and its schema ([#59, Owner comment of 2026-11-05](https://github.com/cov1983/portfolio/issues/59#issuecomment-6662855247), item 5).
 
 Tracker (created after `plan: approve`): T0a and T0b are `Part of #67`, T1–T7 `Part of #59`; the
 Owner closes #67 at T0b's merge and #59 at T7's, by comment, never with `Closes`.
+
 Every ticket: `make verify` per task, `/code-review` before `gh pr create --label ai-assisted`, a
 retro line, the checklist where it is a UI ticket, `make perf` green.
 
 ## 11. Blockers
 
-Both raised in the plan's first draft and **decided by the Owner** in the plan-mode review of
-2026-11-05; recorded here as decided, quoted on #59 by the PR of the `plan: approve` commit.
+Both raised in the plan's first draft and **decided by the Owner** in the plan review of 2026-11-05,
+recorded in [#59, Owner comment of 2026-11-05](https://github.com/cov1983/portfolio/issues/59#issuecomment-6662855247): B1 is item 1, B2 items 2 and 3.
 
 - **B1 — CLAUDE.md "Two seams only" vs the spec's third seam** (spec, Testing decisions › "Seams",
   item 3). *Decided*: ADR 0021 as stubbed in §3; the CLAUDE.md and AGENTS.md "Two seams" lines change
@@ -699,7 +702,7 @@ Both raised in the plan's first draft and **decided by the Owner** in the plan-m
   not keep Motion.* T0b's first task is an `amend:` commit to `docs/spec/increment-2.md` that rewrites
   those two sentences to CSS transitions and the `prefers-reduced-motion` media query and sets the
   status line to `amended`; Motion is not in the dependency table. *Second sentence of the same
-  commit (Owner decision, plan review of 2026-11-05)*: an unreadable Invite leaves the Draft alone,
+  commit (item 3)*: an unreadable Invite leaves the Draft alone,
   like no Invite; only an expired Invite, a stored expiry in the past, or a readable unexpired Invite
   with a different signature clears it. AC-6.3 reads today: "Given an Invite that is expired or
   cannot be read, When the page loads, Then the Discovery Form is not shown, a message says the
@@ -708,7 +711,9 @@ Both raised in the plan's first draft and **decided by the Owner** in the plan-m
   the expired one. The same rule is written twice more in the spec and the amend changes both, so
   the spec does not contradict itself: Data & privacy classification, the Draft row ("the page
   seeing an expired or unreadable Invite"), and Implementation decisions › "Draft (Q5, principle 10,
-  ADR 0016)" ("when the page sees an expired or unreadable Invite").
+  ADR 0016)" ("when the page sees an expired or unreadable Invite"). The same commit also changes
+  `GLOSSARY.md`'s Draft definition, which ends "or their Invite is no longer valid", to name the
+  expired Invite instead (item 3); the glossary is not frozen, but the rule changes in one place at once.
 
 ## 12. Hand-offs (tracker issues opened in the PR of the `plan: approve` commit)
 
