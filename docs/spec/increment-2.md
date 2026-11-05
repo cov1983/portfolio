@@ -147,19 +147,24 @@ holding on the re-skinned surface; this spec adds to it and does not restate it.
     greets the Client by the Invite's name and prefills the contact fields from the Invite's name
     and e-mail (#59). The prefilled fields stay editable. Typed values go into the Brief's body
     only, and the Invite's e-mail stays the Brief's Reply-To and the confirmation's sole recipient.
+    The greeting renders at most 80 characters of the Invite's name.
   - AC-6.2 Given /start/discovery#… is opened, When the requests the browser sends are listed, Then
     none of their URLs contains the Invite.
   - AC-6.3 Given an Invite that is expired or cannot be read, When the page loads, Then the
     Discovery Form is not shown, a message says the Invite is no longer valid and names
     hello@thomascova.dev, and any Draft is cleared (PR #82, carried item a).
   - AC-6.4 Given script runs and the fragment carries no Invite, When the page loads, Then the
-    Discovery Form is not shown, the message of AC-6.5 is shown, and any Draft is left as it is.
+    Discovery Form is not shown, the message of AC-6.5 is shown, and a Draft whose stored expiry has
+    not passed is left as it is (AC-6.7).
   - AC-6.5 Given /start/discovery is loaded with script disabled, When it is read, Then a
     pre-rendered plain-HTML message says the Discovery Form needs script and an Invite, and gives
     the Contact (the obfuscated hello@ link) as the way to ask for one.
-  - AC-6.6 Given a Draft started under one Invite, When the page is opened with a different valid
-    Invite, Then the Draft is cleared before the Discovery Form is shown.
-  - AC-6.7 Given /start/discovery is loaded, When requests are listed, Then the World bundle is not
+  - AC-6.6 Given a Draft started under one Invite, When the page is opened with a different
+    readable, unexpired Invite whose signature differs from the one stored with the Draft, Then the
+    Draft is cleared before the Discovery Form is shown.
+  - AC-6.7 Given a Draft whose stored Invite expiry has passed, When /start/discovery is visited,
+    with or without an Invite, Then the Draft is cleared.
+  - AC-6.8 Given /start/discovery is loaded, When requests are listed, Then the World bundle is not
     requested.
 
 ### Discovery Form: filling it in
@@ -189,8 +194,8 @@ holding on the re-skinned surface; this spec adds to it and does not restate it.
   - AC-8.1 Given answers were entered, When the page is reloaded or reopened with the same Invite,
     Then the answers and the current section are restored from the Draft.
   - AC-8.2 Given a full visit, When local storage is inspected, Then the Draft is the only thing the
-    site wrote. It is one key, written and read only by /start/discovery, and no other page writes
-    or reads it (principle 10; increment-1 AC-28.2 holds for every other page).
+    site wrote, under one key, and no page other than /start/discovery writes it (principle 10;
+    increment-1 AC-28.2 holds for every other page).
   - AC-8.3 Given a Draft exists, When the Client activates the visible clear control and confirms,
     Then the Draft is removed from storage and the form is empty.
   - AC-8.4 Given a Brief is accepted by the function, When the confirmation is shown, Then the Draft
@@ -220,17 +225,19 @@ holding on the re-skinned surface; this spec adds to it and does not restate it.
     the page sends one POST to the site's own origin, with the Invite in a request header and never
     in the URL, and on acceptance shows an on-screen confirmation.
   - AC-10.2 Given the function cannot send the Brief, When the Client submits, Then the page shows
-    an error that names hello@thomascova.dev as the way out, and nothing about the request is
-    stored anywhere (Q13).
+    an error that names hello@thomascova.dev as the way out, the Draft is kept, and the only
+    outbound calls recorded are to the SMTP mock and no file is written (Q13).
   - AC-10.3 Given an Invite within its expiry has been used to send a Brief, When the Client submits
     again, Then a further Brief is sent. Each sending is its own Brief, and the newest wins (Q11).
   - AC-10.4 Given the Brief is sent and the confirmation mail fails, When the function answers,
     Then the Client sees the on-screen confirmation, the Draft is cleared, and the function's log
     records the failed confirmation as a status only. There is no alert in v1 (ADR 0016).
-  - AC-10.5 Given the Invite expired while the Client was filling in, When the function rejects the
-    submit, Then the error naming hello@thomascova.dev appears over the review step with every
-    answer still on screen so the Client can copy them, and the Draft is removed from storage at
-    the same moment, so nothing remains once the page is left.
+  - AC-10.5 Given the Invite expired while the Client was filling in, or does not verify, When the
+    function rejects the Invite at submit, Then the error naming hello@thomascova.dev appears over
+    the review step with every answer still on screen so the Client can copy them, and the Draft is
+    removed from storage at the same moment, so nothing remains once the page is left.
+  - AC-10.6 Given the function rejects the request itself (method, size or validation), When the
+    Client submits, Then the page shows an error naming hello@thomascova.dev and the Draft is kept.
 
 ### Mails
 
@@ -293,7 +300,8 @@ This spec names it, as principle 5 requires: **the Discovery Form's submit funct
     (principle 4; PR #82, carried item b).
   - AC-13.6 Given any request, accepted or rejected, When the function's log is read, Then it holds
     a status and nothing personal: no name, no e-mail, no answer, no Invite.
-  - AC-13.7 Given any request, When it has been handled, Then the function has stored nothing.
+  - AC-13.7 Given any request, When it has been handled, Then the only outbound calls recorded are
+    to the SMTP mock and no file is written.
 
 ### Invites
 
@@ -308,6 +316,9 @@ This spec names it, as principle 5 requires: **the Discovery Form's submit funct
     missing variable and prints no link.
   - AC-14.3 Given a language other than `en`, When `make invite` runs, Then it fails: increment-2 is
     English only.
+  - AC-14.4 Given an e-mail that is not exactly one address, or a name or e-mail containing CR, LF
+    or any other control character (U+0085 and U+2028 included), When `make invite` runs, Then it
+    fails and prints no link.
 
 ### Quality
 
@@ -339,7 +350,7 @@ This spec names it, as principle 5 requires: **the Discovery Form's submit funct
 | Title Screen interactive | ≤ 2 s | Lighthouse, throttled 10 Mbit/s profile, CI (unchanged) |
 | World playable | ≤ 5 s from navigation start | same profile, CI (unchanged) |
 | Initial download until World playable | ≤ 4 MB compressed, Exhibit media excluded | build output, CI (unchanged); the Discovery Form and the function add nothing to it (AC-16.2) |
-| Font | one file, Latin subset, variable, woff2, < 100 KB delivered | T0, per candidate; recorded in T0's PR |
+| Font | one file, Latin subset, variable, woff2, < 100 KB delivered | seam 1's build half, the emitted woff2's size (AC-16.3); each candidate measured in T0 |
 | Frame rate in the World | ≥ 50 fps sustained | Owner, reference laptop (increment-1 AC-23.1, unchanged) |
 
 **Typography (D4).** One self-hosted variable grotesk, Latin subset, woff2. Candidates: **Geist Sans
@@ -372,6 +383,9 @@ The 3D canvas stays as increment-1 scoped it.
 - Accepted risk, from ADR 0016: a leaked Invite can send repeatedly until it expires (30 days, with
   no per-IP limit in v1, Q12). Revocation is rotating the signing secret, which ends every open
   Invite.
+- Accepted risk: the page cannot verify a signature, so a crafted link with a readable, unexpired
+  Invite can clear a Draft on that device (AC-6.6). The page renders at most 80 characters of the
+  Invite's name, so a crafted greeting on thomascova.dev stays short (AC-6.1).
 
 **Availability.** Static files as in increment-1, plus one function. No alert on a failed send in
 v1 (ADR 0016, accepted risk): the Client sees an error naming hello@, and the function's log
@@ -389,8 +403,8 @@ covers the rest once per increment (AC-15.3).
 
 | data | classification | where stored | retention | who may see |
 |---|---|---|---|---|
-| Invite: the Client's name, e-mail, language, expiry, HMAC-signed | personal data of the Client, given by the Owner | in the URL fragment of the link the Owner sends; sent to the function in a request header only; never in a URL the browser sends, never in a log (see Constraints for what that covers until the function ticket confirms Vercel's request log) | until its expiry (30 days by default) | the Client, the Owner, the function while it handles a request |
-| Draft: the Client's unsent answers | personal and project data of the Client | the Client's own browser, one localStorage key, read and written by /start/discovery only | until an accepted sending, the visible clear control, the page seeing an expired or unreadable Invite or the function rejecting it at submit (PR #82, item a), or the page opened with a different Invite; a page opened without an Invite leaves it as it is | the Client on that device |
+| Invite: the Client's name, e-mail, language, expiry, HMAC-signed | personal data of the Client, given by the Owner | in the URL fragment of the link the Owner sends; sent to the function in a request header only; never in a URL the browser sends, never in a log (see Constraints for what that covers until the function ticket confirms Vercel's request log); the host's shell history is a store to avoid, so `make invite` never takes name or e-mail as arguments | until its expiry (30 days by default) | the Client, the Owner, the function while it handles a request |
+| Draft: the Client's unsent answers | personal and project data of the Client | the Client's own browser, one localStorage key, read and written by /start/discovery only | until a trigger fires: an accepted sending, the visible clear control, the page seeing an expired or unreadable Invite, the function rejecting the Invite at submit (expired or not verifying; PR #82, item a), the page opened with a different readable, unexpired Invite, or a visit to /start/discovery after the stored expiry has passed; indefinitely if the Client never returns. A failed Brief, a rejected request and a page opened without an Invite leave it as it is | the Client on that device |
 | Brief: one sending of the answers | personal and project data of the Client; confidential | the Owner's mailbox only: never this repository, never a `docs/spec/discovery-<client>.md` here, never a prompt or an agent's context (Q6, principle 8); the Client's project gets its own private repository | "while your request is open … at the latest 12 months after you sent them" (Q8); the Owner deletes it by hand | the Owner |
 | Confirmation mail | the Client's address and the fixed text; no answers | the Client's mailbox; Infomaniak's outbound mail | the Client's to keep | the Client |
 | Function log | operational status only, nothing personal | Vercel's function log | Vercel's log retention | the Owner |
@@ -441,10 +455,13 @@ Decisions below come from the sources named at the top. There are no file paths 
   agent never runs it and never holds the secret. How the target reaches Node 24 on the host (the
   devcontainer image with the secret passed in, or the host's own Node) is a plan decision under
   CLAUDE.md's toolchain rule.
+- The plan decides how `make invite` reads the name and e-mail: from a prompt or the environment,
+  never as arguments, so they never land in the host's shell history.
 - The link carries the Invite in the fragment. Its origin is the production address unless an
   option of `make invite` overrides it for a preview (AC-14.1).
 - The page reads name and e-mail from the Invite for the greeting and the prefill (AC-6.1), and can
-  tell an expired or unreadable Invite on its own. Only the function can tell a tampered one.
+  tell an expired or unreadable Invite on its own. Only the function can tell a tampered one. The
+  greeting renders at most 80 characters of the name.
 - The prefilled contact fields stay editable. Typed values go into the Brief's body only. The
   Invite's e-mail stays the Brief's Reply-To and the confirmation's sole recipient (AC-6.1,
   AC-11.1).
@@ -453,12 +470,15 @@ Decisions below come from the sources named at the top. There are no file paths 
 **Draft (Q5, principle 10, ADR 0016)**
 
 - One localStorage key, read and written only by /start/discovery. It holds the answers, the
-  current section, and the expiry and signature of the Invite it was started under (never the
-  Invite's name or e-mail).
+  current section, and the expiry and signature of the Invite it was started under. The Draft
+  stores no Invite field beyond expiry and signature; the contact answers it holds are the
+  Client's, as typed or prefilled.
 - It is cleared on an accepted sending, by the visible clear control, when the page sees an expired
   or unreadable Invite, when the function rejects the Invite at submit (the answers stay on screen
-  until the page is left, AC-10.5), and when the page is opened with a different Invite (AC-6.6).
-  A page opened without an Invite leaves it as it is (AC-6.4).
+  until the page is left, AC-10.5), when the page is opened with a different readable, unexpired
+  Invite whose signature differs from the stored one (AC-6.6), and on any visit to
+  /start/discovery once the stored expiry has passed (AC-6.7). A failed Brief, a rejected request
+  and a page opened without an Invite leave it as it is (AC-10.2, AC-10.6, AC-6.4).
 - Where local storage is unavailable, the form runs without a Draft and says so in one line; no
   other storage is tried (AC-8.5).
 
@@ -470,6 +490,13 @@ Decisions below come from the sources named at the top. There are no file paths 
   Brief, then send the confirmation, then answer.
 - The answer is a success once the Brief is sent. A failed confirmation after that still answers
   success and logs a status only (AC-10.4). A failed Brief answers an error (AC-10.2).
+- The function answers in one of four response classes, and the page acts on each:
+  - accepted: the on-screen confirmation, the Draft cleared (AC-8.4, AC-10.1, AC-10.4);
+  - Invite rejected (expired, or the signature does not verify): the error over the review step
+    with the answers on screen, the Draft cleared (AC-10.5);
+  - request rejected (method, size or validation): an error naming hello@, the Draft kept
+    (AC-10.6);
+  - send failed (the Brief could not be sent): an error naming hello@, the Draft kept (AC-10.2).
 - Mail through Infomaniak authenticated SMTP on port 465, logged in as postmaster@thomascova.dev
   with a device password of postmaster@. Both mails are From forms@thomascova.dev (an alias of
   postmaster@, which redirects to hello@).
@@ -509,11 +536,13 @@ look random (CLAUDE.md, secret-scanner fixtures).
    Chromium, Firefox and WebKit, with axe against WCAG 2.2 AA. It is extended to /start,
    /start/discovery with the submit endpoint stubbed (valid, expired and unreadable Invites, no
    Invite, a different Invite; no script; the Draft across reloads, its clear and unavailable
-   storage; consent; the review step; the error naming hello@ and a rejection at submit with the
-   answers on screen; the Invite in a header and never in a URL), the sticky bar, reduced motion,
+   storage, a Draft past its stored expiry; consent; the review step; each of the four response
+   classes and what the page does with the Draft; the answers on screen after an Invite is rejected
+   at submit; the Invite in a header and never in a URL), the sticky bar, reduced motion,
    the keyboard-only pass and every re-skinned surface. Its build half checks the spawned build's
    output as text: /start pre-rendered, the consent statement and the no-script message present, no
-   form code in the root's chunks. Lighthouse and the download budget run as today.
+   form code in the root's chunks, the emitted woff2's size (AC-16.3), and no colour literal outside
+   the token file (AC-1.1). Lighthouse and the download budget run as today.
 2. **The World stepped without a renderer** (unchanged).
 3. **The function under Node with SMTP mocked** (new). The function is called as Vercel calls it,
    and the mock SMTP records what it is handed. Cases: a valid Invite sends exactly two mails with
@@ -521,13 +550,17 @@ look random (CLAUDE.md, secret-scanner fixtures).
    contact values reach the Brief's body and no header; a tampered or expired Invite gets a
    rejection and no mail is handed to SMTP; an oversized body is rejected; a non-POST is rejected;
    CR/LF in the name is stripped; no body value reaches a header; the log holds no personal value; a
-   failed Brief gives the error response; a failed confirmation after a sent Brief gives success.
+   failed Brief gives the error response; a failed confirmation after a sent Brief gives success;
+   each response class is distinguishable; a non-ASCII name and the confirmation's emoji Subject
+   are encoded per RFC 2047 in the Subject and display name; the only outbound calls recorded are
+   to the SMTP mock and no file is written (AC-10.2, AC-13.7).
    The same verify module is exercised by the invite CLI's tests (mint, then verify; missing secret;
-   non-`en` language).
+   non-`en` language; AC-14.4's address and control-character refusals).
 
 **Vitest for form logic.** Validation (required answers, "Not sure — please advise"), section
-navigation and progress, the review step's content, Draft read, write and clear, and Invite parsing
-on the page (expired, unreadable). These are pure modules inside the coverage ratchet's scope.
+navigation and progress, the review step's content, Draft read, write and clear (including the
+stored expiry and signature checks of AC-6.6 and AC-6.7), and Invite parsing on the page (expired,
+unreadable, the 80-character name cap). These are pure modules inside the coverage ratchet's scope.
 
 **Owner-measured** (principle 2, recorded in the ticket's PR). One real send to hello@ before the
 first test Client (both mails received, headers as specified). The hero crossfade and the T0 look on
@@ -554,6 +587,8 @@ Vitest form logic, or is marked Owner-measured. The plan's test strategy lists t
   lives, how to rotate it, and that rotating the secret ends every open Invite (ADR 0016).
 - The function ticket confirms what Vercel's own request log records for a custom request header,
   and the runbook names it; until then, "never in a log" in the Data table means the function's log.
+- The function ticket confirms the handler form that leaves the body unread until the Invite
+  verifies (Vercel's Node helpers can buffer or parse a body before the handler runs).
 - Budget: about 4 hours a week, solo.
 - The Owner provides before Phase 3, as a dependency and not an agent task: the final EN copy of the
   seven sections (the agent drafts the diff from the mockup's text in a later ticket, not now), the
@@ -562,7 +597,9 @@ Vitest form logic, or is marked Owner-measured. The plan's test strategy lists t
 ### Carried open points (Owner decisions pending, not blockers for this spec)
 
 - Vercel Hobby → Pro, the Anthropic Console organisation and the Supabase subscription all switch
-  at the latest before the first paying Client (Hobby is non-commercial only).
+  at the latest before the first paying Client (Hobby is non-commercial only). The Console and
+  Supabase switch together with Hobby → Pro by Owner decision of 2026-11-05 (Desktop, the triage
+  comment of ai-review round 1 on PR #88).
 - A dedicated mailbox at that point; postmaster@ with the forms@ alias is the development setup.
 - A pale form surface, only if the dark one reads badly (D3).
 - A second design pass after the Owner's Figma work, including the hero over the live World with a
@@ -587,7 +624,10 @@ candidate" issue):
 - An alert on a failed send. That later spec also amends principle 5's observability sentence, so
   that the function's log is not read as a monitoring promise (PR #82, carried item e).
 - World shaders, WebGPU and the shader-driven look (#68); the World visual polish (#43, with #68).
-- Supabase, or any backend beyond the one function.
+
+**Not in scope (ADR 0016 Considered):** Supabase, or any backend beyond the one function. A hosted
+database is a possible later direction, not decided, and any backend beyond a form-boundary
+function needs its own amendment and ADR.
 
 **Refused** (not planned at all):
 
@@ -611,13 +651,16 @@ the answers are in the body above).
   2026-11-02 (the questions).
 - The Owner's Desktop review of this draft, 2026-11-05: the nine open questions resolved, among
   them the prefilled contact fields (AC-6.1, AC-11.1), and the review findings folded in.
+- PR #88, ai-review round 1 and the Owner's triage of 2026-11-05 (M1, m1–m11): the response
+  classes, the Draft's triggers, the Invite input checks and the proofs of AC-1.1, AC-8.2, AC-16.3.
 - Issue #67 (redesign stack and constraints), with its 2026-11-04 comment making it increment-2's
   T0.
 - Out of scope: #68 (World visuals, shaders) and #43 (World visual polish, with #68).
 - Constitution v1.1 (principles 2, 4, 5, 8, 10), ADR 0016 (function and Draft), ADR 0006 (hosting,
   the note the function ticket adds), ADR 0012 (headers), ADR 0003 (stack).
 - PR #82, items carried into this spec from its reviews and the Owner's triage:
-  - (a) the Draft is cleared on an expired or invalid Invite: AC-6.3, AC-10.5, the Data table;
+  - (a) the Draft is cleared on an expired or invalid Invite: AC-6.3, AC-6.7, AC-10.5, the Data
+    table;
   - (b) header hygiene and CR/LF stripping: AC-11.4, AC-13.5;
   - (c) ADR 0016's Supabase sentence moved to its Considered list as "a possible later direction,
     not decided": an edit in this spec's branch;
