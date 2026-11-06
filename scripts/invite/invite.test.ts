@@ -105,7 +105,9 @@ describe('AC-14.1: the link', () => {
     ['127.0.0.1 over http', 'http://127.0.0.1:4173', 'http://127.0.0.1:4173'],
   ])('honours ORIGIN: %s', async (_, origin, expected) => {
     const run = await invite({ INVITE_SECRET: SECRET, ORIGIN: origin })
-    expect(run.out[0]).toMatch(new RegExp(`^${expected.replace(/[.]/g, '\\.')}/start/discovery#i=`))
+    // A prefix compared as text: no pattern built from the origin, so nothing in it needs escaping.
+    const prefix = `${expected}/start/discovery#i=`
+    expect(run.out[0]?.slice(0, prefix.length)).toBe(prefix)
   })
 
   it.each([
@@ -120,6 +122,18 @@ describe('AC-14.1: the link', () => {
   it('mints the name in NFC', async () => {
     const run = await invite({ INVITE_SECRET: SECRET }, ['Rene\u0301 Example', EMAIL])
     expect(decodeInvite(tokenOf(run.out[0]))).toMatchObject({ payload: { n: 'Ren\u00e9 Example' } })
+  })
+
+  it('mints the e-mail in NFC, the form its cap counts', async () => {
+    const run = await invite({ INVITE_SECRET: SECRET }, [NAME, 'rene\u0301@example.com'])
+    expect(decodeInvite(tokenOf(run.out[0]))).toMatchObject({
+      payload: { e: 'ren\u00e9@example.com' },
+    })
+  })
+
+  it('mints with a secret of exactly 32 characters', async () => {
+    const run = await invite({ INVITE_SECRET: SECRET.slice(0, 32) })
+    expect(run.code).toBe(0)
   })
 
   it('asks for the name, then the e-mail, and never echoes a prompt on stdout', async () => {
@@ -141,6 +155,13 @@ describe('AC-14.2: no secret', () => {
       expect(run.asked).toEqual([])
     },
   )
+
+  it('fails on a secret shorter than 32 characters, names it, prints no link and asks nothing', async () => {
+    const short = SECRET.slice(0, 31)
+    const run = await invite({ INVITE_SECRET: short })
+    expectRefused(run, 'shorter than 32', [short, NAME, EMAIL])
+    expect(run.asked).toEqual([])
+  })
 })
 
 describe('AC-14.3: a language other than en', () => {
@@ -161,6 +182,9 @@ describe('AC-14.4: a refused name or e-mail', () => {
     ['U+0085', 'Ada\u0085Example'],
     ['U+2028', 'Ada\u2028Example'],
     ['U+2029', 'Ada\u2029Example'],
+    ['U+202E, a bidi override', 'Ada\u202eExample'],
+    ['U+2066, a bidi isolate', 'Ada\u2066Example'],
+    ['a lone surrogate', 'Ada\ud83cExample'],
     ['81 code points', 'a'.repeat(81)],
     ['a trailing space', 'Ada Example '],
     ['a leading space', ' Ada Example'],
@@ -179,6 +203,8 @@ describe('AC-14.4: a refused name or e-mail', () => {
     ['LF', 'ada@example.com\nBcc: x@example.com'],
     ['U+0085', 'ada@exa\u0085mple.com'],
     ['U+2028', 'ada@exa\u2028mple.com'],
+    ['U+200B, a format character', 'ada@exa\u200bmple.com'],
+    ['a lone surrogate', 'ada@exa\ud83cmple.com'],
     ['a trailing space', 'ada@example.com '],
     ['a leading space', ' ada@example.com'],
   ])('refuses an e-mail with %s', async (_, email) => {

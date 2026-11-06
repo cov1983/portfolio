@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 
 import { afterAll, describe, expect, it } from 'vitest'
 
+import { decodeInvite } from '../../src/intake/invite.ts'
 import { verifyInvite } from '../../src/intake/server/sign.ts'
 
 // The syntax half of the invite CLI (plan increment-2 §6): invite.test drives the logic through
@@ -47,6 +48,31 @@ describe('node scripts/invite.ts', () => {
     })
     expect(run.status).toBe(1)
     expect(run.stdout).toBe('')
+  })
+})
+
+describe('make invite', () => {
+  it("passes DAYS= and ORIGIN= from make's command line to the CLI", () => {
+    // AC-14.1 through make itself (#118, ai-review round 1, finding 1): command-line variables reach
+    // the recipe's environment, so `unexport` or a changed recipe would fail here.
+    const before = Math.floor(Date.now() / 1000)
+    const run = spawnSync('make', ['-s', 'invite', 'DAYS=7', 'ORIGIN=http://localhost:4173'], {
+      cwd: ROOT,
+      env: { PATH, INVITE_SECRET: randomBytes(32).toString('base64url') },
+      input: 'Ada Example\nada@example.com\n',
+      encoding: 'utf8',
+    })
+    const after = Math.floor(Date.now() / 1000)
+    expect(run.status).toBe(0)
+    const lines = run.stdout.split('\n').filter((line) => line !== '')
+    expect(lines).toHaveLength(1)
+    const [link = ''] = lines
+    const prefix = 'http://localhost:4173/start/discovery#i='
+    expect(link.slice(0, prefix.length)).toBe(prefix)
+    const decoded = decodeInvite(link.slice(prefix.length))
+    const x = decoded.kind === 'readable' ? decoded.payload.x : 0
+    expect(x).toBeGreaterThanOrEqual(before + 7 * 86_400)
+    expect(x).toBeLessThanOrEqual(after + 7 * 86_400)
   })
 })
 
