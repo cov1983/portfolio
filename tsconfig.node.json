@@ -17,5 +17,6 @@
     "tests/**/*.ts",
     "scripts/**/*.ts",
     "build/**/*.ts"
-  ]
+  ],
+  "exclude": ["src/intake/server"]
 }
