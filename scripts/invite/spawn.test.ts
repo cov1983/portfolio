@@ -67,7 +67,8 @@ describe('make invite on a host without Node 24', () => {
       env: { PATH: `${stubs}:${PATH}` },
       encoding: 'utf8',
     })
-    expect(run.status).not.toBe(0)
+    // The recipe exits 1; make reports a failed recipe as 2 (docs/runbooks/invite.md).
+    expect(run.status).toBe(2)
     expect(run.stdout).toBe('')
     expect(run.stderr).toContain('Node 24')
     expect(run.stderr).toMatch(/docker run .*-e INVITE_SECRET .* make invite/)
