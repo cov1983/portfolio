@@ -37,7 +37,8 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       // Scope (plan §6): model code and instruments under src/, the pure build modules under
-      // build/ and the perf evaluator. Every *.tsx (src/main.tsx, src/entry-prerender.tsx,
+      // build/ and the perf evaluator; the invite CLI's logic (scripts/invite/run.ts; its terminal shell
+      // scripts/invite.ts is glue, outside like build/build.ts). Every *.tsx (src/main.tsx, src/entry-prerender.tsx,
       // components) is outside through the include pattern: seam 1 proves rendering. build/build.ts
       // (I/O glue) and build/content-plugin.ts (Vite glue) are outside by name.
       include: [
@@ -46,6 +47,7 @@ export default defineConfig({
         'scripts/perf/budget.ts',
         'scripts/links/check.ts',
         'scripts/ice/process.ts',
+        'scripts/invite/run.ts',
       ],
       exclude: ['**/*.d.ts', '**/*.test.ts', 'build/build.ts', 'build/content-plugin.ts'],
       reporter: ['text', 'lcov'],
