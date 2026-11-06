@@ -72,12 +72,19 @@ export function encodePayload(payload: InvitePayload): string {
 
 const UNREADABLE: DecodedInvite = { kind: 'unreadable' }
 
+/** The token's two base64url parts, or null when it has another shape. Used before any decoding,
+ * so `verifyInvite` can check the signature before it reads a field. */
+export function splitToken(token: string): { payloadPart: string; signature: string } | null {
+  if (!TOKEN.test(token)) return null
+  const dot = token.indexOf('.')
+  return { payloadPart: token.slice(0, dot), signature: token.slice(dot + 1) }
+}
+
 /** Reads an Invite without verifying it: the page cannot, only the function can (`server/sign.ts`). */
 export function decodeInvite(token: string): DecodedInvite {
-  if (!TOKEN.test(token)) return UNREADABLE
-  const dot = token.indexOf('.')
-  const payloadPart = token.slice(0, dot)
-  const signature = token.slice(dot + 1)
+  const split = splitToken(token)
+  if (split === null) return UNREADABLE
+  const { payloadPart, signature } = split
   // A base64url text of length 1 mod 4 encodes no whole byte; every other length decodes.
   if (payloadPart.length % 4 === 1) return UNREADABLE
   const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/')
