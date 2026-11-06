@@ -10,3 +10,5 @@ Procedures:
   CodeQL, domain and DNS, required checks on `main`; what each stage changes and how to revert it.
 - [`mockup-preview.md`](mockup-preview.md) — the second Vercel project that serves
   `mockups/project-discovery/` read-only (#70): its settings, the check after a deploy, how to delete it.
+- [`invite.md`](invite.md) — minting an Invite link for a Client with `make invite` on the Owner's
+  host: the secret, the prompts, `DAYS=` and `ORIGIN=`, the refusals, the devcontainer fallback, rotation.

@@ -40,7 +40,7 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
                                 # CHROME_PATH where none is installed system-wide, CHROME_NO_SANDBOX=1 inside a container
 - Run:     `make dev`           # Vite dev server on every interface (VS Code forwarding dials 127.0.0.1), under the ADR 0012 headers
                                 # plus a dev-only CSP nonce for Vite's injected tags; `make preview` serves dist/ under the headers as shipped
-- Single steps: `make format`, `make format-check`, `make lint`, `make typecheck`, `make agent-docs`, `make shellcheck`, `make test-shell`
+- Single steps: `make format`, `make format-check`, `make lint`, `make typecheck`, `make agent-docs`, `make shellcheck`, `make test-shell`; the Owner's `make invite [DAYS=] [ORIGIN=]` mints an Invite link from prompts (never run by an agent with a real secret; `docs/runbooks/invite.md`)
 
 ## Repository map
 - `docs/workflow-guide.md`  the process this repo follows; templates in §7
@@ -57,7 +57,7 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
 - `skills-lock.json`        pins the vendored skills (source, path, content hash)
 - `.github/`                CI (`workflows/ci.yml`), weekly audit (`workflows/audit.yml`), weekly link check (`workflows/links.yml`, non-blocking), composite setup action (`actions/setup/`), PR template, CODEOWNERS
 - `scripts/`                `perf-budget.ts` (+ `perf/budget.ts`, the pure evaluator and its test), `check-links.ts` (+ `links/check.ts`, the pure evaluator and its test; the weekly link check of `links.yml`), `spec-freeze.sh` (+ its test),
-                            `ice-texture.ts` (`make ice-texture`; source and licence in `assets/ice/SOURCE.md`, the photo crop is not committed) and `setup-wizard.sh` (the Owner's dashboard steps; never run by an agent); TypeScript runs under plain Node 24
+                            `ice-texture.ts` (`make ice-texture`; source and licence in `assets/ice/SOURCE.md`, the photo crop is not committed), `invite.ts` (+ `invite/run.ts`, the logic; `make invite`, ADR 0019) and `setup-wizard.sh` (the Owner's dashboard steps; never run by an agent); TypeScript runs under plain Node 24
 - `perf/budget.json`        the performance budget: throttling profile, the three limits and the long-task bound; nowhere else
 - `renovate.json`           Renovate: grouped patch automerge, majors behind the Dependency Dashboard (ADR 0007)
 - `.devcontainer/`          Dockerfile + devcontainer.json: the reference toolchain
@@ -65,7 +65,7 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
                             (both documents as strings for `build/build.ts`), `site/` (the HTML surfaces: TitleScreen, FallbackPage, FallbackLink,
                             Exhibit, ExhibitPanel, Picture, Contact, Meta, WorldOverlay, WorldFailure, `site.css`; no three, Rapier or World model), `world/` (`model/`: layout, Rapier
                             model, pure camera; `input/`: keys by physical code; `scene/`: the R3F mirror; `World.tsx`), `perf/` (the marks),
-                            `content/` (ADR 0011: schema, types, `loadContent`, variant planner, `mailto.ts`), `app/` (plan §5: store, keys, focus, caption, capability, preload, FailureBoundary; `App.tsx` the hydrated root)
+                            `content/` (ADR 0011: schema, types, `loadContent`, variant planner, `mailto.ts`), `app/` (plan §5: store, keys, focus, caption, capability, preload, FailureBoundary; `App.tsx` the hydrated root), `intake/` (ADR 0019: the Invite's shared rules `invite.ts`; `server/` signs, Node only, `tsconfig.server.json`)
 - `build/`                  the build's I/O (plan §2, ADR 0010): `build.ts` (`make build`: client build, SSR build, both documents),
                             `prerender.ts` (pure: routes, shell fill, preview `cleanUrl`, `siteOrigin`), `content-plugin.ts` (validates
                             `content/`, serves `virtual:content`, emits `dist/media/`, dev media; `CONTENT_DIR`), `images.ts` (sharp)
@@ -91,7 +91,7 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
   non-null assertion, no `eslint-disable` without a comment naming the issue.
 - Coverage ratchet: raise the coverage floor with `make coverage-ratchet` (two runs on the new floor, the lower reading committed); it
   never moves on its own. Lowering one needs an ADR, also for toolchain drift (a `test` failure on a Renovate PR with no `src/` change); never a silent edit or a toolchain pin. Scope (plan §6) is `src/**/*.ts` and `build/**/*.ts`
-  minus `build/build.ts` and `build/content-plugin.ts` (glue), plus the perf evaluator `scripts/perf/budget.ts`, the link evaluator `scripts/links/check.ts` and the ice steps `scripts/ice/process.ts`;
+  minus `build/build.ts` and `build/content-plugin.ts` (glue), plus the perf evaluator `scripts/perf/budget.ts`, the link evaluator `scripts/links/check.ts`, the ice steps `scripts/ice/process.ts` and the invite logic `scripts/invite/run.ts`;
   no `*.tsx`: rendering is proven by the Playwright seam, the ratchet measures model code and instruments.
 - Dependencies: exact versions in `package.json`, lockfile committed; a new dependency is the newest
   version the whole toolchain's peer ranges accept, listed in the PR body with license and reason; a plan's dependency row names the version it was researched against, re-checked at install.
