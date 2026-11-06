@@ -2,7 +2,7 @@
 # targets, so a green `make verify` locally means a green `lint` and `test` job.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup browsers format format-check lint typecheck agent-docs shellcheck test-shell test coverage-ratchet test-e2e perf verify build dev preview ice-texture
+.PHONY: help setup browsers format format-check lint typecheck agent-docs shellcheck test-shell test coverage-ratchet test-e2e perf verify build dev preview ice-texture invite
 
 PNPM ?= pnpm
 # Headed Firefox (playwright.config.ts) needs a display: a virtual one where xvfb-run exists.
@@ -19,7 +19,7 @@ help:
 	@echo "  make format        rewrite files with Prettier"
 	@echo "  make format-check  fail on unformatted files"
 	@echo "  make lint          ESLint, warnings are errors"
-	@echo "  make typecheck     tsc --noEmit for src and for the config files"
+	@echo "  make typecheck     tsc --noEmit for src (browser), src/intake/server (Node, no DOM) and the config files"
 	@echo "  make agent-docs    CLAUDE.md and AGENTS.md identical and at most 150 lines, as CI's lint job checks"
 	@echo "  make shellcheck    shellcheck over every shell script (hooks, pre-commit, gates); needs the shellcheck binary"
 	@echo "  make test-shell    hook smoke tests (.claude/hooks/tests) and the spec-freeze gate test"
@@ -31,6 +31,7 @@ help:
 	@echo "  make dev           Vite dev server on every interface, so VS Code port forwarding reaches it"
 	@echo "  make preview       serve dist/ as production would"
 	@echo "  make ice-texture   src/world/scene/ice.webp from the local photo crop (assets/ice/SOURCE.md)"
+	@echo "  make invite        the Owner's host only: prompts for a Client's name and e-mail, prints an Invite link; DAYS=, ORIGIN= (docs/runbooks/invite.md)"
 
 setup:
 	$(PNPM) install --frozen-lockfile
@@ -52,6 +53,7 @@ lint:
 typecheck:
 	$(PNPM) exec tsc --noEmit -p tsconfig.json
 	$(PNPM) exec tsc --noEmit -p tsconfig.node.json
+	$(PNPM) exec tsc --noEmit -p tsconfig.server.json
 
 # The same commands as the lint job's step in .github/workflows/ci.yml: AGENTS.md is a byte-for-byte
 # copy of CLAUDE.md, and CLAUDE.md stays within 150 lines (T6 #53: verify had passed a 151-line file).
@@ -99,3 +101,19 @@ preview:
 # The World's ice texture from the Owner's local crop, which is not committed (assets/ice/SOURCE.md).
 ice-texture:
 	node scripts/ice-texture.ts
+
+# The Owner's command (ADR 0019, docs/runbooks/invite.md): INVITE_SECRET from the environment, the name and
+# e-mail from prompts (never arguments, never shell history), DAYS= and ORIGIN= from the command line, which make
+# passes to the recipe's environment. The agent never runs it with a real secret. scripts/invite.ts needs Node 24's
+# type stripping: an older or missing node cannot even load it, so the check is plain JavaScript and reads only an
+# exit status. Every line it prints is a constant: no version found, no DAYS or ORIGIN value, and the devcontainer
+# command passes the secret by name (-e INVITE_SECRET), never by value.
+invite:
+	@node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 24 ? 0 : 1)' >/dev/null 2>&1 || { \
+	  echo 'make invite needs Node 24 (.nvmrc), which this host does not run. No link was printed.' >&2; \
+	  echo 'Run it in the devcontainer image instead, from the repository root, adding the same DAYS= and ORIGIN=:' >&2; \
+	  echo '  docker build -t portfolio-dev .devcontainer' >&2; \
+	  echo '  docker run --rm -it --network none -e INVITE_SECRET -v "$$PWD:/repo:ro" -w /repo portfolio-dev make invite' >&2; \
+	  exit 1; \
+	}
+	@node scripts/invite.ts

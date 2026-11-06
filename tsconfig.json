@@ -6,5 +6,6 @@
     "types": ["vite/client"],
     "allowImportingTsExtensions": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/intake/server", "src/**/*.test.ts"]
 }

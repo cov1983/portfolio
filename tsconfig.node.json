@@ -13,8 +13,10 @@
     "vitest.config.ts",
     "playwright.config.ts",
     "eslint.config.js",
+    "src/**/*.test.ts",
     "tests/**/*.ts",
     "scripts/**/*.ts",
     "build/**/*.ts"
-  ]
+  ],
+  "exclude": ["src/intake/server"]
 }
