@@ -182,6 +182,7 @@ describe('AC-14.4: a refused name or e-mail', () => {
     ['U+0085', 'Ada\u0085Example'],
     ['U+2028', 'Ada\u2028Example'],
     ['U+2029', 'Ada\u2029Example'],
+    ['U+061C, the Arabic letter mark', 'Ada\u061cExample'],
     ['U+202E, a bidi override', 'Ada\u202eExample'],
     ['U+2066, a bidi isolate', 'Ada\u2066Example'],
     ['a lone surrogate', 'Ada\ud83cExample'],

@@ -27,8 +27,8 @@ the CLI runs it under plain Node; it uses only globals both have: `atob`, `btoa`
 `TextDecoder`). Exports: `NAME_MAX` (80) and `EMAIL_MAX` (254), here and not in `limits.ts`;
 `codePoints` and `greetingName` (code points after NFC, counted with `Array.from`, never
 graphemes); `checkName` → `ok | empty | control | edge-space | too-long`, in that order, where
-control is `\p{Cc}` (so U+0085), U+2028, U+2029, the bidi controls U+200E, U+200F, U+202A–U+202E
-and U+2066–U+2069, and a lone surrogate (`\p{Cs}` in a `u` regex, which is `!isWellFormed()` without
+control is `\p{Cc}` (so U+0085), U+2028, U+2029, `\p{Bidi_Control}` (U+061C, U+200E, U+200F,
+U+202A–U+202E, U+2066–U+2069), and a lone surrogate (`\p{Cs}` in a `u` regex, which is `!isWellFormed()` without
 the ES2024 lib); ZWNJ and ZWJ stay allowed for Persian and Indic names; `checkEmail` → `ok |
 edge-space | invalid`, where valid is exactly one `local@domain` with no whitespace, no `,;<>"()`,
 no control character, no `\p{Cf}` at all, at most 254 code points (Owner decisions on #118's
@@ -36,6 +36,8 @@ ai-review round 1, findings 3 and 5); `stripCrLf`; `encodePayload` (the token's 
 signer, so there is one encoder); `splitToken` (the two base64url parts or `null`, before any
 decoding); `decodeInvite` (`unreadable` for another shape, a length of 1 mod 4, bytes that are not
 UTF-8, text that is not JSON, or a bad field); `isExpired` (expired at `x` and after).
+- **Non-bidi format characters are allowed in names by decision** (ZWNJ, ZWJ, U+200B, U+2060,
+  U+00AD, U+FEFF; Owner decision on #118's ai-review round 2); the e-mail refuses all `\p{Cf}`.
 - **Leading or trailing whitespace is refused, never trimmed** (`edge-space`, Owner decision,
   comment 6683301033, change 2): `String.prototype.trim` would also swallow a trailing U+2028, and a
   pasted trailing space would be minted into a link the Owner did not see.

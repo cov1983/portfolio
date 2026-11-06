@@ -84,6 +84,7 @@ describe('checkName', () => {
     ['U+2028', 'Ada\u2028Example'],
     ['U+2029', 'Ada\u2029Example'],
     ['a trailing LF', 'Ada Example\n'],
+    ['U+061C', 'Ada\u061cExample'],
     ['U+200E', 'Ada\u200eExample'],
     ['U+200F', 'Ada\u200fExample'],
     ['U+202A', 'Ada\u202aExample'],
