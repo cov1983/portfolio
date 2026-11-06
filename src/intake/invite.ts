@@ -15,7 +15,13 @@ export type DecodedInvite =
   | { kind: 'unreadable' } // not two base64url parts, not UTF-8, not JSON, or a bad field
 
 // \p{Cc} holds C0, DEL and C1, so U+0085 too; U+2028 and U+2029 are separators, not controls.
-const CONTROL = /[\p{Cc}\u2028\u2029]/u
+// The bidi marks, embeddings, overrides and isolates (U+200E, U+200F, U+202A-U+202E, U+2066-U+2069)
+// could show the Owner one name and the Client another; ZWNJ and ZWJ (U+200C, U+200D) stay, since
+// Persian and Indic names need them. \p{Cs} in a `u` regex matches only a lone surrogate, so it is
+// `!isWellFormed()` without the ES2024 lib (#118, ai-review round 1, findings 3 and 5).
+const CONTROL = /[\p{Cc}\p{Cs}\u2028\u2029\u200e\u200f\u202a-\u202e\u2066-\u2069]/u
+// No real address needs an invisible format character; U+200B would mail another address.
+const FORMAT = /\p{Cf}/u
 // Leading or trailing whitespace is refused, never trimmed: a trim would also swallow a trailing
 // U+2028 (String.prototype.trim removes line terminators) and mint what the Owner did not see.
 const EDGE_SPACE = /^\p{White_Space}|\p{White_Space}$/u
@@ -52,7 +58,7 @@ export function checkEmail(email: string): 'ok' | 'edge-space' | 'invalid' {
   if (EDGE_SPACE.test(email)) return 'edge-space'
   const sides = email.split('@')
   if (sides.length !== 2 || sides.some((side) => side.length === 0)) return 'invalid'
-  if (CONTROL.test(email) || EMAIL_FORBIDDEN.test(email)) return 'invalid'
+  if (CONTROL.test(email) || FORMAT.test(email) || EMAIL_FORBIDDEN.test(email)) return 'invalid'
   if (codePoints(email) > EMAIL_MAX) return 'invalid'
   return 'ok'
 }

@@ -84,6 +84,14 @@ describe('checkName', () => {
     ['U+2028', 'Ada\u2028Example'],
     ['U+2029', 'Ada\u2029Example'],
     ['a trailing LF', 'Ada Example\n'],
+    ['U+200E', 'Ada\u200eExample'],
+    ['U+200F', 'Ada\u200fExample'],
+    ['U+202A', 'Ada\u202aExample'],
+    ['U+202E', 'Ada\u202eExample'],
+    ['U+2066', 'Ada\u2066Example'],
+    ['U+2069', 'Ada\u2069Example'],
+    ['a lone high surrogate', 'Ada\ud83cExample'],
+    ['a lone low surrogate', 'Ada\udfd2Example'],
   ])('refuses a name containing %s as a control character', (_, name) => {
     expect(checkName(name)).toBe('control')
   })
@@ -99,6 +107,14 @@ describe('checkName', () => {
 
   it('accepts inner spaces', () => {
     expect(checkName('Ada  Lovelace Example')).toBe('ok')
+  })
+
+  it.each([
+    ['ZWNJ (U+200C)', 'Mehr\u200cdad Example'],
+    ['ZWJ (U+200D)', 'Ada\u200dExample'],
+    ['a surrogate pair', 'Ada \ud83c\udfd2 Example'],
+  ])('accepts a name with %s', (_, name) => {
+    expect(checkName(name)).toBe('ok')
   })
 })
 
@@ -122,6 +138,11 @@ describe('checkEmail', () => {
     ['LF', 'ada@example.com\nBcc: x@example.com'],
     ['U+0085', 'ada@exa\u0085mple.com'],
     ['U+2028', 'ada@exa\u2028mple.com'],
+    ['U+200B (Cf)', 'ada@exa\u200bmple.com'],
+    ['U+200C (Cf)', 'ada@exa\u200cmple.com'],
+    ['U+202E (Cf)', 'ada@exa\u202emple.com'],
+    ['U+FEFF (Cf)', 'ada@exa\ufeffmple.com'],
+    ['a lone surrogate', 'ada@exa\ud83cmple.com'],
     ['an empty string', ''],
   ])('refuses %s as invalid', (_, email) => {
     expect(checkEmail(email)).toBe('invalid')
