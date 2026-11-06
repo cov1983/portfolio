@@ -18,16 +18,21 @@ plain Node, whose type stripping refuses non-erasable syntax and which has no `n
 
 **Token.** `base64url(UTF-8 JSON { v: 1, n, e, l: 'en', x })` `.` `base64url(HMAC-SHA256(secret,
 first part))`; the signature is over the base64url text, not the JSON; `x` is the expiry in Unix
-seconds. The link is `<origin>/start/discovery#i=<token>`.
+seconds. The link is `<origin>/start/discovery#i=<token>`. **The HMAC key is the secret's UTF-8
+text as stored**, not its base64 decoding: `openssl rand -base64 32` yields 44 characters, and those
+44 bytes are the key, in the CLI and in the function (T5) alike (#118, ai-review round 1, finding 2).
 
 **One module of field rules, `src/intake/invite.ts`**, pure and import-free (the page bundles it,
 the CLI runs it under plain Node; it uses only globals both have: `atob`, `btoa`, `TextEncoder`,
 `TextDecoder`). Exports: `NAME_MAX` (80) and `EMAIL_MAX` (254), here and not in `limits.ts`;
 `codePoints` and `greetingName` (code points after NFC, counted with `Array.from`, never
 graphemes); `checkName` → `ok | empty | control | edge-space | too-long`, in that order, where
-control is `\p{Cc}` (so U+0085), U+2028 and U+2029; `checkEmail` → `ok | edge-space | invalid`,
-where valid is exactly one `local@domain` with no whitespace, no `,;<>"()`, no control character,
-at most 254 code points; `stripCrLf`; `encodePayload` (the token's first part, also used by the
+control is `\p{Cc}` (so U+0085), U+2028, U+2029, the bidi controls U+200E, U+200F, U+202A–U+202E
+and U+2066–U+2069, and a lone surrogate (`\p{Cs}` in a `u` regex, which is `!isWellFormed()` without
+the ES2024 lib); ZWNJ and ZWJ stay allowed for Persian and Indic names; `checkEmail` → `ok |
+edge-space | invalid`, where valid is exactly one `local@domain` with no whitespace, no `,;<>"()`,
+no control character, no `\p{Cf}` at all, at most 254 code points (Owner decisions on #118's
+ai-review round 1, findings 3 and 5); `stripCrLf`; `encodePayload` (the token's first part, also used by the
 signer, so there is one encoder); `splitToken` (the two base64url parts or `null`, before any
 decoding); `decodeInvite` (`unreadable` for another shape, a length of 1 mod 4, bytes that are not
 UTF-8, text that is not JSON, or a bad field); `isExpired` (expired at `x` and after).
@@ -38,7 +43,9 @@ UTF-8, text that is not JSON, or a bad field); `isExpired` (expired at `x` and a
   `x` not a positive safe integer. `decodeInvite` does not apply the name or e-mail rules: the CLI
   applies them at minting, the page caps the greeting (`greetingName`), the function strips CR and
   LF (AC-13.5) and rejects nothing for length (plan §4). Fields beyond the five are dropped.
-- **The name is minted in NFC** (`n = name.normalize('NFC')`), the form the caps count.
+- **The name and the e-mail are minted in NFC** (`n = name.normalize('NFC')`,
+  `e = email.normalize('NFC')`), the form the caps count (the e-mail since #118's ai-review round 1,
+  finding 4).
 
 **The signing half, `src/intake/server/sign.ts`** (`node:crypto`). `signInvite(payload, secret)`.
 `verifyInvite(token, secret, nowSeconds)` checks, in this order: the shape (`splitToken`, else
@@ -51,9 +58,12 @@ so distinct strings decode to the same bytes (ai-review round 3 on #96; `sign.te
 
 **`make invite`** runs `node scripts/invite.ts`, a terminal shell over `scripts/invite/run.ts`
 (the logic, behind injected I/O: `env`, `now`, `ask`, `out`, `err`). The secret comes from
-`INVITE_SECRET` in the environment; the language from `INVITE_LANG` (not the POSIX `LANG`): unset,
+`INVITE_SECRET` in the environment, refused when unset or empty and, with its own message, when
+shorter than 32 characters (UTF-16 code units; Owner decision on #118's ai-review round 1, finding
+2); the language from `INVITE_LANG` (not the POSIX `LANG`): unset,
 empty or `en`, anything else refused (AC-14.3); `DAYS` and `ORIGIN` from make's command line,
-which make passes into the recipe's environment; the name and e-mail from two prompts on stderr,
+which make passes into the recipe's environment (a spawn test runs `make invite DAYS= ORIGIN=`), or
+from the shell's environment when exported there; the name and e-mail from two prompts on stderr,
 read through readline's line iterator (its `question()` drops a line piped before it asks).
 Everything the environment decides is checked before the first prompt. Stdout carries only the
 link. Every refusal is one fixed string from `MESSAGES`, so stderr never carries the secret, the
