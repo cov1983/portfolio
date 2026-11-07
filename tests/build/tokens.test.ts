@@ -112,7 +112,7 @@ describe('src/site/', () => {
       // colours and colour functions only, since its prose may use a colour word.
       const literals = file.endsWith('.css')
         ? colourLiterals(text)
-        : hexAndFunctionLiterals(withoutComments(text))
+        : hexAndFunctionLiterals(withoutComments(text, file))
       found.push(...literals.map((literal) => `${file}: ${literal}`))
     }
     expect(found).toEqual([])

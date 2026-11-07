@@ -7,6 +7,8 @@
 // Tailwind's optimizer (lightningcss) minifies `transparent`; any other hex is a literal. A
 // `--color-*` declaration is the token layer, the one place a literal may stand.
 
+import ts from 'typescript'
+
 const HEX = /#[0-9a-f]{3,8}\b/gi
 /** lightningcss's spelling of `transparent`: zero alpha, no colour. */
 const TRANSPARENT_HEX = new Set(['#0000', '#00000000'])
@@ -52,13 +54,18 @@ export function hexAndFunctionLiterals(text: string): string[] {
     .map((match) => match[0])
 }
 
-// A source's comments: block comments, and a `//` comment not preceded by `:` (so the `//` of a
-// `https://` in a string survives). Issue numbers such as #100 are valid 3-digit hex colours.
-const SOURCE_COMMENTS = /\/\*[\s\S]*?\*\/|(^|[^:])\/\/.*$/gm
-
-/** A component's source without its comments, for a literal search that reads only code. */
-export function withoutComments(source: string): string {
-  return source.replace(SOURCE_COMMENTS, (_comment, before: string | undefined) => before ?? '')
+/**
+ * A component's source without its comments, for a literal search that reads only code: issue
+ * numbers such as #100 are valid 3-digit hex colours. TypeScript's parser reads the source and its
+ * printer writes it back without comments, so a `//` in a string, in JSX text or in a template
+ * literal stays code (a bare `ts.createScanner` takes the last two for comments, since only the
+ * parser tells it when it is inside JSX text or a template; ai-review round 1 on #121, finding 3).
+ * The printer's quotes and layout may differ from the source; its literals do not.
+ */
+export function withoutComments(source: string, fileName = 'source.tsx'): string {
+  const kind = fileName.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+  const file = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, false, kind)
+  return ts.createPrinter({ removeComments: true }).printFile(file)
 }
 
 /** Every named colour word in a CSS value. */

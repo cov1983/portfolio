@@ -86,9 +86,32 @@ describe('withoutComments', () => {
     ])
   })
 
+  // ai-review round 1 on #121, finding 3: the regex took any `//` not after a `:` for a comment.
+  it('keeps a hex colour after a protocol-relative URL on the same line', () => {
+    expect(
+      hexAndFunctionLiterals(
+        withoutComments('const a = <img src="//x" className="bg-[#123456]" />'),
+      ),
+    ).toEqual(['#123456'])
+  })
+
+  it('keeps a hex colour after a // in JSX text', () => {
+    expect(
+      hexAndFunctionLiterals(
+        withoutComments('const b = <p>a // b <span className="bg-[#654321]" /></p>'),
+      ),
+    ).toEqual(['#654321'])
+  })
+
+  it('keeps a hex colour after a // in a template literal', () => {
+    expect(hexAndFunctionLiterals(withoutComments("const c = `${x} // ${'#abcdef'}`"))).toEqual([
+      '#abcdef',
+    ])
+  })
+
   it('keeps the // of a URL in a string', () => {
-    expect(withoutComments("const u = 'https://example.org/#abc'")).toBe(
-      "const u = 'https://example.org/#abc'",
+    expect(hexAndFunctionLiterals(withoutComments("const u = 'https://example.org/#abc'"))).toEqual(
+      ['#abc'],
     )
   })
 })

@@ -65,7 +65,8 @@ HTML surfaces. **Opaque tokens are `#rrggbb`, translucent ones `#rrggbbaa`**;
   holds a literal, with one declared exception, the mark's drawing (below), and no stylesheet but
   `tokens.css` declares a `--color-*` (a scoped override would pass the literal search through
   `var()`; ai-review round 1 on #121, finding 1); a component's code is
-  searched with its comments dropped (an issue number such as `#100` is valid hex), which is safe
+  searched with its comments dropped by TypeScript's parser and printer (an issue number such as
+  `#100` is valid hex; a `//` in a string, JSX text or a template stays code), which is safe
   because the emitted-CSS scan catches any utility a comment generates.
 
 **shadcn/ui components copied by hand** into `src/site/ui/` (no shadcn CLI, no runtime package):
