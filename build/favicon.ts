@@ -31,7 +31,7 @@ export function icoFromPng(png: Buffer, size: number): Buffer {
 }
 
 /** An SVG rendered by sharp to a `size` px square PNG. */
-export function sharpPng(svg: Buffer, size: number): Promise<Buffer> {
+export function renderPng(svg: Buffer, size: number): Promise<Buffer> {
   return sharp(svg).resize(size, size).png().toBuffer()
 }
 

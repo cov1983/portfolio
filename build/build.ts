@@ -17,7 +17,7 @@ import { parseArgs } from 'node:util'
 
 import { build, resolveConfig } from 'vite'
 
-import { MARK_SOURCE, faviconFiles, sharpPng } from './favicon.ts'
+import { MARK_SOURCE, faviconFiles, renderPng } from './favicon.ts'
 import { ROUTES, fallbackShell, fillShell, siteOrigin, type Fragments } from './prerender.ts'
 
 const PRERENDER_ENTRY = 'src/entry-prerender.tsx'
@@ -93,7 +93,7 @@ async function main(): Promise<void> {
   const stylesheets = entryStylesheets(client)
 
   // The mark's one drawing becomes /favicon.svg and /favicon.ico (AC-1.3; there is no public/).
-  for (const file of await faviconFiles(await readFile(MARK_SOURCE), sharpPng)) {
+  for (const file of await faviconFiles(await readFile(MARK_SOURCE), renderPng)) {
     await writeFile(join(outDir, file.fileName), file.source)
     console.log(`derived ${file.fileName} from ${MARK_SOURCE}`)
   }

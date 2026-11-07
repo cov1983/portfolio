@@ -8,7 +8,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
 
 import { contentPlugin } from './build/content-plugin.ts'
-import { MARK_SOURCE, faviconFiles, sharpPng } from './build/favicon.ts'
+import { MARK_SOURCE, faviconFiles, renderPng } from './build/favicon.ts'
 import { cleanUrl } from './build/prerender.ts'
 import { vercelHeaders } from './vercel-headers.ts'
 
@@ -79,7 +79,7 @@ function faviconPlugin(): Plugin {
           return
         }
         readFile(resolve(server.config.root, MARK_SOURCE))
-          .then((mark) => faviconFiles(mark, sharpPng))
+          .then((mark) => faviconFiles(mark, renderPng))
           .then((files) => {
             const file = files.find((candidate) => `/${candidate.fileName}` === path)
             if (file === undefined) throw new Error(`no derived file for ${path}`)

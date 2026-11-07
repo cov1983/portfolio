@@ -1,7 +1,7 @@
 import sharp from 'sharp'
 import { describe, expect, it } from 'vitest'
 
-import { faviconFiles, ICO_SIZE, icoFromPng, sharpPng } from './favicon.ts'
+import { faviconFiles, ICO_SIZE, icoFromPng, renderPng } from './favicon.ts'
 
 /** A 2 x 2 opaque square in an SVG, so the render is checkable pixel by pixel. */
 const SQUARE = Buffer.from(
@@ -37,9 +37,9 @@ describe('icoFromPng', () => {
   })
 })
 
-describe('sharpPng', () => {
+describe('renderPng', () => {
   it('renders an SVG to a PNG of the given size', async () => {
-    const meta = await sharp(await sharpPng(SQUARE, 4)).metadata()
+    const meta = await sharp(await renderPng(SQUARE, 4)).metadata()
     expect({ format: meta.format, width: meta.width, height: meta.height }).toEqual({
       format: 'png',
       width: 4,
