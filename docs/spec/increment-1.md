@@ -249,8 +249,9 @@ tolerances for tests, not as requirements in themselves: the feel in words is th
     every Exhibit in full (the same fields as the Panel), the Bio and the Contact, each Exhibit under
     its own anchor, with a link back to the Title Screen.
   - AC-19.2 Given the Fallback Page is loaded with a screen reader, When it is navigated by headings
-    and landmarks, Then every Exhibit, the Bio and the Contact are reachable, and every image has
-    alternative text.
+    and landmarks, Then every Exhibit, the Bio and the Contact are reachable, and every image has an
+    alt attribute: content images (the Exhibit pictures) have alternative text, decorative images an
+    empty one.
   - AC-19.3 Given the Fallback Page and the Title Screen list are both rendered, When their sets of
     Exhibits are compared, Then they are identical, because both render from the same content files.
 - **US-20** As a Visitor, I want to reach the Owner, so that I can follow up.
@@ -361,8 +362,9 @@ response headers are a plan decision.
 
 **Accessibility.** The Title Screen, the Exhibit Panel, the World's HTML overlay (captions, Reset
 control, hints) and the Fallback Page are plain HTML: keyboard operable, focus visible, focus
-trapped in an open Panel and restored on close, images with alternative text, captions readable by
-assistive technology. The 3D canvas itself is not made accessible; every piece of content it leads
+trapped in an open Panel and restored on close, every image with an alt attribute (alternative
+text on content images, an empty one on decorative images), captions readable by assistive
+technology. The 3D canvas itself is not made accessible; every piece of content it leads
 to is reachable without it. `prefers-reduced-motion` is honoured as in US-11, US-18 and US-25.
 Conformance level: WCAG 2.2 AA, scoped to the HTML surfaces named above and checked with axe in
 test seam 1.
