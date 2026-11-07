@@ -72,8 +72,10 @@ HTML surfaces. **Opaque tokens are `#rrggbb`, translucent ones `#rrggbbaa`**;
 **shadcn/ui components copied by hand** into `src/site/ui/` (no shadcn CLI, no runtime package):
 `button.tsx` and `cn.ts` (clsx + tailwind-merge) in T0a. Changed from upstream: no `asChild` (it
 needs Radix's Slot; `radix-ui` arrives with T3b); no focus-halo or elevation utilities (their
-initial values are colour literals; focus is the site's own accent outline); no transition or
-animation classes (AC-1.2); no opacity modifier on a colour utility (resolved into a hex literal;
+initial values are colour literals; focus is the site's own accent outline, framed over the
+World by a ring of the `background` token on both sides, since the scene behind is light ice:
+Owner on [#100 comment 6714592319](https://github.com/cov1983/portfolio/issues/100#issuecomment-6714592319));
+no transition or animation classes (AC-1.2); no opacity modifier on a colour utility (resolved into a hex literal;
 hover brightens with a filter); the variants stay unexported (react-refresh; a `*.tsx` stays
 outside the coverage ratchet). **Lucide React** is the one icon set; its icons are `aria-hidden`
 by default, so a control's accessible name stays its text.

@@ -43,7 +43,13 @@ function bodyBackground(page: Page): Promise<string> {
 
 function computed(
   locator: Locator,
-  property: 'backgroundColor' | 'color' | 'borderTopColor' | 'borderLeftColor',
+  property:
+    | 'backgroundColor'
+    | 'color'
+    | 'borderTopColor'
+    | 'borderLeftColor'
+    | 'outlineColor'
+    | 'boxShadow',
 ) {
   return locator.evaluate((element, name) => getComputedStyle(element)[name], property)
 }
@@ -105,6 +111,19 @@ test.describe('the World overlay', () => {
     await entered(page)
     const reset = worldContainer(page).getByRole('button', { name: 'Reset' })
     expect(await computed(reset, 'borderTopColor')).toBe(PRIMARY)
+  })
+
+  // Two-tone focus over the light ice (Owner, #100 comment 6714592319): the accent outline framed
+  // by a ring of the background token, reached by keyboard so :focus-visible applies.
+  test('frames the focused Reset control in the accent and the background token', async ({
+    page,
+  }) => {
+    await entered(page)
+    const reset = worldContainer(page).getByRole('button', { name: 'Reset' })
+    await page.keyboard.press('Tab')
+    await expect(reset).toBeFocused()
+    expect(await computed(reset, 'outlineColor')).toBe(PRIMARY)
+    expect(await computed(reset, 'boxShadow')).toContain(BACKGROUND)
   })
 })
 
