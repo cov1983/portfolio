@@ -4,6 +4,7 @@ import type { Capability } from '../app/store.ts'
 import type { Content, ExhibitId } from '../content/types.ts'
 import { Contact } from './Contact'
 import { FallbackLink } from './FallbackLink'
+import { Button } from './ui/button'
 import './site.css'
 
 // The Title Screen (spec: Title Screen; ADR 0004, ADR 0010): the Owner's name, the one line, the
@@ -73,14 +74,9 @@ export function TitleScreen({
         <p className="one-line">{content.oneLine}</p>
       </header>
       <Contact contact={content.contact} />
-      <button
-        type="button"
-        className="way-in"
-        onClick={onEnter}
-        aria-busy={loading ? true : undefined}
-      >
+      <Button className="way-in mt-8" onClick={onEnter} aria-busy={loading ? true : undefined}>
         {loading ? 'Loading the World…' : 'Enter the World'}
-      </button>
+      </Button>
       <nav className="exhibits" aria-label="Exhibits" ref={entriesRef}>
         <h2>Exhibits</h2>
         <ul>

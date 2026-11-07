@@ -82,26 +82,6 @@
     margin: 1rem 0 0;
   }
 
-  /* The filled controls: the way in, the Panel's close, the failure's way back. Navy ink on the
-     accent (tokens.css). */
-  .way-in,
-  .world-failure button,
-  .exhibit-panel .close {
-    display: inline-block;
-    padding: 0.75rem 1.5rem;
-    font: inherit;
-    font-weight: 600;
-    color: var(--color-primary-foreground);
-    background: var(--color-primary);
-    border: 0;
-    border-radius: 0.5rem;
-    cursor: pointer;
-  }
-
-  .way-in {
-    margin: 2rem 0 0;
-  }
-
   .exhibits ul {
     margin: 0;
     padding: 0;
@@ -276,10 +256,6 @@
     background: var(--color-surface);
   }
 
-  .exhibit-panel .close {
-    padding: 0.5rem 1rem;
-  }
-
   .exhibit-panel .exhibit {
     margin-top: 0;
     padding-top: 0;
@@ -291,7 +267,8 @@
   }
 
   /* The World's HTML overlay (src/site/WorldOverlay.tsx): over the canvas at the bottom, only the
-     control takes pointer events, the legend is one line of text. The scene behind is light ice,
+     control takes pointer events (its own utility), the legend is one line of text. The controls
+     are the copied Button (src/site/ui/button.tsx), styled there. The scene behind is light ice,
      so each piece sits on its own navy chip. */
   .world-overlay {
     position: absolute;
@@ -303,18 +280,6 @@
     align-items: center;
     justify-content: space-between;
     pointer-events: none;
-  }
-
-  .world-overlay .reset {
-    padding: 0.5rem 1rem;
-    font: inherit;
-    font-weight: 600;
-    color: var(--color-foreground);
-    background: var(--color-surface);
-    border: 2px solid var(--color-primary);
-    border-radius: 0.5rem;
-    cursor: pointer;
-    pointer-events: auto;
   }
 
   .key-legend {
