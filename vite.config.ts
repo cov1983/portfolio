@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
+import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
 
@@ -63,7 +64,8 @@ export default defineConfig(({ command, isPreview }) => {
   const isDev = command === 'serve' && isPreview !== true
   return {
     // ADR 0011: the content is validated, typed as virtual:content and its media emitted by the plugin.
-    plugins: [react(), contentPlugin(), cleanUrlsPlugin()],
+    // ADR 0017: Tailwind v4 compiles src/site/site.css (its entry) against the token layer.
+    plugins: [react(), tailwindcss(), contentPlugin(), cleanUrlsPlugin()],
     html: isDev ? { cspNonce: DEV_NONCE } : {},
     server: { headers: isDev ? withDevNonce(headers) : headers },
     preview: { headers },
