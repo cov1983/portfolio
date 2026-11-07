@@ -6,17 +6,21 @@ import {
   entered,
   exhibitPanel,
   expect,
+  expectRecorded,
+  failureScreen,
   firstExhibit,
   hydrated,
   opened,
   test,
   wayIn,
+  WORLD_CHUNK,
   worldContainer,
+  type Problem,
 } from './fixtures'
 
-// Seam 1 for AC-1.1 (spec increment-2; plan §6 row 1.1, T0a's four surfaces): on the Title Screen,
-// the Exhibit Panel, the Fallback Page and the World overlay, the page's background and the accent
-// of the surface's primary control are the two token values. The expected colours are read from
+// Seam 1 for AC-1.1 (spec increment-2; plan §6 row 1.1, T0a's four surfaces, plus the hints and the
+// readable failure T0a re-skins with them): on each, the page's background and the accent of the
+// surface's primary control (a hint: its edge) are the two token values. The expected colours are read from
 // the token layer itself (src/site/tokens.css), never written here, so the Owner's tuning of a
 // value on the preview keeps this test meaningful. /start and the Discovery Form join in T1, T3a.
 const TOKENS = readFileSync(new URL('../../src/site/tokens.css', import.meta.url), 'utf8')
@@ -37,7 +41,10 @@ function bodyBackground(page: Page): Promise<string> {
   return page.evaluate(() => getComputedStyle(document.body).backgroundColor)
 }
 
-function computed(locator: Locator, property: 'backgroundColor' | 'color' | 'borderTopColor') {
+function computed(
+  locator: Locator,
+  property: 'backgroundColor' | 'color' | 'borderTopColor' | 'borderLeftColor',
+) {
   return locator.evaluate((element, name) => getComputedStyle(element)[name], property)
 }
 
@@ -89,5 +96,64 @@ test.describe('the World overlay', () => {
     await entered(page)
     const reset = worldContainer(page).getByRole('button', { name: 'Reset' })
     expect(await computed(reset, 'borderTopColor')).toBe(PRIMARY)
+  })
+})
+
+// The keyboard hint, reached the way capability.spec reaches it: the browser's own coarse-pointer
+// emulation (hasTouch; isMobile where the browser supports it).
+test.describe('a capability hint', () => {
+  test.use({
+    hasTouch: true,
+    isMobile: async ({ browserName }, provide) => {
+      await provide(browserName !== 'firefox')
+    },
+  })
+
+  test('has the background token behind it', async ({ page }) => {
+    await hydrated(page)
+    await expect(page.locator('[data-hint]')).toHaveCount(1)
+    expect(await bodyBackground(page)).toBe(BACKGROUND)
+  })
+
+  test('edges the hint with the accent', async ({ page }) => {
+    await hydrated(page)
+    expect(await computed(page.locator('[data-hint]'), 'borderLeftColor')).toBe(PRIMARY)
+  })
+})
+
+/**
+ * The readable failure, reached the way world-failure.spec's path A reaches it: the world chunk's
+ * requests aborted, Enter. App's one `World failed` line is consumed, and in Chromium alone its own
+ * "Failed to load resource" line per aborted request, so an unexpected line still fails the test.
+ */
+async function failed(page: Page, problems: Problem[], browserName: string): Promise<void> {
+  let aborted = 0
+  await page.route(WORLD_CHUNK, (route) => {
+    aborted += 1
+    return route.abort()
+  })
+  await hydrated(page)
+  await page.keyboard.press('Enter')
+  await expect(failureScreen(page)).toBeVisible()
+  await expectRecorded(problems, 'console.error', 'World failed')
+  if (browserName !== 'chromium') return
+  for (let i = 0; i < aborted; i++)
+    await expectRecorded(problems, 'console.error', 'Failed to load resource')
+}
+
+test.describe('the readable failure', () => {
+  test('has the background token behind it', async ({ page, problems, browserName }) => {
+    await failed(page, problems, browserName)
+    expect(await bodyBackground(page)).toBe(BACKGROUND)
+  })
+
+  test('fills the Title Screen control with the accent', async ({
+    page,
+    problems,
+    browserName,
+  }) => {
+    await failed(page, problems, browserName)
+    const back = failureScreen(page).getByRole('button', { name: 'Title Screen' })
+    expect(await computed(back, 'backgroundColor')).toBe(PRIMARY)
   })
 })
