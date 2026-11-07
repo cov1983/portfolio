@@ -3,7 +3,9 @@
 Status: Accepted (2026-10-10); note 2026-10-22 (#72): `Strict-Transport-Security` is not in the
 file: Vercel sets it on every deployment it serves (platform-provided, `max-age=63072000` read on
 thomascova.dev by the Owner, #72; `docs/plan/increment-1.md` "HSTS is set by Vercel on the
-domain"), so the list is the site's own headers, not every header a response carries
+domain"), so the list is the site's own headers, not every header a response carries; note
+2026-11-07 (#100): the "System fonts" consequence is retired by ADR 0017, the site serves one
+self-hosted woff2, which `font-src 'self'` already allowed, so the policy is unchanged
 
 ## Context
 
