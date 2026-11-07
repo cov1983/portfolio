@@ -99,7 +99,12 @@ Chromium:
 redrawn Puck, is the only copy. The build derives `dist/favicon.svg` (its bytes) and
 `dist/favicon.ico` (a 32 px PNG of it in a one-entry ICO) through `build/favicon.ts`; the dev
 server serves the same pair; there is no `public/`. Its colours are literal, the declared exception
-of the token rule, since a standalone favicon cannot read custom properties. The header mark beside
+of the token rule, since a standalone favicon cannot read custom properties; `tokens.test` ties them
+to the tokens (every stroke and gradient stop is `primary`, the disc's fill `primary-foreground`), so
+a tuned token fails the build half until the drawing follows (ai-review round 1 on #121, finding 2).
+The World's canvas background (`src/world/scene/world.css`) reads `var(--color-background)`; the
+Banner's ink (`INK` in `src/world/scene/colours.ts`) is a World scene colour and keeps its own
+`#0b1a2a`. The header mark beside
 the name on the Title Screen and the Fallback Page is `<img src="/favicon.svg" alt="">`, so the icon
 link and the mark name one emitted file:
 - **A fixed path, not an asset import**: the hydration proof renders the App without the build's

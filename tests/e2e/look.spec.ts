@@ -92,6 +92,15 @@ test.describe('the World overlay', () => {
     expect(await bodyBackground(page)).toBe(BACKGROUND)
   })
 
+  // The World's canvas background reads the same token (src/world/scene/world.css; ai-review
+  // round 1 on #121, finding 2), so a tuned background leaves no seam between site and World.
+  test('lays the World on the background token', async ({ page }) => {
+    await entered(page)
+    expect(await computed(worldContainer(page).locator('.world'), 'backgroundColor')).toBe(
+      BACKGROUND,
+    )
+  })
+
   test('edges the Reset control with the accent', async ({ page }) => {
     await entered(page)
     const reset = worldContainer(page).getByRole('button', { name: 'Reset' })
