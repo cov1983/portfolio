@@ -131,16 +131,17 @@ test.describe('for assistive technology', () => {
   })
 
   // AC-19.2 as amended (#100 comment 6706618031): every image has an alt attribute; a content
-  // image, an Exhibit picture, has alternative text; a decorative one (the header mark) an empty one.
-  /** Every image on the page: its alt attribute (null when absent) and whether it is an Exhibit's. */
+  // image has alternative text; a decorative one an empty one. The one decorative image is the
+  // header mark, named by its fixed src (src/site/Mark.tsx); every other image counts as content,
+  // so a later picture outside the Exhibits (the Bio's, say) with an empty alt fails here.
+  const MARK_SRC = '/favicon.svg'
+  /** Every image on the page: its src and its alt attribute (null when absent). */
   const imagesOf = (page: Page) =>
-    page.locator('img').evaluateAll((images) =>
-      images.map((image) => ({
-        src: image.getAttribute('src'),
-        alt: image.getAttribute('alt'),
-        content: image.closest('article.exhibit') !== null,
-      })),
-    )
+    page
+      .locator('img')
+      .evaluateAll((images) =>
+        images.map((image) => ({ src: image.getAttribute('src'), alt: image.getAttribute('alt') })),
+      )
 
   test('gives every image an alt attribute', async ({ page }) => {
     await page.goto('/exhibits')
@@ -151,7 +152,7 @@ test.describe('for assistive technology', () => {
 
   test('gives every content image alternative text', async ({ page }) => {
     await page.goto('/exhibits')
-    const content = (await imagesOf(page)).filter((image) => image.content)
+    const content = (await imagesOf(page)).filter((image) => image.src !== MARK_SRC)
     expect(content.length).toBeGreaterThan(0)
     expect(content.filter((image) => (image.alt ?? '').trim() === '')).toEqual([])
   })
