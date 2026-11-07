@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { colourLiterals, hasColourSchemeQuery, hexAndFunctionLiterals } from './css-checks'
+import {
+  colourLiterals,
+  hasColourSchemeQuery,
+  hexAndFunctionLiterals,
+  withoutComments,
+} from './css-checks'
 
 describe('colourLiterals', () => {
   it('reports a hex colour in a declaration', () => {
@@ -65,6 +70,25 @@ describe('hexAndFunctionLiterals', () => {
 
   it('accepts a Tailwind token class', () => {
     expect(hexAndFunctionLiterals('className="bg-primary text-primary-foreground"')).toEqual([])
+  })
+})
+
+describe('withoutComments', () => {
+  it('drops line and block comments, so an issue number such as #100 is not read as a colour', () => {
+    const source = '// Owner on #100\nconst a = 1 /* #103 */\n{/* #fff */}'
+    expect(hexAndFunctionLiterals(withoutComments(source))).toEqual([])
+  })
+
+  it('keeps a hex colour in code', () => {
+    expect(hexAndFunctionLiterals(withoutComments('className="bg-[#123456]" // #100'))).toEqual([
+      '#123456',
+    ])
+  })
+
+  it('keeps the // of a URL in a string', () => {
+    expect(withoutComments("const u = 'https://example.org/#abc'")).toBe(
+      "const u = 'https://example.org/#abc'",
+    )
   })
 })
 

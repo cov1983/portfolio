@@ -50,6 +50,15 @@ export function hexAndFunctionLiterals(text: string): string[] {
     .map((match) => match[0])
 }
 
+// A source's comments: block comments, and a `//` comment not preceded by `:` (so the `//` of a
+// `https://` in a string survives). Issue numbers such as #100 are valid 3-digit hex colours.
+const SOURCE_COMMENTS = /\/\*[\s\S]*?\*\/|(^|[^:])\/\/.*$/gm
+
+/** A component's source without its comments, for a literal search that reads only code. */
+export function withoutComments(source: string): string {
+  return source.replace(SOURCE_COMMENTS, (_comment, before: string | undefined) => before ?? '')
+}
+
 /** Every named colour word in a CSS value. */
 function namedColours(value: string): string[] {
   return (value.toLowerCase().match(/[a-z]+/g) ?? []).filter((word) => NAMED_COLOURS.has(word))

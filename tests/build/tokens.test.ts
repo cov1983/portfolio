@@ -3,7 +3,12 @@ import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { colourLiterals, hasColourSchemeQuery, hexAndFunctionLiterals } from './css-checks'
+import {
+  colourLiterals,
+  hasColourSchemeQuery,
+  hexAndFunctionLiterals,
+  withoutComments,
+} from './css-checks'
 import { removeBuild, runProductionBuild, type BuildResult } from './production-build'
 
 // Seam 1's build half for AC-1.1 (plan §6 row 1.1, ADR 0017): every colour of the HTML surfaces
@@ -71,9 +76,12 @@ describe('src/site/', () => {
     const found: string[] = []
     for (const file of files) {
       const text = await readFile(join(SITE_DIR, file), 'utf8')
-      // A stylesheet is read declaration by declaration, named colours included; a component is
-      // searched for hex colours and colour functions only, since its prose may use a colour word.
-      const literals = file.endsWith('.css') ? colourLiterals(text) : hexAndFunctionLiterals(text)
+      // A stylesheet is read declaration by declaration, named colours included; a component's
+      // code (its comments dropped: an issue number like #100 is valid hex) is searched for hex
+      // colours and colour functions only, since its prose may use a colour word.
+      const literals = file.endsWith('.css')
+        ? colourLiterals(text)
+        : hexAndFunctionLiterals(withoutComments(text))
       found.push(...literals.map((literal) => `${file}: ${literal}`))
     }
     expect(found).toEqual([])

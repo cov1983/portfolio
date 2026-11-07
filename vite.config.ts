@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 
 import tailwindcss from '@tailwindcss/vite'
@@ -7,6 +8,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
 
 import { contentPlugin } from './build/content-plugin.ts'
+import { MARK_SOURCE, faviconFiles, sharpPng } from './build/favicon.ts'
 import { cleanUrl } from './build/prerender.ts'
 import { vercelHeaders } from './vercel-headers.ts'
 
@@ -57,6 +59,39 @@ function cleanUrlsPlugin(): Plugin {
   }
 }
 
+// Dev only: the favicon pair the build derives from the mark (build/favicon.ts, AC-1.3) served at
+// the root, so the icon link and the header mark show under `make dev` too. Derived per request
+// from the current drawing; `vite preview` serves dist/, where build/build.ts wrote both.
+const FAVICON_TYPES: Record<string, string> = {
+  '/favicon.svg': 'image/svg+xml',
+  '/favicon.ico': 'image/x-icon',
+}
+
+function faviconPlugin(): Plugin {
+  return {
+    name: 'portfolio:favicon',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const path = req.url === undefined ? '' : new URL(req.url, 'http://localhost').pathname
+        const type = FAVICON_TYPES[path]
+        if (type === undefined) {
+          next()
+          return
+        }
+        readFile(resolve(server.config.root, MARK_SOURCE))
+          .then((mark) => faviconFiles(mark, sharpPng))
+          .then((files) => {
+            const file = files.find((candidate) => `/${candidate.fileName}` === path)
+            if (file === undefined) throw new Error(`no derived file for ${path}`)
+            res.setHeader('Content-Type', type)
+            res.end(file.source)
+          })
+          .catch(next)
+      })
+    },
+  }
+}
+
 export default defineConfig(({ command, isPreview }) => {
   // ADR 0012: `vite preview` (e2e, perf) and the dev server send the headers of vercel.json, so
   // every run is under the policy the site ships with.
@@ -65,7 +100,7 @@ export default defineConfig(({ command, isPreview }) => {
   return {
     // ADR 0011: the content is validated, typed as virtual:content and its media emitted by the plugin.
     // ADR 0017: Tailwind v4 compiles src/site/site.css (its entry) against the token layer.
-    plugins: [react(), tailwindcss(), contentPlugin(), cleanUrlsPlugin()],
+    plugins: [react(), tailwindcss(), contentPlugin(), cleanUrlsPlugin(), faviconPlugin()],
     html: isDev ? { cspNonce: DEV_NONCE } : {},
     server: { headers: isDev ? withDevNonce(headers) : headers },
     preview: { headers },

@@ -1,4 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
+import type { Page } from '@playwright/test'
 
 import { expect, test, textOf } from './fixtures'
 
@@ -129,12 +130,29 @@ test.describe('for assistive technology', () => {
     await expect(page.getByRole('navigation')).toHaveCount(1)
   })
 
-  test('gives every image alternative text', async ({ page }) => {
+  // AC-19.2 as amended (#100 comment 6706618031): every image has an alt attribute; a content
+  // image, an Exhibit picture, has alternative text; a decorative one (the header mark) an empty one.
+  /** Every image on the page: its alt attribute (null when absent) and whether it is an Exhibit's. */
+  const imagesOf = (page: Page) =>
+    page.locator('img').evaluateAll((images) =>
+      images.map((image) => ({
+        src: image.getAttribute('src'),
+        alt: image.getAttribute('alt'),
+        content: image.closest('article.exhibit') !== null,
+      })),
+    )
+
+  test('gives every image an alt attribute', async ({ page }) => {
     await page.goto('/exhibits')
-    const alts = await page
-      .locator('img')
-      .evaluateAll((images) => images.map((image) => image.getAttribute('alt') ?? ''))
-    expect(alts.length).toBeGreaterThan(0)
-    expect(alts.filter((alt) => alt.trim() === '')).toEqual([])
+    const images = await imagesOf(page)
+    expect(images.length).toBeGreaterThan(0)
+    expect(images.filter((image) => image.alt === null)).toEqual([])
+  })
+
+  test('gives every content image alternative text', async ({ page }) => {
+    await page.goto('/exhibits')
+    const content = (await imagesOf(page)).filter((image) => image.content)
+    expect(content.length).toBeGreaterThan(0)
+    expect(content.filter((image) => (image.alt ?? '').trim() === '')).toEqual([])
   })
 })

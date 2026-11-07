@@ -4,6 +4,7 @@ import type { Capability } from '../app/store.ts'
 import type { Content, ExhibitId } from '../content/types.ts'
 import { Contact } from './Contact'
 import { FallbackLink } from './FallbackLink'
+import { Mark } from './Mark'
 import { Button } from './ui/button'
 import './site.css'
 
@@ -70,7 +71,10 @@ export function TitleScreen({
         </>
       )}
       <header>
-        <h1>{content.owner.name}</h1>
+        <div className="flex items-center gap-4">
+          <Mark />
+          <h1>{content.owner.name}</h1>
+        </div>
         <p className="one-line">{content.oneLine}</p>
       </header>
       <Contact contact={content.contact} />
