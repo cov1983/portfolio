@@ -39,6 +39,8 @@ const NAMED_COLOURS = new Set(
 // selector with a pseudo-class (`a:hover{`) ends in `{`, so it never matches.
 const DECLARATION = /(?<=[{;])\s*(-{0,2}[\w-]+)\s*:\s*([^;{}]+)(?=[;}])/g
 const TOKEN_PROPERTY = /^--color-/
+// A token declared: `--color-<name>` or the palette reset `--color-*`, opened right after `{` or `;`.
+const TOKEN_DECLARATION = /(?<=[{;])\s*(--color-[\w*-]*)\s*:/g
 // Strings and url() hold names and paths, never a colour of the page.
 const STRINGS_AND_URLS = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\burl\([^)]*\)/gi
 const COMMENTS = /\/\*[\s\S]*?\*\//g
@@ -83,6 +85,15 @@ export function colourLiterals(css: string): string[] {
     }
   }
   return found
+}
+
+/**
+ * Every `--color-*` declaration in a stylesheet, by property, in source order: in src/site/ the
+ * token layer is tokens.css alone, so one anywhere else (a scoped override, a second token set) is
+ * a colour that bypasses the one token set even though `colourLiterals` accepts it.
+ */
+export function tokenDeclarations(css: string): string[] {
+  return [...css.replace(COMMENTS, '').matchAll(TOKEN_DECLARATION)].map((match) => match[1] ?? '')
 }
 
 /** Whether a stylesheet or source mentions `prefers-color-scheme` (AC-1.1: no light variant). */

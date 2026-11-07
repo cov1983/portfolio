@@ -62,7 +62,9 @@ HTML surfaces. **Opaque tokens are `#rrggbb`, translucent ones `#rrggbbaa`**;
   function, a CSS named colour) in the stylesheets the documents link outside a `--color-*`
   declaration; `transparent`, `currentcolor` and `inherit` are keywords, and so are `#0000` and
   `#00000000`, lightningcss's spelling of `transparent`. In `src/site/` no source but `tokens.css`
-  holds a literal, with one declared exception, the mark's drawing (below); a component's code is
+  holds a literal, with one declared exception, the mark's drawing (below), and no stylesheet but
+  `tokens.css` declares a `--color-*` (a scoped override would pass the literal search through
+  `var()`; ai-review round 1 on #121, finding 1); a component's code is
   searched with its comments dropped (an issue number such as `#100` is valid hex), which is safe
   because the emitted-CSS scan catches any utility a comment generates.
 

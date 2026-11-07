@@ -4,6 +4,7 @@ import {
   colourLiterals,
   hasColourSchemeQuery,
   hexAndFunctionLiterals,
+  tokenDeclarations,
   withoutComments,
 } from './css-checks'
 
@@ -89,6 +90,28 @@ describe('withoutComments', () => {
     expect(withoutComments("const u = 'https://example.org/#abc'")).toBe(
       "const u = 'https://example.org/#abc'",
     )
+  })
+})
+
+describe('tokenDeclarations', () => {
+  it('reports a --color-* token declared in a rule, a scoped override', () => {
+    expect(tokenDeclarations('.hint{--color-primary:#ff0000;color:var(--color-primary)}')).toEqual([
+      '--color-primary',
+    ])
+  })
+
+  it('reports a second token set, the palette reset included', () => {
+    expect(
+      tokenDeclarations(
+        '@theme static{--color-*:initial;--color-accent:#ff0000}/* --color-x:red */',
+      ),
+    ).toEqual(['--color-*', '--color-accent'])
+  })
+
+  it('accepts a stylesheet that only reads tokens', () => {
+    expect(
+      tokenDeclarations('.a{color:var(--color-foreground);--tw-ring-color:var(--color-primary)}'),
+    ).toEqual([])
   })
 })
 

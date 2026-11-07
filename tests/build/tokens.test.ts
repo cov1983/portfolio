@@ -7,6 +7,7 @@ import {
   colourLiterals,
   hasColourSchemeQuery,
   hexAndFunctionLiterals,
+  tokenDeclarations,
   withoutComments,
 } from './css-checks'
 import { removeBuild, runProductionBuild, type BuildResult } from './production-build'
@@ -21,7 +22,8 @@ import { removeBuild, runProductionBuild, type BuildResult } from './production-
 // "HTML surface", and is not linked by the documents.
 const SITE_DIR = fileURLToPath(new URL('../../src/site/', import.meta.url))
 /** The token layer and the mark's drawing: the only sources of src/site/ that may hold a literal. */
-const DECLARED = new Set(['tokens.css', 'mark.svg'])
+const TOKEN_LAYER = 'tokens.css'
+const DECLARED = new Set([TOKEN_LAYER, 'mark.svg'])
 const STYLESHEET_LINK = /<link\b[^>]*rel="stylesheet"[^>]*\bhref="\/([^"]+)"/g
 
 async function filesUnder(dir: string): Promise<string[]> {
@@ -71,6 +73,20 @@ describe('the built site', () => {
 })
 
 describe('src/site/', () => {
+  // The token layer is tokens.css alone: a `--color-*` declared in another stylesheet (a scoped
+  // override, a second token set) passes the literal search, so it is reported on its own.
+  it('declares --color-* tokens only in tokens.css', async () => {
+    const files = (await filesUnder(SITE_DIR)).filter(
+      (file) => file.endsWith('.css') && file !== TOKEN_LAYER,
+    )
+    const found: string[] = []
+    for (const file of files) {
+      const declared = tokenDeclarations(await readFile(join(SITE_DIR, file), 'utf8'))
+      found.push(...declared.map((property) => `${file}: ${property}`))
+    }
+    expect(found).toEqual([])
+  })
+
   it('holds colour literals only in tokens.css and the declared mark.svg', async () => {
     const files = (await filesUnder(SITE_DIR)).filter((file) => !DECLARED.has(file))
     const found: string[] = []
