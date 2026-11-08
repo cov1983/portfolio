@@ -13,6 +13,8 @@ import {
   recorded,
   test,
   titleScreen,
+  titleScreenLayer,
+  transitionEnded,
   wayIn,
   WORLD_CHUNK,
   worldContainer,
@@ -92,6 +94,89 @@ test('after entry the World container is visible and focused, the Title Screen h
   await entered(page)
   await expect(worldContainer(page)).toBeFocused()
   await expect(titleScreen(page)).toBeHidden()
+})
+
+// Risk 1 of plan increment-2 §9 (T0b, #103): the Title Screen leaves by a state class, `inert` and
+// `visibility`, not by the `hidden` attribute, so it can transition. Red on the `hidden` code: the
+// layer does not exist and no `inert` is set.
+test('after entry the Title Screen’s layer is inert and hidden (AC-2.3 wiring)', async ({
+  page,
+}) => {
+  await entered(page)
+  await expect(titleScreenLayer(page)).toHaveAttribute('inert')
+  await expect(titleScreenLayer(page)).toBeHidden()
+})
+
+// increment-2 AC-2.3 and AC-2.5 (plan §6 rows 2.3, 2.5): the crossfade. Without reduced motion,
+// the World ready before the press (so the transition starts with it), each change is read after
+// the layer's own `transitionend`, never after a wait; `transitionEnded` listens before the key.
+// Under reduced motion no transition runs: reduced-motion.spec reads that case.
+test.describe('the crossfade (increment-2 AC-2.3, AC-2.5)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await hydrated(page)
+    await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
+  })
+
+  test('the Title Screen transitions its opacity and its lift', async ({ page }) => {
+    const property = await titleScreenLayer(page).evaluate(
+      (element) => getComputedStyle(element).transitionProperty,
+    )
+    expect(property).toContain('opacity')
+    expect(property).toContain('transform')
+  })
+
+  test('one Enter: after the fade the Title Screen is inert and hidden, the World shown and focused', async ({
+    page,
+  }) => {
+    const faded = await transitionEnded(titleScreenLayer(page), 'visibility')
+    await page.keyboard.press('Enter')
+    await faded()
+    expect(await titleScreenLayer(page).getAttribute('inert')).toBe('')
+    expect(await titleScreenLayer(page).isHidden()).toBe(true)
+    expect(await worldContainer(page).isVisible()).toBe(true)
+    await expect(worldContainer(page)).toBeFocused()
+  })
+
+  test('the World fades in with the same press', async ({ page }) => {
+    const fadedIn = await transitionEnded(worldContainer(page), 'opacity')
+    await page.keyboard.press('Enter')
+    await fadedIn()
+    expect(
+      await worldContainer(page).evaluate((element) => getComputedStyle(element).opacity),
+    ).toBe('1')
+  })
+
+  test('Escape after the fade brings the Title Screen back over the paused World (AC-6.1)', async ({
+    page,
+  }) => {
+    const faded = await transitionEnded(titleScreenLayer(page), 'visibility')
+    await page.keyboard.press('Enter')
+    await faded()
+    const back = await transitionEnded(titleScreenLayer(page), 'opacity')
+    await page.keyboard.press('Escape')
+    await back()
+    expect(await titleScreenLayer(page).isVisible()).toBe(true)
+    expect(await worldContainer(page).isHidden()).toBe(true)
+    await expect(page.locator('canvas')).toHaveCount(1)
+  })
+
+  test('Enter after Escape crossfades into the resumed World without loading (AC-6.2)', async ({
+    page,
+  }) => {
+    const faded = await transitionEnded(titleScreenLayer(page), 'visibility')
+    await page.keyboard.press('Enter')
+    await faded()
+    const back = await transitionEnded(titleScreenLayer(page), 'opacity')
+    await page.keyboard.press('Escape')
+    await back()
+    await expect(wayIn(page)).toHaveText('Enter the World')
+    const fadedAgain = await transitionEnded(titleScreenLayer(page), 'visibility')
+    await page.keyboard.press('Enter')
+    await fadedAgain()
+    expect(await worldContainer(page).isVisible()).toBe(true)
+    await expect(worldContainer(page)).toBeFocused()
+  })
 })
 
 test('after entry the Hub’s caption, the welcome, is shown as text (AC-5.1)', async ({

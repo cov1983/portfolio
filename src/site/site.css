@@ -81,6 +81,86 @@
 }
 
 @layer components {
+  /* The Title Screen's layer and the crossfade into the World (spec increment-2 AC-2.3, plan §2):
+     the layer fades and lifts out while the World fades in (world.css, the same duration). A
+     transition, not an effect (AC-1.2). Each state names the transition that leads into it: shown,
+     `visibility` changes at once, so the layer is focusable in the commit that brings it back
+     (Escape, AC-6.1); away, `visibility` waits out the fade, then takes the layer out of sight and
+     of the accessibility tree. Reduced motion turns all of it off (the rule at the end, AC-2.4):
+     the change is instant. */
+  .title-screen-layer {
+    transition:
+      opacity 400ms ease-out,
+      transform 400ms ease-out,
+      visibility 0s linear 0s;
+  }
+
+  /* The Title Screen's layer while the World or the readable failure is shown (TitleScreen, `away`
+     with `inert`): invisible but laid out, as the World container behind it (world.css). The page
+     under the World does not scroll: the hidden layer still takes up its length. */
+  .title-screen-layer.away {
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(-1.5rem);
+    transition:
+      opacity 400ms ease-out,
+      transform 400ms ease-out,
+      visibility 0s linear 400ms;
+  }
+
+  html:has(.title-screen-layer.away) {
+    overflow: hidden;
+  }
+
+  /* The sticky bar (src/site/StickyBar.tsx; spec increment-2 AC-3.1, D7): full width at the top of
+     `/`, /exhibits and /start, staying there while the page scrolls, on the overlay token. An
+     anchor the page scrolls to lands below it, not under it. */
+  .sticky-bar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 1.25rem;
+    background: var(--color-overlay);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  html:has(.sticky-bar) {
+    scroll-padding-top: 5rem;
+  }
+
+  .sticky-bar .bar-home {
+    display: inline-flex;
+  }
+
+  .sticky-bar nav ul {
+    display: flex;
+    gap: 1.25rem;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* "Start a project", filled: the copied Button's look on an anchor (ADR 0017: no `asChild`),
+     navy ink on the accent (5.6:1, tokens.css), hover brightened like the Button's, instant. */
+  .sticky-bar .bar-start {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    color: var(--color-primary-foreground);
+    text-decoration: none;
+    background: var(--color-primary);
+    border-radius: 0.5rem;
+  }
+
+  .sticky-bar .bar-start:hover {
+    filter: brightness(1.1);
+  }
+
   .title-screen,
   .fallback-page,
   .start-page,
@@ -100,6 +180,20 @@
 
   .contact {
     margin: 1rem 0 0;
+  }
+
+  /* The static blue edge glow (spec increment-2 D6, AC-1.2), the second of the site's two effects:
+     a gradient on the hero itself, clear in the middle and the glow token at its edges, never
+     animated. No image and no mask: an image on the first viewport cost slow runs before the World
+     preload (Owner, #103 comment 6728114096). */
+  .hero {
+    background: radial-gradient(ellipse at center, transparent 55%, var(--color-glow));
+  }
+
+  /* The headline reveal (D6, AC-2.2): the resting state is the visible headline; the keyframe only
+     says where it starts, so without script, and after the animation, it is shown. */
+  .hero .headline {
+    animation: headline-reveal 700ms ease-out;
   }
 
   .exhibits ul {
@@ -142,6 +236,15 @@
     outline: none;
   }
 
+  /* It replaces the World over the viewport, as the World container does (world.css), and scrolls
+     inside itself: the Title Screen's layer, invisible behind it, still takes up the page's length,
+     and in flow the message would sit below it and focus would scroll the page there. */
+  .world-failure {
+    position: fixed;
+    inset: 0;
+    overflow-y: auto;
+  }
+
   .world-failure .reason {
     font-size: 1.25rem;
   }
@@ -154,16 +257,14 @@
     color: var(--color-muted-foreground);
   }
 
-  /* The Fallback Page and /start */
-  .fallback-page nav ul,
-  .start-page nav ul {
+  /* The Fallback Page */
+  .fallback-page nav ul {
     margin: 1rem 0 0;
     padding: 0;
     list-style: none;
   }
 
-  .fallback-page nav li,
-  .start-page nav li {
+  .fallback-page nav li {
     display: inline;
     margin-right: 1rem;
   }
@@ -322,7 +423,8 @@
   }
 
   /* The Announcer caption (WorldOverlay): one line at the top centre of the World, readable on
-     any frame of the scene behind it; it fades in, except under reduced motion (rule below). */
+     any frame of the scene behind it. It appears without a fade: the site has exactly two effects
+     (spec increment-2 AC-1.2, D6; Owner, #103 comments 6723218035 and 6723304033). */
   .world-overlay .caption {
     position: fixed;
     top: 1.5rem;
@@ -341,19 +443,20 @@
     background: var(--color-overlay);
     border: 1px solid var(--color-border);
     border-radius: 0.5rem;
-    animation: caption-in 200ms ease-out;
   }
 }
 
-@keyframes caption-in {
+@keyframes headline-reveal {
   from {
     opacity: 0;
+    transform: translateY(0.75rem);
   }
 }
 
-/* Reduced motion (spec, US-18 and US-25): no animation and no transition anywhere on the site,
-   the caption, the Panel and the overlay included; the Follow Camera's easing is the scene's
-   (src/world/World.tsx reads the same preference). Unlayered, so no layer can outrank it. */
+/* Reduced motion (spec, US-18 and US-25; increment-2 AC-2.4): no animation and no transition
+   anywhere on the site, the headline reveal, the Panel and the overlay included; the Follow
+   Camera's easing is the scene's (src/world/World.tsx reads the same preference). Unlayered, so
+   no layer can outrank it. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

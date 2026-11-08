@@ -1,4 +1,4 @@
-# Spec: increment-2            Status: approved   Owner: Thomas (@cov1983)
+# Spec: increment-2            Status: amended    Owner: Thomas (@cov1983)
 
 Written 2026-11-05 by `/to-spec` from issue #59 (body of 2026-10-19 and the Owner's consolidated
 Phase 1 answers of 2026-11-04, Q1–Q18 and D1–D8), issue #67, constitution v1.1, ADR 0016 and the
@@ -24,7 +24,8 @@ pre-rendered Title Screen, no third-party requests, reduced motion and the perfo
 
 One redesign of the whole site, so that it never looks like two sites (Q3). It is built on one
 token set with a dark navy base, one electric-blue accent and exactly two effects. The Title Screen
-becomes a hero over a static backdrop that quotes the World and crossfades into the World on entry.
+becomes a hero over a static backdrop that quotes the World and crossfades into the World on entry
+(the backdrop carried to #124; T0b ships the hero with its edge glow, amended by T0b, #103).
 The Puck becomes the mark. A sticky bar leads to the Exhibits and to "Start a project". Beside the
 redesign comes a new address family. /start is a plain-HTML page that says how to get in touch and
 how the Discovery Form works. /start/discovery is the Discovery Form, opened only by an Invite the
@@ -87,6 +88,10 @@ holding on the re-skinned surface; this spec adds to it and does not restate it.
   - AC-2.1 Given the Title Screen, When it is rendered, Then it is a hero over a static CSS/SVG
     backdrop that quotes the World (navy, blue edge glow, a grid with crosses, the Puck), composed
     to match the World's play view. The backdrop needs no WebGL and no World bundle (D2).
+    Carried to #124 (amended by T0b, #103): every backdrop image on the first viewport measured a
+    slow run mode before the World preload, so T0b ships the hero with the headline reveal and the
+    static blue edge glow as a CSS gradient on the hero, no image, and #124 brings the grid, the
+    crosses and the Puck (Owner, #103 comments 6728114096 and 6728535535).
   - AC-2.2 Given script is disabled, When the root address loads, Then the headline and all of
     increment-1 AC-1.2's content are visible: the headline reveal never hides content that script
     would have to show.
@@ -151,8 +156,9 @@ holding on the re-skinned surface; this spec adds to it and does not restate it.
   - AC-6.2 Given /start/discovery#… is opened, When the requests the browser sends are listed, Then
     none of their URLs contains the Invite.
   - AC-6.3 Given an Invite that is expired or cannot be read, When the page loads, Then the
-    Discovery Form is not shown, a message says the Invite is no longer valid and names
-    hello@thomascova.dev, and any Draft is cleared (PR #82, carried item a).
+    Discovery Form is not shown and a message says the Invite is no longer valid and names
+    hello@thomascova.dev. An expired Invite clears any Draft (PR #82, carried item a); an Invite
+    that cannot be read leaves it as it is, like no Invite (AC-6.4; amended by T0b, #103).
   - AC-6.4 Given script runs and the fragment carries no Invite, When the page loads, Then the
     Discovery Form is not shown, the message of AC-6.5 is shown, and a Draft whose stored expiry has
     not passed is left as it is (AC-6.7).
@@ -359,7 +365,8 @@ Variable** and **Manrope Variable**. T0 measures the delivered Latin woff2 of ea
 chosen must stay under 100 KB. The Owner picks one on the T0 Vercel preview. Each candidate's
 licence is read from its source page before it enters the plan (CLAUDE.md, third-party code).
 
-**Motion.** Motion runs with `MotionConfig reducedMotion="user"`. Under `prefers-reduced-motion` the
+**Motion.** The headline reveal and the crossfade are CSS transitions and keyframes, switched off by
+the `prefers-reduced-motion` media query (amended by T0b, #103). Under `prefers-reduced-motion` the
 headline reveal and the Title Screen–World crossfade are instant (AC-2.4), and increment-1 US-11,
 US-18 and US-25 keep holding. No content depends on an animation finishing.
 
@@ -405,7 +412,7 @@ covers the rest once per increment (AC-15.3).
 | data | classification | where stored | retention | who may see |
 |---|---|---|---|---|
 | Invite: the Client's name, e-mail, language, expiry, HMAC-signed | personal data of the Client, given by the Owner | in the URL fragment of the link the Owner sends; sent to the function in a request header only; never in a URL the browser sends, never in a log (see Constraints for what that covers until the function ticket confirms Vercel's request log); the host's shell history is a store to avoid, so `make invite` never takes name or e-mail as arguments | until its expiry (30 days by default) | the Client, the Owner, the function while it handles a request |
-| Draft: the Client's unsent answers | personal and project data of the Client | the Client's own browser, one localStorage key, read and written by /start/discovery only | until a trigger fires: an accepted sending, the visible clear control, the page seeing an expired or unreadable Invite, the function rejecting the Invite at submit (expired or not verifying; PR #82, item a), the page opened with a different readable, unexpired Invite, or a visit to /start/discovery after the stored expiry has passed; indefinitely if the Client never returns. A failed Brief, a rejected request and a page opened without an Invite leave it as it is | the Client on that device |
+| Draft: the Client's unsent answers | personal and project data of the Client | the Client's own browser, one localStorage key, read and written by /start/discovery only | until a trigger fires: an accepted sending, the visible clear control, the page seeing an expired Invite (an unreadable one leaves it, amended by T0b, #103), the function rejecting the Invite at submit (expired or not verifying; PR #82, item a), the page opened with a different readable, unexpired Invite, or a visit to /start/discovery after the stored expiry has passed; indefinitely if the Client never returns. A failed Brief, a rejected request and a page opened without an Invite leave it as it is | the Client on that device |
 | Brief: one sending of the answers | personal and project data of the Client; confidential | the Owner's mailbox only: never this repository, never a `docs/spec/discovery-<client>.md` here, never a prompt or an agent's context (Q6, principle 8); the Client's project gets its own private repository | "while your request is open … at the latest 12 months after you sent them" (Q8); the Owner deletes it by hand | the Owner |
 | Confirmation mail | the Client's address and the fixed text; no answers | the Client's mailbox; Infomaniak's outbound mail | the Client's to keep | the Client |
 | Function log | operational status only, nothing personal | Vercel's function log | Vercel's log retention | the Owner |
@@ -425,15 +432,17 @@ Decisions below come from the sources named at the top. There are no file paths 
 **Design system (T0, #67, D1–D8)**
 
 - Tailwind CSS v4 for layout and tokens; shadcn/ui components copied into the repository, not used
-  as a runtime package of their own; Lucide React as the one icon set; Motion for the crossfade and
-  the headline reveal. Any effect taken from React Bits or Magic UI is copied in, not added as a
-  dependency (#67).
+  as a runtime package of their own; Lucide React as the one icon set; CSS transitions and keyframes
+  for the crossfade and the headline reveal (amended by T0b, #103). Any effect taken from React
+  Bits or Magic UI is copied in, not added as a dependency (#67).
 - One token set, dark only: navy base, one electric-blue accent tuned to agree with the World's ice
   highlights (D5). The site's current stylesheet is replaced, not layered under the new one (#67).
 - The pre-rendered Title Screen stays hydration-identical, and the existing build test stays the
   hydration proof (#67).
 - The hero is option (a) of D2: static CSS/SVG over the Title Screen, no live World behind it. The
-  headline reveal must leave the headline readable without script (AC-2.2).
+  headline reveal must leave the headline readable without script (AC-2.2). Its backdrop is
+  carried to #124; until then the hero is the headline with the edge glow as a CSS gradient, no
+  image (amended by T0b, #103; Owner, #103 comments 6728114096 and 6728535535).
 - The sticky bar shows on the Title Screen, /exhibits, /start and /start/discovery, with "Start a
   project" marked as the current page on the last two, and is hidden in the World (D7, extended to
   the Discovery Form in the Desktop review of 2026-11-05).
@@ -475,11 +484,12 @@ Decisions below come from the sources named at the top. There are no file paths 
   stores no Invite field beyond expiry and signature; the contact answers it holds are the
   Client's, as typed or prefilled.
 - It is cleared on an accepted sending, by the visible clear control, when the page sees an expired
-  or unreadable Invite, when the function rejects the Invite at submit (the answers stay on screen
-  until the page is left, AC-10.5), when the page is opened with a different readable, unexpired
-  Invite whose signature differs from the stored one (AC-6.6), and on any visit to
-  /start/discovery once the stored expiry has passed (AC-6.7). A failed Brief, a rejected request
-  and a page opened without an Invite leave it as it is (AC-10.2, AC-10.6, AC-6.4).
+  Invite (an unreadable Invite leaves it, like no Invite; amended by T0b, #103), when the function
+  rejects the Invite at submit (the answers stay on screen until the page is left, AC-10.5), when
+  the page is opened with a different readable, unexpired Invite whose signature differs from the
+  stored one (AC-6.6), and on any visit to /start/discovery once the stored expiry has passed
+  (AC-6.7). A failed Brief, a rejected request and a page opened without an Invite or with one
+  that cannot be read leave it as it is (AC-10.2, AC-10.6, AC-6.3, AC-6.4).
 - Where local storage is unavailable, the form runs without a Draft and says so in one line; no
   other storage is tried (AC-8.5).
 
@@ -569,8 +579,8 @@ unreadable, the 80-character name cap). These are pure modules inside the covera
 first test Client (both mails received, headers as specified). The hero crossfade and the T0 look on
 the Vercel preview, including the font choice, exactly two effects (AC-1.2), the favicon and the
 mark from the same drawing (AC-1.3) and the hero's composition against the World's play view
-(AC-2.1). The browser pass (AC-15.3, as increment-1 AC-24.2).
-The frame rate stays increment-1 AC-23.1's.
+(AC-2.1, on #124's preview; amended by T0b, #103). The browser pass (AC-15.3, as increment-1
+AC-24.2). The frame rate stays increment-1 AC-23.1's.
 
 **Coverage rule.** Every acceptance criterion above maps to at least one test in seams 1–3 or the
 Vitest form logic, or is marked Owner-measured. The plan's test strategy lists the mapping.
@@ -583,7 +593,7 @@ Vitest form logic, or is marked Owner-measured. The plan's test strategy lists t
 - increment-1 stays frozen. A sentence of it that T0 outgrows (for example the overlay's look or the
   Title Screen's composition) is amended by an `amend:` commit in the PR that outgrows it, never
   carried forward (`docs/spec/README.md`).
-- New dependencies (Tailwind v4, Motion, Lucide React, shadcn/ui's peers, the SMTP client, the font
+- New dependencies (Tailwind v4, Lucide React, shadcn/ui's peers, the SMTP client, the font
   files) are each researched in the plan at the newest version the toolchain's peer ranges accept,
   and listed in their PR with licence and reason (CLAUDE.md).
 - The function ticket writes the runbook for the mail credential and the HMAC secret: where each
@@ -593,9 +603,10 @@ Vitest form logic, or is marked Owner-measured. The plan's test strategy lists t
 - The function ticket confirms the handler form that leaves the body unread until the Invite
   verifies (Vercel's Node helpers can buffer or parse a body before the handler runs).
 - Budget: about 4 hours a week, solo.
-- The Owner provides before Phase 3, as a dependency and not an agent task: the final EN copy of the
-  seven sections (the agent drafts the diff from the mockup's text in a later ticket, not now), the
-  /start sentence and the redrawn Puck mark.
+- The Owner provides the redrawn Puck mark before T0a starts, as a dependency and not an agent task.
+  The /start sentence and the final EN copy of the seven sections are placeholders the agent drafts
+  (the copy from the mockup's text) and the Owner final-edits on T1's and T3b's PR (amended by T0b,
+  #103).
 
 ### Carried open points (Owner decisions pending, not blockers for this spec)
 
@@ -663,7 +674,7 @@ the answers are in the body above).
   the note the function ticket adds), ADR 0012 (headers), ADR 0003 (stack).
 - PR #82, items carried into this spec from its reviews and the Owner's triage:
   - (a) the Draft is cleared on an expired or invalid Invite: AC-6.3, AC-6.7, AC-10.5, the Data
-    table;
+    table (narrowed by T0b's amend, #103: an unreadable Invite leaves the Draft as it is);
   - (b) header hygiene and CR/LF stripping: AC-11.4, AC-13.5;
   - (c) ADR 0016's Supabase sentence moved to its Considered list as "a possible later direction,
     not decided": an edit in this spec's branch;

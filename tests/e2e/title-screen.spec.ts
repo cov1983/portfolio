@@ -43,6 +43,19 @@ test.describe('without script', () => {
     await expect(main.getByRole('link', { name: /plain page/ })).toBeVisible()
   })
 
+  // increment-2 AC-2.2 (plan §6 row 2.2): the headline reveal never hides what script would have to
+  // show. The reveal's keyframe only says where it starts, so the resting state is the headline at
+  // full opacity. Red: a resting opacity 0 lifted by script (the hidden-until-script pattern) stays
+  // at 0 here.
+  test('shows the headline with a box and at full opacity (increment-2 AC-2.2)', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    const headline = page.locator('.hero .headline')
+    await expect(headline).toBeVisible()
+    await expect(headline).toHaveCSS('opacity', '1')
+  })
+
   test('mounts no canvas', async ({ page }) => {
     await page.goto('/')
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()

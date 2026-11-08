@@ -183,7 +183,7 @@ export function App({ content, store }: Props) {
         content={content}
         capability={state.capability}
         loading={state.entering}
-        hidden={state.screen !== 'title'}
+        away={state.screen !== 'title'}
         onEnter={() => {
           store.dispatch({ type: 'enter' })
         }}

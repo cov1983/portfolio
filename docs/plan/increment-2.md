@@ -74,7 +74,7 @@ at build time or in the browser.
 | module | directory | owns | must not import |
 |---|---|---|---|
 | **tokens and site CSS** | `src/site/tokens.css`, `src/site/site.css` (replaced, Tailwind v4 entry) | the one dark token set; every colour literal of the HTML surfaces lives in `tokens.css` | — |
-| **site** | `src/site/` | as increment-1, re-skinned; adds `StickyBar`, `Hero` (backdrop + headline), `StartPage`, `Mark` (the Puck drawing) and the copied shadcn/ui primitives under `src/site/ui/` | three, Rapier, the World model, `src/intake/server/`, `src/discovery/` |
+| **site** | `src/site/` | as increment-1, re-skinned; adds `StickyBar`, `Hero` (headline, edge glow; the backdrop carried to #124), `StartPage`, `Mark` (the Puck drawing) and the copied shadcn/ui primitives under `src/site/ui/` | three, Rapier, the World model, `src/intake/server/`, `src/discovery/` |
 | **intake (shared, pure)** | `src/intake/` | Invite decode and the field rules, the question types, answer validation, the Brief text, `MAX_BODY_BYTES`, the result classes | React, the DOM, three; `node:*` everywhere except `src/intake/server/` |
 | **intake (server)** | `src/intake/server/` | HMAC sign and verify (`node:crypto`), the handler factory, the send module (nodemailer) | React, the DOM |
 | **discovery (page)** | `src/discovery/` | the Discovery Form components and its pure state: sections, navigation, progress, review, the Draft, the submit classifier; `main.tsx` is the `discovery` entry | three, Rapier, `src/intake/server/`, `src/app/` |
@@ -492,7 +492,7 @@ stub never verifies, as the page cannot.
 | 1.3 | build + Owner | build `favicon.test` (extended): `public/favicon.svg` and the bar's mark are emitted from the one source `src/site/mark.svg` (identical path data) · Owner: likeness (checklist) | T0a |
 | 1.4 | e2e | `privacy.spec` (extended): full visit incl. /start and the Discovery Form with a stubbed `accepted` submit: every request URL has the site's origin; exactly one font request, a `.woff2` from the origin | T6 |
 | 1.5 | e2e + model + build | the increment-1 suites run unchanged in CI; any sentence of increment-1 T0 outgrows is amended in the same PR (spec, Constraints) | T0a, T0b |
-| 2.1 | e2e + Owner | `hero.spec`: with WebGL stubbed and `**/assets/world-*.js` aborted, the backdrop element is rendered and visible on `/` · Owner: composition against the World's play view (checklist) | T0b |
+| 2.1 | e2e + Owner | carried to #124 (Owner, #103 comment 6728114096): the backdrop's tests and the Owner's composition check against the World's play view move there; T0b's `hero.spec` proves the hero's edge glow (a CSS radial gradient, no image, no mask) with WebGL stubbed and `**/assets/world-*.js` aborted | #124 |
 | 2.2 | e2e | `title-screen.spec` (extended), no script: the headline is visible (bounding box non-empty, opacity 1) and increment-1 AC-1.2's content is present | T0b |
 | 2.3 | e2e + Owner | `world-entry.spec` (extended): one Enter → the World container visible and the Title Screen `inert` and not visible after its transition ends (`transitionend` awaited), no second press; without reduced motion the Title Screen's computed `transition-property` includes `opacity` and `transform` (the control) · Owner: the fade and lift (checklist) | T0b |
 | 2.4 | e2e | `reduced-motion.spec` (extended): with `reduce`, `getAnimations()` is empty on `/` at load and immediately after Enter | T0b |
@@ -574,7 +574,7 @@ logged-out browser profile, as plan increment-1 §6 says for the Vercel Toolbar)
 Owner acceptance on the preview (<preview URL>, <browser>, <date>)
 - [ ] AC-1.2  exactly two effects: the headline reveal and the static blue edge glow; nothing else moves
 - [ ] AC-1.3  bar mark and favicon are the redrawn Puck (glossy dark disc, blue rim), same drawing
-- [ ] AC-2.1  the hero's backdrop quotes the World and matches its play view
+- [ ] AC-2.1  the hero's backdrop quotes the World and matches its play view (on #124's preview)
 - [ ] AC-2.3  Way-in: the Title Screen fades and lifts out while the World fades in, one key press
 - [ ] AC-15.3 browsers exercised: Title Screen, World, Fallback Page, /start, Discovery Form (T7: all)
 - [ ] font (T0a only): candidate picked, delivered woff2 size read from the PR body
@@ -688,7 +688,7 @@ Riskiest first; each names the ticket that retires it.
 |---|---|---|---|---|
 | T0a | `feat/design-foundation` (#67) | Tailwind v4, the token file, the font (both measured, Owner picks), copied shadcn/ui base, Lucide, `site.css` replaced; the Title Screen (tokens and font, before T0b's hero), Exhibit Panel, Fallback Page, World overlay, failure message and hints re-skinned; the mark and favicon from one drawing; ADR 0017; ADR 0012 note. Demo: every increment-1 surface in the new look | 1.1 (site), 1.3, 1.5, 4.1–4.3, 16.3 | — · Owner mark |
 | | | Owner: checklist (AC-1.3, font) | | |
-| T0b | `feat/hero-entry-bar` (#67) | **First task: the `amend:` commit of §11 B2** (three Motion sentences, the Owner-dependency sentence, the Draft rule in AC-6.3, the Data table and Implementation decisions, a pointer on PR #82 item (a), and `GLOSSARY.md`'s Draft definition). Then the hiding change (risk 1), the hero over the static backdrop, the CSS headline reveal, the CSS crossfade, the sticky bar on `/`, `/exhibits` and `/start` ("Start a project" the current page on `/start`), hidden in the World. Demo: Title Screen → World entry and back | 1.2, 1.5, 2.1–2.5, 3.1–3.4, 4.3, 15.2 | T1 |
+| T0b | `feat/hero-entry-bar` (#67) | **First task: the `amend:` commit of §11 B2** (three Motion sentences, the Owner-dependency sentence, the Draft rule in AC-6.3, the Data table and Implementation decisions, a pointer on PR #82 item (a), and `GLOSSARY.md`'s Draft definition). Then the hiding change (risk 1), the hero with the edge glow (its backdrop carried to #124, Owner, #103 comment 6728114096), the CSS headline reveal, the CSS crossfade, the sticky bar on `/`, `/exhibits` and `/start` ("Start a project" the current page on `/start`), hidden in the World. Demo: Title Screen → World entry and back | 1.2, 1.5, 2.2–2.5, 3.1–3.4, 4.3, 15.2 (2.1 to #124) | T1 |
 | | | Owner: checklist (AC-1.2, 2.1, 2.3), fps | | |
 | T1 | `feat/start-page` | `/start` pre-rendered, no script; the /start sentence in `site.yaml` as a placeholder of realistic length, final-edited by the Owner on the PR; ADR 0018 (both routes, `/start/discovery` reserved). Demo: /start without script | 1.1 (/start), 5.1–5.4, 15.2 (/start) | T0a |
 | T2 | `feat/invite-cli` | `src/intake/invite.ts`, `src/intake/server/sign.ts`, `scripts/invite.ts` + `scripts/invite/run.ts` (in the coverage include and CLAUDE.md's scope line), the ESLint `no-restricted-imports` override for the CLI's import closure, one spawn test for the syntax half (secret from `randomBytes` at run time), `make invite`, `docs/runbooks/invite.md`; ADR 0019; the CLAUDE.md and AGENTS.md lines it outdates (the command line for `make invite`, the ratchet scope line), within the 150-line cap by widening lines, not adding them (retro 2026-10-22). Demo: the Owner mints a link on the host | 14.1–14.4 | — |
@@ -706,7 +706,8 @@ points at a missing page in production; T3a waits for T0b so the form lands on t
 on T0b's sticky bar; T5 needs T3a's `content/discovery.yaml` and its schema ([#59, Owner comment of 2026-11-05](https://github.com/cov1983/portfolio/issues/59#issuecomment-6662855247), item 5).
 
 Tracker (created after `plan: approve`): T0a and T0b are `Part of #67`, T1–T7 `Part of #59`; the
-Owner closes #67 at T0b's merge and #59 at T7's, by comment, never with `Closes`.
+Owner closes #59 at T7's merge, by comment, never with `Closes`. #67 was closed on 2026-11-05; the
+hero's backdrop it asked for is carried by #124 (from T0b, #103).
 
 Every ticket: `make verify` per task, `/code-review` before `gh pr create --label ai-assisted`, a
 retro line, the checklist where it is a UI ticket, `make perf` green.

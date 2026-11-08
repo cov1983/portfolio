@@ -4,6 +4,9 @@ import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks'
 import { GOAL_BUDGET_S } from '../journey'
 import {
   caption,
+  hydrated,
+  titleScreenLayer,
+  transitionEnded,
   entered,
   exhibitPanel,
   expect,
@@ -53,10 +56,44 @@ test.describe('the caption (AC-18.3)', () => {
     expect(await captionMotion(page)).toEqual({ animation: 'none', transition: '0s' })
   })
 
-  test('fades in without the preference, so the check above can fail', async ({ page }) => {
+  // increment-2 AC-1.2 (Owner, #103 comments 6723218035 and 6723304033): the caption's fade is gone,
+  // so the caption is still without the preference too; AC-18.3 now holds by absence. Red: before
+  // T0b removed it, this read `caption-in`. The reduce rule's own control is the headline reveal
+  // below.
+  test('appears without animation without the preference too (increment-2 AC-1.2)', async ({
+    page,
+  }) => {
     await page.emulateMedia({ reducedMotion: 'no-preference' })
     await entered(page)
-    expect((await captionMotion(page)).animation).toBe('caption-in')
+    expect((await captionMotion(page)).animation).toBe('none')
+  })
+})
+
+// increment-2 AC-2.4 (plan §6 row 2.4): under reduced motion the headline reveal is instant, so
+// nothing animates when the Title Screen appears. Without the preference the reveal is there,
+// which is what makes the first two checks able to fail.
+test.describe('the Title Screen appearing (increment-2 AC-2.4)', () => {
+  const headlineAnimation = (page: Page): Promise<string> =>
+    page.locator('.hero .headline').evaluate((element) => getComputedStyle(element).animationName)
+
+  test('has no running animation at load under reduced motion', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto('/')
+    expect(await runningAnimations(page)).toEqual([])
+  })
+
+  test('shows the headline without its reveal under reduced motion', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto('/')
+    expect(await headlineAnimation(page)).toBe('none')
+  })
+
+  test('reveals the headline without the preference, so the checks above can fail', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await page.goto('/')
+    expect(await headlineAnimation(page)).toBe('headline-reveal')
   })
 })
 
@@ -71,9 +108,9 @@ test('nothing animates after the caption, Reset, the Goal and the Panel under re
   await expect(caption(page)).not.toHaveText('')
   expect(await runningAnimations(page), 'the caption').toEqual([])
 
-  // The Reset, Goal and Panel checkpoints hold by absence today: nothing but the caption's fade
-  // animates or transitions (D8, plan §6 row 25.1), so they would pass without the reduce rule as
-  // well. They guard against a future effect on these events, which must honour the preference;
+  // The Reset, Goal and Panel checkpoints hold by absence today: nothing in the World animates or
+  // transitions on these events (D8, plan §6 row 25.1; the caption's fade went in increment-2
+  // T0b), so they would pass without the reduce rule as well. They guard against a future effect on these events, which must honour the preference;
   // its own no-preference control belongs here once it exists (ai-review on #57).
   await page.getByRole('button', { name: 'Reset' }).click()
   await expect(worldContainer(page)).toBeFocused()
@@ -97,4 +134,65 @@ test('nothing animates after the caption, Reset, the Goal and the Panel under re
   await expect(worldContainer(page)).toBeVisible()
   await expect(titleScreen(page)).toBeHidden()
   expect(await runningAnimations(page), 'the Panel closing').toEqual([])
+})
+
+// increment-2 AC-2.4 (plan §6 row 2.4): under reduced motion the crossfade is instant. A read of
+// the running transitions after Enter races a 400 ms transition (Chromium read it ended in two of
+// three runs), so a late read could pass without the reduce rule: the checks read the layer's
+// computed transition durations in its away state, which do not depend on timing, then that
+// nothing runs and the layer is out of sight. Without the preference the same durations are
+// 400 ms and the fade's own `transitionend` arrives, which is what makes the checks able to fail.
+// The World is ready before the press in each, so the change starts with it.
+test.describe('entering the World (increment-2 AC-2.4)', () => {
+  async function ready(page: Page, reducedMotion: 'reduce' | 'no-preference'): Promise<void> {
+    await page.emulateMedia({ reducedMotion })
+    await hydrated(page)
+    await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
+  }
+
+  async function entered(page: Page): Promise<void> {
+    await page.keyboard.press('Enter')
+    await expect(worldContainer(page)).toBeFocused()
+  }
+
+  /** The layer's computed transition durations, one per transitioned property. */
+  function layerDurations(page: Page): Promise<string[]> {
+    return titleScreenLayer(page).evaluate((element) =>
+      getComputedStyle(element).transitionDuration.split(', '),
+    )
+  }
+
+  test('gives the Title Screen no transition time under reduced motion', async ({ page }) => {
+    await ready(page, 'reduce')
+    await entered(page)
+    for (const duration of await layerDurations(page)) expect(duration).toBe('0s')
+  })
+
+  test('runs no animation or transition right after Enter under reduced motion', async ({
+    page,
+  }) => {
+    await ready(page, 'reduce')
+    await entered(page)
+    expect(await runningAnimations(page)).toEqual([])
+  })
+
+  test('hides the Title Screen at once under reduced motion', async ({ page }) => {
+    await ready(page, 'reduce')
+    await entered(page)
+    expect(await titleScreenLayer(page).isHidden()).toBe(true)
+  })
+
+  test('gives the Title Screen its fade time without the preference', async ({ page }) => {
+    await ready(page, 'no-preference')
+    await entered(page)
+    expect(await layerDurations(page)).toContain('0.4s')
+  })
+
+  test('fades the Title Screen out without the preference', async ({ page }) => {
+    await ready(page, 'no-preference')
+    const faded = await transitionEnded(titleScreenLayer(page), 'opacity')
+    await entered(page)
+    await faded()
+    expect(await titleScreenLayer(page).isHidden()).toBe(true)
+  })
 })
