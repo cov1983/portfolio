@@ -32,7 +32,7 @@ export function StartPage({ content }: Props) {
           <section id="start-a-project">
             <h2>Start a project</h2>
             {/* Tailwind's preflight zeroes paragraph margins; the space between the two paragraphs is
-              the spacing token (--spacing), as the header's gap. */}
+              the spacing token (--spacing). */}
             <div className="space-y-4">
               <p>
                 A small question or a first idea needs nothing more than an e-mail: use the link

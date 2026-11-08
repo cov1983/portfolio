@@ -7,7 +7,7 @@ import { Mark } from './Mark'
 // anchors rather than the copied Button, which has no `asChild` (ADR 0017). The mark is the
 // unchanged Mark (`alt=""`): on /exhibits and /start an anchor wraps it and leads to the Title
 // Screen, named by visually hidden text; on `/` it is plain (Owner, #103 comment 6723215733). On
-// `/` the bar sits in the Title Screen's layer, so it leaves with it: not visible, inert and out of
+// `/` the bar sits in the Title Screen's layer, so it leaves with it: out of sight, inert and out of
 // the accessibility tree in the World (AC-3.3). A `div`, not a `header`: the pages keep their own
 // header, and two banner landmarks would be one too many; the nav is its landmark, named "Site".
 type Props = {

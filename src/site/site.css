@@ -257,7 +257,7 @@
     color: var(--color-muted-foreground);
   }
 
-  /* The Fallback Page and /start */
+  /* The Fallback Page */
   .fallback-page nav ul {
     margin: 1rem 0 0;
     padding: 0;
