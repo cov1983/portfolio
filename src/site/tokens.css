@@ -1,0 +1,26 @@
+/* The one token set (spec increment-2 AC-1.1, D3, D5; ADR 0017): dark only, a navy base and one
+   electric-blue accent. Every colour literal of the HTML surfaces lives here and nowhere else
+   (tests/build/tokens.test.ts); the one declared exception is the mark's drawing,
+   src/site/mark.svg. Tailwind's default palette is cleared, so a utility can only name a token.
+   Values are #rrggbb, or #rrggbbaa for a translucent one: tests/e2e/look.spec.ts reads them from
+   this file. A translucent colour is a token of its own, never a color-mix of a token in site.css:
+   Tailwind's optimizer would resolve the mix into a hex fallback outside this layer.
+   - background: the World's ink and canvas background, so the site agrees with the World (D5)
+   - overlay: the background at 90 %, under the World overlay's caption and legend over the ice;
+     backdrop: the background at 80 %, behind an open Exhibit Panel
+   - primary: the mark's rim, the accent; primary-foreground: the mark's disc, the ink on a filled
+     control (white on the accent is 3.4:1, below WCAG AA; navy is 5.6:1)
+   The one font family is a token too (--font-sans, D4): its @font-face is in site.css. */
+@theme static {
+  --color-*: initial;
+  --color-background: #0b1a2a;
+  --color-surface: #10233a;
+  --color-foreground: #e8eef5;
+  --color-muted-foreground: #9daec0;
+  --color-primary: #168bff;
+  --color-primary-foreground: #080f1d;
+  --color-border: #23405e;
+  --color-overlay: #0b1a2ae6;
+  --color-backdrop: #0b1a2acc;
+  --font-sans: 'Manrope Variable', ui-sans-serif, system-ui, sans-serif;
+}

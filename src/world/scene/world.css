@@ -1,5 +1,7 @@
 /* The World's container fills the viewport (src/world/World.tsx); the canvas fills the container.
-   Classes only, never a style attribute (ADR 0012). */
+   Classes only, never a style attribute (ADR 0012). Behind the canvas, the site's background token
+   (src/site/tokens.css, ADR 0017: the site agrees with the World, D5); Tailwind's `@theme static`
+   declares it on :root, and the World runs in the same document. */
 .world-container {
   position: fixed;
   inset: 0;
@@ -8,7 +10,7 @@
 .world {
   position: absolute;
   inset: 0;
-  background: #0b1a2a;
+  background: var(--color-background);
 }
 
 /* Hidden behind the Title Screen: invisible but laid out, so the canvas keeps its size and the

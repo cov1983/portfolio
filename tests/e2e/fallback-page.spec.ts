@@ -1,4 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
+import type { Page } from '@playwright/test'
 
 import { expect, test, textOf } from './fixtures'
 
@@ -129,12 +130,30 @@ test.describe('for assistive technology', () => {
     await expect(page.getByRole('navigation')).toHaveCount(1)
   })
 
-  test('gives every image alternative text', async ({ page }) => {
-    await page.goto('/exhibits')
-    const alts = await page
+  // AC-19.2 as amended (#100 comment 6706618031): every image has an alt attribute; a content
+  // image has alternative text; a decorative one an empty one. The one decorative image is the
+  // header mark, named by its fixed src (src/site/Mark.tsx); every other image counts as content,
+  // so a later picture outside the Exhibits (the Bio's, say) with an empty alt fails here.
+  const MARK_SRC = '/favicon.svg'
+  /** Every image on the page: its src and its alt attribute (null when absent). */
+  const imagesOf = (page: Page) =>
+    page
       .locator('img')
-      .evaluateAll((images) => images.map((image) => image.getAttribute('alt') ?? ''))
-    expect(alts.length).toBeGreaterThan(0)
-    expect(alts.filter((alt) => alt.trim() === '')).toEqual([])
+      .evaluateAll((images) =>
+        images.map((image) => ({ src: image.getAttribute('src'), alt: image.getAttribute('alt') })),
+      )
+
+  test('gives every image an alt attribute', async ({ page }) => {
+    await page.goto('/exhibits')
+    const images = await imagesOf(page)
+    expect(images.length).toBeGreaterThan(0)
+    expect(images.filter((image) => image.alt === null)).toEqual([])
+  })
+
+  test('gives every content image alternative text', async ({ page }) => {
+    await page.goto('/exhibits')
+    const content = (await imagesOf(page)).filter((image) => image.src !== MARK_SRC)
+    expect(content.length).toBeGreaterThan(0)
+    expect(content.filter((image) => (image.alt ?? '').trim() === '')).toEqual([])
   })
 })

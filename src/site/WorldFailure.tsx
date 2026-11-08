@@ -2,6 +2,7 @@ import type { RefObject } from 'react'
 
 import type { AttributedFailure as Failure } from '../app/types.ts'
 import { FallbackLink } from './FallbackLink'
+import { Button } from './ui/button'
 import './site.css'
 
 // The readable failure (spec AC-22.2; plan §5, corrected by #33): when the World fails after the
@@ -40,9 +41,7 @@ export function WorldFailure({ failure, mainRef, onTitleScreen }: Props) {
       <p className="reason">{SENTENCES[failure.kind]}</p>
       <FallbackLink />
       <p className="way-back">
-        <button type="button" onClick={onTitleScreen}>
-          Title Screen
-        </button>
+        <Button onClick={onTitleScreen}>Title Screen</Button>
         <span>Esc shows the Title Screen</span>
       </p>
     </main>

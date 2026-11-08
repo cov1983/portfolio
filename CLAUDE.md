@@ -63,12 +63,12 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
 - `.devcontainer/`          Dockerfile + devcontainer.json: the reference toolchain
 - `src/`                    application code: `main.tsx` (hydrates `/`), `entry-prerender.tsx`
                             (both documents as strings for `build/build.ts`), `site/` (the HTML surfaces: TitleScreen, FallbackPage, FallbackLink,
-                            Exhibit, ExhibitPanel, Picture, Contact, Meta, WorldOverlay, WorldFailure, `site.css`; no three, Rapier or World model), `world/` (`model/`: layout, Rapier
+                            Exhibit, ExhibitPanel, Picture, Contact, Meta, WorldOverlay, WorldFailure, Mark (`mark.svg`, the Puck's one drawing), `site.css` the Tailwind v4 entry, `tokens.css` the one token set and every colour literal (ADR 0017), `ui/` the shadcn/ui components copied by hand with `cn`; no three, Rapier or World model), `world/` (`model/`: layout, Rapier
                             model, pure camera; `input/`: keys by physical code; `scene/`: the R3F mirror; `World.tsx`), `perf/` (the marks),
                             `content/` (ADR 0011: schema, types, `loadContent`, variant planner, `mailto.ts`), `app/` (plan §5: store, keys, focus, caption, capability, preload, FailureBoundary; `App.tsx` the hydrated root), `intake/` (ADR 0019: the Invite's shared rules `invite.ts`; `server/` signs, Node only, `tsconfig.server.json`)
 - `build/`                  the build's I/O (plan §2, ADR 0010): `build.ts` (`make build`: client build, SSR build, both documents),
                             `prerender.ts` (pure: routes, shell fill, preview `cleanUrl`, `siteOrigin`), `content-plugin.ts` (validates
-                            `content/`, serves `virtual:content`, emits `dist/media/`, dev media; `CONTENT_DIR`), `images.ts` (sharp)
+                            `content/`, serves `virtual:content`, emits `dist/media/`, dev media; `CONTENT_DIR`), `images.ts` (sharp), `favicon.ts` (favicon.svg and .ico derived from `src/site/mark.svg`; no `public/`)
 - `content/`                the Owner's content (CODEOWNERS): `site.yaml`, `bio.md`, `exhibits/<id>/index.md` + media at original size;
                             the directory name is the Exhibit id; the build is the validator (plan §4), publishing is a commit
 - `tests/`                  `e2e/` (Playwright, spec seam 1; `fixtures.ts` fails a test on pageerror, console.error, CSP violation),

@@ -1,7 +1,9 @@
+import { X } from 'lucide-react'
 import { useId, useLayoutEffect, useRef, type KeyboardEvent, type RefObject } from 'react'
 
 import type { Exhibit as ExhibitContent } from '../content/types.ts'
 import { Exhibit } from './Exhibit'
+import { Button } from './ui/button'
 
 // The Exhibit Panel (spec: Exhibit Panel, US-16; plan §2, module site): one Exhibit in full, T4's
 // Exhibit component in a native modal dialog (Owner, #30 Q1). showModal() puts it in the top layer
@@ -67,9 +69,10 @@ export function ExhibitPanel({ exhibit, closeRef, onClose }: Props) {
       }}
     >
       <div className="panel-bar">
-        <button type="button" className="close" ref={closeRef} onClick={onClose}>
+        <Button size="sm" className="close" ref={closeRef} onClick={onClose}>
+          <X />
           Close
-        </button>
+        </Button>
       </div>
       <Exhibit exhibit={exhibit} headingId={headingId} />
     </dialog>

@@ -1,4 +1,7 @@
+import { RotateCcw } from 'lucide-react'
+
 import './site.css'
+import { Button } from './ui/button'
 
 // The World's HTML overlay (spec, Implementation decisions: exactly the current caption, the Reset
 // control and a one-line key legend; plan §2, module site: no three, Rapier or World model).
@@ -20,9 +23,10 @@ export function WorldOverlay({ caption, onReset }: Props) {
       <p role="status" className="caption">
         {caption !== null && <span key={caption.place}>{caption.text}</span>}
       </p>
-      <button type="button" className="reset" onClick={onReset}>
+      <Button variant="outline" size="sm" className="reset pointer-events-auto" onClick={onReset}>
+        <RotateCcw />
         Reset
-      </button>
+      </Button>
       <p className="key-legend">Arrows or WASD steer · R resets · Esc shows the Title Screen</p>
     </div>
   )

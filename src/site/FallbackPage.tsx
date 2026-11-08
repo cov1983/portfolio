@@ -1,6 +1,7 @@
 import type { Content } from '../content/types.ts'
 import { Contact } from './Contact'
 import { Exhibit } from './Exhibit'
+import { Mark } from './Mark'
 import './site.css'
 
 // The Fallback Page (spec: Fallback Page; ADR 0004): every Exhibit in full under its own anchor,
@@ -14,7 +15,10 @@ export function FallbackPage({ content }: Props) {
   return (
     <div className="fallback-page">
       <header>
-        <h1>{content.owner.name}</h1>
+        <div className="flex items-center gap-4">
+          <Mark />
+          <h1>{content.owner.name}</h1>
+        </div>
         <nav aria-label="On this page">
           <ul>
             <li>

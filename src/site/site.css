@@ -1,332 +1,343 @@
-/* The HTML surfaces (plan §2, module site): classes only, never a style attribute, system fonts
-   (ADR 0012). One stylesheet for the Title Screen, the Exhibit Panel and the Fallback Page. */
-:root {
-  color-scheme: light dark;
-  --ink: #1b2430;
-  --paper: #f6f4ef;
-  --accent: #0b5cad;
-  --muted: #5a6572;
-  --ice: #0b1a2a;
+/* The HTML surfaces (plan increment-2 §2, module tokens and site CSS; ADR 0017): the Tailwind v4
+   entry, replacing increment-1's stylesheet rather than layering under it (#67). Classes only,
+   never a style attribute (ADR 0012). Colours come from the token layer (tokens.css) by name,
+   `var(--color-*)` or a utility; a translucent colour is a token too (tokens.css), never a literal
+   (tests/build/tokens.test.ts). Tailwind scans src/site/ only (`source(none)` and `@source`): left
+   to itself it reads the whole repository, and src/ alone already turned words of the World's code
+   (`blur`, `static`) into utilities; a later surface directory gets its own `@source` line.
+   Layers: base rules, then the components JSX cannot carry (Markdown prose, the dialog, the World
+   overlay), so a utility on an element still wins over them. */
+@import 'tailwindcss' source(none);
+@source './';
+@import './tokens.css';
+
+/* The one font (spec increment-2 AC-16.3, D4; ADR 0017): Manrope Variable, the Latin subset of its
+   weight axis, self-hosted (font-src 'self', ADR 0012). Declared here rather than imported from
+   Fontsource, whose stylesheets declare every subset and would make the build emit five woff2;
+   face, range and display are copied from @fontsource-variable/manrope's own Latin rule. The family
+   name is the token --font-sans (tokens.css). */
+@font-face {
+  font-family: 'Manrope Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url('@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2')
+    format('woff2-variations');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --ink: #e8ecf1;
-    --paper: #0f1720;
-    --accent: #7cb7ff;
-    --muted: #9aa7b4;
+    color-scheme: dark;
+  }
+
+  /* The scrollbar's room is kept whether the page scrolls or not, so locking it behind an open
+     Exhibit Panel does not shift the Title Screen sideways (Owner, #30 Q3). */
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    font-size: 1.0625rem;
+    line-height: 1.55;
+    color: var(--color-foreground);
+    background: var(--color-background);
+  }
+
+  a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  a:focus-visible,
+  button:focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  h1 {
+    margin: 0 0 0.25rem;
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    margin: 2.5rem 0 0.75rem;
+    font-size: 1.5rem;
+    font-weight: 650;
+    line-height: 1.25;
+  }
+
+  h3 {
+    margin: 2rem 0 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 650;
   }
 }
 
-/* The scrollbar's room is kept whether the page scrolls or not, so locking it behind an open
-   Exhibit Panel does not shift the Title Screen sideways (Owner, #30 Q3). */
-html {
-  scrollbar-gutter: stable;
-}
+@layer components {
+  .title-screen,
+  .fallback-page,
+  .world-failure {
+    max-width: 44rem;
+    margin: 0 auto;
+    padding: 3rem 1.25rem 4rem;
+  }
 
-body {
-  margin: 0;
-  font:
-    1.0625rem/1.55 system-ui,
-    sans-serif;
-  color: var(--ink);
-  background: var(--paper);
-}
+  .one-line {
+    margin: 0.5rem 0 0;
+    font-size: 1.25rem;
+    color: var(--color-muted-foreground);
+  }
 
-a {
-  color: var(--accent);
-}
+  .contact {
+    margin: 1rem 0 0;
+  }
 
-.title-screen,
-.fallback-page,
-.world-failure {
-  max-width: 44rem;
-  margin: 0 auto;
-  padding: 3rem 1.25rem 4rem;
-}
+  .exhibits ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
 
-h1 {
-  margin: 0 0 0.25rem;
-  font-size: 2.25rem;
-  line-height: 1.15;
-}
+  .exhibits li {
+    margin: 0 0 1rem;
+  }
 
-h2 {
-  margin: 2.5rem 0 0.75rem;
-  font-size: 1.5rem;
-}
+  .exhibits .hook {
+    display: block;
+    color: var(--color-muted-foreground);
+  }
 
-.one-line {
-  margin: 0;
-  font-size: 1.25rem;
-  color: var(--muted);
-}
+  .fallback {
+    margin: 2.5rem 0 0;
+  }
 
-.contact {
-  margin: 1rem 0 0;
-}
+  /* A capability hint (TitleScreen, AC-21.1, 22.1): at the top, after hydration only, with the
+     Fallback link right under it. */
+  .hint {
+    margin: 0 0 0.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--color-surface);
+    border-left: 4px solid var(--color-primary);
+    border-radius: 0 0.5rem 0.5rem 0;
+  }
 
-.way-in,
-.world-failure button {
-  display: inline-block;
-  margin: 2rem 0 0;
-  padding: 0.75rem 1.5rem;
-  font: inherit;
-  font-weight: 600;
-  color: #ffffff;
-  background: var(--ice);
-  border: 0;
-  border-radius: 0.375rem;
-  cursor: pointer;
-}
+  .hint + .fallback {
+    margin: 0 0 2rem;
+  }
 
-.way-in:focus-visible,
-.world-failure button:focus-visible,
-.exhibit-panel .close:focus-visible,
-a:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
-}
+  /* The readable failure (src/site/WorldFailure.tsx): the Title Screen's layout, the reason as
+     large as the one line, the way back next to the Esc line. The main takes focus on arrival and
+     is not a control. */
+  .world-failure:focus {
+    outline: none;
+  }
 
-.exhibits ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
+  .world-failure .reason {
+    font-size: 1.25rem;
+  }
 
-.exhibits li {
-  margin: 0 0 1rem;
-}
+  .world-failure .way-back {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin: 1.5rem 0 0;
+    color: var(--color-muted-foreground);
+  }
 
-.exhibits .hook {
-  display: block;
-  color: var(--muted);
-}
+  /* The Fallback Page */
+  .fallback-page nav ul {
+    margin: 1rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
 
-.fallback {
-  margin: 2.5rem 0 0;
-}
+  .fallback-page nav li {
+    display: inline;
+    margin-right: 1rem;
+  }
 
-/* A capability hint (TitleScreen, AC-21.1, 22.1): at the top, after hydration only, with the
-   Fallback link right under it. */
-.hint {
-  margin: 0 0 0.5rem;
-  padding: 0.75rem 1rem;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-  border-left: 4px solid var(--accent);
-}
+  .exhibit {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-border);
+  }
 
-.hint + .fallback {
-  margin: 0 0 2rem;
-}
+  .exhibit .hook {
+    margin: 0 0 1rem;
+    font-size: 1.125rem;
+    color: var(--color-muted-foreground);
+  }
 
-/* The readable failure (src/site/WorldFailure.tsx): the Title Screen's layout, the reason as
-   large as the one line, the way back next to the Esc line. The main takes focus on arrival and
-   is not a control. */
-.world-failure:focus {
-  outline: none;
-}
+  /* Markdown rendered by the build (ADR 0011): paragraphs and lists keep a reading rhythm, which
+     the preflight resets. */
+  .prose p,
+  .prose ul,
+  .prose ol {
+    margin: 0 0 1rem;
+  }
 
-.world-failure .reason {
-  font-size: 1.25rem;
-}
+  .prose ul {
+    padding-left: 1.25rem;
+    list-style: disc;
+  }
 
-.world-failure .way-back {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  margin: 1.5rem 0 0;
-  color: var(--muted);
-}
+  .prose ol {
+    padding-left: 1.25rem;
+    list-style: decimal;
+  }
 
-.world-failure .way-back button {
-  margin: 0;
-}
+  .facts {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1rem;
+    margin: 1.5rem 0;
+  }
 
-/* The Fallback Page */
-.fallback-page nav ul {
-  margin: 1rem 0 0;
-  padding: 0;
-  list-style: none;
-}
+  .facts dt {
+    font-weight: 600;
+    color: var(--color-muted-foreground);
+  }
 
-.fallback-page nav li {
-  display: inline;
-  margin-right: 1rem;
-}
+  .facts dd,
+  .facts ul {
+    margin: 0;
+    padding: 0;
+  }
 
-.exhibit {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--muted);
-}
+  .facts li {
+    display: inline;
+  }
 
-.exhibit .hook {
-  margin: 0 0 1rem;
-  font-size: 1.125rem;
-  color: var(--muted);
-}
+  .facts li + li::before {
+    content: ' · ';
+  }
 
-.facts {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0.25rem 1rem;
-  margin: 1.5rem 0;
-}
+  .exhibit picture,
+  .exhibit img,
+  .exhibit video {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 1.5rem 0;
+    border-radius: 0.5rem;
+  }
 
-.facts dt {
-  font-weight: 600;
-}
+  #contact .contact {
+    margin: 0;
+  }
 
-.facts dd,
-.facts ul {
-  margin: 0;
-  padding: 0;
-}
+  /* The Exhibit Panel (src/site/ExhibitPanel.tsx): a modal dialog in the top layer, a readable
+     page from 320 px up (AC-16.2). It scrolls inside, the page behind is locked while it is open
+     (Owner, #30 Q3) and a scroll that reaches its end does not chain to the page. */
+  html:has(dialog.exhibit-panel[open]) {
+    overflow: hidden;
+  }
 
-.facts li {
-  display: inline;
-}
+  .exhibit-panel {
+    box-sizing: border-box;
+    width: min(46rem, 100% - 1rem);
+    max-width: none;
+    max-height: calc(100% - 1rem);
+    margin: auto;
+    padding: 0 1.25rem 2rem;
+    overflow: auto;
+    overscroll-behavior: contain;
+    overflow-wrap: anywhere;
+    color: var(--color-foreground);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+  }
 
-.facts li + li::before {
-  content: ' · ';
-}
+  .exhibit-panel::backdrop {
+    background: var(--color-backdrop);
+  }
 
-.exhibit picture,
-.exhibit img,
-.exhibit video {
-  display: block;
-  max-width: 100%;
-  height: auto;
-  margin: 1.5rem 0;
-}
+  /* The close control stays in reach at the top while the Panel scrolls (Owner, #30 Q2), on a bar
+     of the Panel's own surface, so the text scrolls under it rather than around it. */
+  .exhibit-panel .panel-bar {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    justify-content: flex-end;
+    margin: 0 -1.25rem;
+    padding: 0.5rem 0.5rem 0.25rem;
+    background: var(--color-surface);
+  }
 
-h3 {
-  margin: 2rem 0 0.5rem;
-  font-size: 1.25rem;
-}
+  .exhibit-panel .exhibit {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
 
-#contact .contact {
-  margin: 0;
-}
+  .exhibit-panel h2 {
+    margin-top: 0.5rem;
+  }
 
-/* The Exhibit Panel (src/site/ExhibitPanel.tsx): a modal dialog in the top layer, a readable page
-   from 320 px up (AC-16.2). It scrolls inside, the page behind is locked while it is open
-   (Owner, #30 Q3) and a scroll that reaches its end does not chain to the page. */
-html:has(dialog.exhibit-panel[open]) {
-  overflow: hidden;
-}
+  /* The World's HTML overlay (src/site/WorldOverlay.tsx): over the canvas at the bottom, only the
+     control takes pointer events (its own utility), the legend is one line of text. The controls
+     are the copied Button (src/site/ui/button.tsx), styled there. The scene behind is light ice,
+     so each piece sits on its own navy chip. */
+  .world-overlay {
+    position: absolute;
+    right: 1rem;
+    bottom: 1rem;
+    left: 1rem;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+    pointer-events: none;
+  }
 
-.exhibit-panel {
-  box-sizing: border-box;
-  width: min(46rem, 100% - 1rem);
-  max-width: none;
-  max-height: calc(100% - 1rem);
-  padding: 0 1.25rem 2rem;
-  overflow: auto;
-  overscroll-behavior: contain;
-  overflow-wrap: anywhere;
-  color: var(--ink);
-  background: var(--paper);
-  border: 1px solid var(--muted);
-  border-radius: 0.5rem;
-}
+  /* Two-tone focus over the World (Owner, #100 comment 6714592319; ai-review round 1 on #121,
+     finding 5): the accent outline alone may be faint against the light ice, so a ring of the
+     background token frames it on both sides. The base rule's outline is 3px wide at a 2px offset
+     (2px to 5px out); the 7px ring under it shows navy from 0 to 2px and from 5px to 7px. */
+  .world-overlay :is(a, button):focus-visible {
+    box-shadow: 0 0 0 7px var(--color-background);
+  }
 
-.exhibit-panel::backdrop {
-  background: rgb(11 26 42 / 70%);
-}
+  .key-legend {
+    margin: 0;
+    padding: 0.375rem 0.75rem;
+    color: var(--color-foreground);
+    text-align: right;
+    background: var(--color-overlay);
+    border-radius: 0.5rem;
+  }
 
-/* The close control stays in reach at the top while the Panel scrolls (Owner, #30 Q2), on a bar
-   of the Panel's own paper, so the text scrolls under it rather than around it. */
-.exhibit-panel .panel-bar {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  display: flex;
-  justify-content: flex-end;
-  margin: 0 -1.25rem;
-  padding: 0.5rem 0.5rem 0.25rem;
-  background: var(--paper);
-}
+  /* The Announcer caption (WorldOverlay): one line at the top centre of the World, readable on
+     any frame of the scene behind it; it fades in, except under reduced motion (rule below). */
+  .world-overlay .caption {
+    position: fixed;
+    top: 1.5rem;
+    right: 1rem;
+    left: 1rem;
+    margin: 0;
+    text-align: center;
+  }
 
-.exhibit-panel .close {
-  padding: 0.5rem 1rem;
-  font: inherit;
-  font-weight: 600;
-  color: #ffffff;
-  background: var(--ice);
-  border: 0;
-  border-radius: 0.375rem;
-  cursor: pointer;
-}
-
-.exhibit-panel .exhibit {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: 0;
-}
-
-.exhibit-panel h2 {
-  margin-top: 0.5rem;
-}
-
-/* The World's HTML overlay (src/site/WorldOverlay.tsx): over the canvas at the bottom, only the
-   control takes pointer events, the legend is one line of text. */
-.world-overlay {
-  position: absolute;
-  right: 1rem;
-  bottom: 1rem;
-  left: 1rem;
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  justify-content: space-between;
-  pointer-events: none;
-}
-
-.world-overlay .reset {
-  padding: 0.5rem 1rem;
-  font: inherit;
-  font-weight: 600;
-  color: #ffffff;
-  background: rgb(255 255 255 / 15%);
-  border: 1px solid rgb(255 255 255 / 60%);
-  border-radius: 0.375rem;
-  cursor: pointer;
-  pointer-events: auto;
-}
-
-.world-overlay .reset:focus-visible {
-  outline: 3px solid #7cb7ff;
-  outline-offset: 2px;
-}
-
-.key-legend {
-  margin: 0;
-  color: #ffffff;
-  text-align: right;
-}
-
-/* The Announcer caption (WorldOverlay): one line at the top centre of the World, readable on any
-   frame of the scene behind it; it fades in, except under reduced motion (rule below). */
-.world-overlay .caption {
-  position: fixed;
-  top: 1.5rem;
-  right: 1rem;
-  left: 1rem;
-  margin: 0;
-  text-align: center;
-}
-
-.world-overlay .caption > span {
-  display: inline-block;
-  max-width: 40rem;
-  padding: 0.5rem 1rem;
-  font-weight: 600;
-  color: #ffffff;
-  background: rgb(11 26 42 / 85%);
-  border-radius: 0.375rem;
-  animation: caption-in 200ms ease-out;
+  .world-overlay .caption > span {
+    display: inline-block;
+    max-width: 40rem;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+    background: var(--color-overlay);
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    animation: caption-in 200ms ease-out;
+  }
 }
 
 @keyframes caption-in {
@@ -337,7 +348,7 @@ html:has(dialog.exhibit-panel[open]) {
 
 /* Reduced motion (spec, US-18 and US-25): no animation and no transition anywhere on the site,
    the caption, the Panel and the overlay included; the Follow Camera's easing is the scene's
-   (src/world/World.tsx reads the same preference). */
+   (src/world/World.tsx reads the same preference). Unlayered, so no layer can outrank it. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

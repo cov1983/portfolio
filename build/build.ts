@@ -2,7 +2,7 @@
 // Vite's client build into the output directory, then an SSR build of src/entry-prerender.tsx,
 // then both documents of build/prerender.ts written under the output directory: the Title Screen
 // into the client build's index.html, the Fallback Page into a script-free shell that links the
-// same stylesheets. I/O glue, outside the coverage ratchet (plan §6); the pure
+// same stylesheets; and the favicon pair derived from the mark (build/favicon.ts, AC-1.3). I/O glue, outside the coverage ratchet (plan §6); the pure
 // parts live in build/prerender.ts. Runs under plain Node 24 (type stripping), so relative imports
 // carry the .ts extension. Flags mirror `vite build`: --outDir <dir> and --emptyOutDir.
 //
@@ -17,6 +17,7 @@ import { parseArgs } from 'node:util'
 
 import { build, resolveConfig } from 'vite'
 
+import { MARK_SOURCE, faviconFiles, renderPng } from './favicon.ts'
 import { ROUTES, fallbackShell, fillShell, siteOrigin, type Fragments } from './prerender.ts'
 
 const PRERENDER_ENTRY = 'src/entry-prerender.tsx'
@@ -90,6 +91,12 @@ async function main(): Promise<void> {
 
   const client = await build({ build: { outDir, ...emptyOutDir } })
   const stylesheets = entryStylesheets(client)
+
+  // The mark's one drawing becomes /favicon.svg and /favicon.ico (AC-1.3; there is no public/).
+  for (const file of await faviconFiles(await readFile(MARK_SOURCE), renderPng)) {
+    await writeFile(join(outDir, file.fileName), file.source)
+    console.log(`derived ${file.fileName} from ${MARK_SOURCE}`)
+  }
 
   const { cacheDir } = await resolveConfig({ logLevel: 'warn' }, 'build')
   const ssr = await buildPrerenderModule(cacheDir)
