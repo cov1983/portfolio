@@ -2,7 +2,7 @@
 // pose trailing the Puck with easing, no easing under reduced motion, a snap on Reset. One shared
 // rate eases position and target alike, so position minus target is always the rig offset and
 // the view never yaws (Owner decision on #24, Q4). No three: the scene applies the pose.
-import type { Vec2, Vec3 } from './layout'
+import type { Vec2, Vec3 } from './layout.ts'
 
 export type { Vec3 }
 export type CameraPose = { position: Vec3; target: Vec3 }

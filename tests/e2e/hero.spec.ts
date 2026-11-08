@@ -1,10 +1,13 @@
 import { expect, hydrated, test, withoutContexts, WORLD_CHUNK } from './fixtures'
 
-// Seam 1, the hero's backdrop (spec increment-2 AC-2.1, D2; plan §6 row 2.1): static CSS/SVG that
-// needs no WebGL and no World bundle. WebGL is taken away before any page script runs and the
-// world chunk is aborted, so neither can draw it: what shows is the site's own markup and CSS.
-// Presence and visibility only; the composition against the World's play view is the Owner's
-// check on the preview.
+const BACKDROP = '/hero-backdrop.svg'
+
+// Seam 1, the hero's backdrop (spec increment-2 AC-2.1, D2; plan §6 row 2.1): a static image that
+// needs no WebGL and no World bundle, the SVG the build derives (build/backdrop.ts; Owner, #103
+// comment 6726409397) under the unchanged Mark. WebGL is taken away before any page script runs
+// and the world chunk is aborted, so neither can draw it: what shows is the site's own markup, CSS
+// and that file. Presence, wiring and that the file decodes as an image of its view; the
+// composition against the World's play view is the Owner's check on the preview.
 test.describe('without WebGL and without the World bundle', () => {
   test.beforeEach(async ({ page }) => {
     await withoutContexts(page, ['webgl', 'webgl2'])
@@ -16,15 +19,39 @@ test.describe('without WebGL and without the World bundle', () => {
     await expect(page.locator('.hero-backdrop')).toBeVisible()
   })
 
-  test('the backdrop holds the grid with crosses, the Puck and the edge glow (AC-2.1)', async ({
-    page,
-  }) => {
+  // Red: a build without the backdrop step serves no /hero-backdrop.svg (404).
+  test('the backdrop requests its image from the build, an SVG (AC-2.1)', async ({ page }) => {
+    const response = page.waitForResponse((r) => new URL(r.url()).pathname === BACKDROP)
     await hydrated(page)
-    const backdrop = page.locator('.hero-backdrop')
-    await expect(backdrop.locator('.hero-grid .grid-cross')).toHaveCount(1)
-    await expect(backdrop.locator('.hero-grid')).toBeVisible()
-    await expect(backdrop.locator('.hero-puck img')).toBeVisible()
-    await expect(backdrop.locator('.edge-glow')).toBeVisible()
+    const served = await response
+    expect(served.status()).toBe(200)
+    expect(served.headers()['content-type']).toContain('image/svg+xml')
+  })
+
+  test('the backdrop shows that image as its background (AC-2.1)', async ({ page }) => {
+    await hydrated(page)
+    const image = await page
+      .locator('.hero-backdrop')
+      .evaluate((element) => getComputedStyle(element).backgroundImage)
+    expect(image).toContain(BACKDROP)
+  })
+
+  // The browser decodes the file as an image of the 1600 × 900 view: grid, crosses, edge glow
+  // and foot fade are in it (their colours: tests/build/tokens.test.ts).
+  test('the backdrop image renders in the browser (AC-2.1)', async ({ page }) => {
+    await hydrated(page)
+    const size = await page.evaluate(async (src) => {
+      const image = new Image()
+      image.src = src
+      await image.decode()
+      return [image.naturalWidth, image.naturalHeight]
+    }, BACKDROP)
+    expect(size).toEqual([1600, 900])
+  })
+
+  test('the Puck stands over the backdrop (AC-2.1)', async ({ page }) => {
+    await hydrated(page)
+    await expect(page.locator('.hero-backdrop .hero-puck img')).toBeVisible()
   })
 
   test('nothing of the World is requested for it (AC-2.1)', async ({ page }) => {

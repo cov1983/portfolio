@@ -18,7 +18,9 @@ import { removeBuild, runProductionBuild, type BuildResult } from './production-
 // (tokens.css) holds one, with the one declared exception: the mark's drawing src/site/mark.svg,
 // whose colours are literal because the favicon derived from it is a standalone file that cannot
 // read custom properties, and are tied to the tokens they draw by the cases below. There is no
-// light theme: no `prefers-color-scheme` anywhere (D3, D5). The World chunk's own stylesheet
+// light theme: no `prefers-color-scheme` anywhere (D3, D5). The hero's backdrop, which the build
+// derives (build/backdrop.ts; Owner, #103 comment 6726409397), is a standalone file too: the
+// emitted dist/hero-backdrop.svg holds the token values it was built from and no other colour. The World chunk's own stylesheet
 // (src/world/scene/world.css) is outside "HTML surface" and not linked by the documents; its canvas
 // background reads var(--color-background), proven in the browser by tests/e2e/look.spec.ts.
 const SITE_DIR = fileURLToPath(new URL('../../src/site/', import.meta.url))
@@ -79,6 +81,39 @@ describe('the built site', () => {
       colourLiterals(css).map((literal) => `${path}: ${literal}`),
     )
     expect(found).toEqual([])
+  })
+
+  // The derived backdrop draws each of its four colours from the token layer by role, so a tuned
+  // token is followed by the next build, and a colour written into build/backdrop.ts fails here.
+  describe('hero-backdrop.svg', () => {
+    let svg: string
+    beforeAll(async () => {
+      svg = await readFile(join(build.outDir, 'hero-backdrop.svg'), 'utf8')
+    })
+
+    it('uses no colour but the background, border, primary and glow tokens', async () => {
+      const tokens = new Set(
+        await Promise.all(['background', 'border', 'primary', 'glow'].map(tokenValue)),
+      )
+      const literals = hexAndFunctionLiterals(svg).map((literal) => literal.toLowerCase())
+      expect(new Set(literals)).toEqual(tokens)
+    })
+
+    it('draws the grid in the border token and the crosses in the primary token', async () => {
+      expect(hexAttributes(svg, 'stroke')).toEqual([
+        await tokenValue('border'),
+        await tokenValue('primary'),
+      ])
+    })
+
+    it('draws the edge glow in the glow token and fades its foot by the background token', async () => {
+      expect(hexAttributes(svg, 'stop-color')).toEqual([
+        await tokenValue('glow'),
+        await tokenValue('glow'),
+        await tokenValue('background'),
+        await tokenValue('background'),
+      ])
+    })
   })
 
   it('has no prefers-color-scheme query in the linked stylesheets', () => {

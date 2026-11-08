@@ -187,7 +187,10 @@
   }
 
   /* The hero (src/site/Hero.tsx; spec increment-2 AC-2.1, D2, D6). The backdrop covers the first
-     viewport of the layer, behind the content, and fades into the page's background at its foot. */
+     viewport of the layer, behind the content: one image the build derives from the token layer
+     and the Follow Camera's rig (build/backdrop.ts; Owner, #103 comment 6726409397), the grid
+     already tilted, the crosses, the static edge glow and the foot fade into the page's background
+     drawn in. Its centre stays at the centre at every aspect ratio, under the Puck. */
   .hero-backdrop {
     position: absolute;
     top: 0;
@@ -196,37 +199,7 @@
     z-index: -1;
     height: 100svh;
     overflow: hidden;
-    perspective: 107svh;
-    mask-image: linear-gradient(to bottom, var(--color-background) 70%, transparent);
-  }
-
-  /* The grid lies like the ice under the Follow Camera. The camera sits 9 m up and 13 m behind the
-     Puck, looking at the ice under it, with a 50° vertical field of view: copied from RIG in
-     src/world/model/camera.ts, never imported, so no World code reaches `/`'s chunks. Its pitch
-     is atan(9 / 13) = 34.7° below the horizon, so the ice plane turns 90° - 34.7° = 55.3° away from
-     the screen; the perspective above is the camera's distance for that field of view,
-     (viewport height / 2) / tan(25°) = 1.07 viewport heights. The plane is larger than the
-     viewport, so its tilted edge stays out of sight. */
-  .hero-grid {
-    position: absolute;
-    top: -50%;
-    left: -100%;
-    width: 300%;
-    height: 200%;
-    transform: rotateX(55.3deg);
-  }
-
-  .hero-grid .grid-line {
-    fill: none;
-    stroke: var(--color-border);
-    stroke-width: 1;
-  }
-
-  .hero-grid .grid-cross {
-    fill: none;
-    stroke: var(--color-primary);
-    stroke-opacity: 0.6;
-    stroke-width: 1.5;
+    background: url('/hero-backdrop.svg') center / cover no-repeat;
   }
 
   /* The Puck where the camera looks: the centre of the view. The wrapper sizes the Mark's drawing,
@@ -236,13 +209,6 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%) scale(2);
-  }
-
-  /* The static blue edge glow (D6): a gradient, never animated (AC-1.2). */
-  .edge-glow {
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse at center, transparent 55%, var(--color-glow));
   }
 
   /* The headline reveal (D6, AC-2.2): the resting state is the visible headline; the keyframe only
