@@ -24,7 +24,8 @@ pre-rendered Title Screen, no third-party requests, reduced motion and the perfo
 
 One redesign of the whole site, so that it never looks like two sites (Q3). It is built on one
 token set with a dark navy base, one electric-blue accent and exactly two effects. The Title Screen
-becomes a hero over a static backdrop that quotes the World and crossfades into the World on entry.
+becomes a hero over a static backdrop that quotes the World and crossfades into the World on entry
+(the backdrop carried to #124; T0b ships the hero with its edge glow, amended by T0b, #103).
 The Puck becomes the mark. A sticky bar leads to the Exhibits and to "Start a project". Beside the
 redesign comes a new address family. /start is a plain-HTML page that says how to get in touch and
 how the Discovery Form works. /start/discovery is the Discovery Form, opened only by an Invite the
@@ -439,7 +440,9 @@ Decisions below come from the sources named at the top. There are no file paths 
 - The pre-rendered Title Screen stays hydration-identical, and the existing build test stays the
   hydration proof (#67).
 - The hero is option (a) of D2: static CSS/SVG over the Title Screen, no live World behind it. The
-  headline reveal must leave the headline readable without script (AC-2.2).
+  headline reveal must leave the headline readable without script (AC-2.2). Its backdrop is
+  carried to #124; until then the hero is the headline with the edge glow as a CSS gradient, no
+  image (amended by T0b, #103; Owner, #103 comments 6728114096 and 6728535535).
 - The sticky bar shows on the Title Screen, /exhibits, /start and /start/discovery, with "Start a
   project" marked as the current page on the last two, and is hidden in the World (D7, extended to
   the Discovery Form in the Desktop review of 2026-11-05).
