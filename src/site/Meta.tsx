@@ -15,7 +15,7 @@ type Props = {
   content: Content
   title: string
   description: string
-  previewTitle?: string
+  previewTitle?: string | undefined
   path: string
   origin: string
 }

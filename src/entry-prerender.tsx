@@ -23,7 +23,7 @@ export function prerender(route: string, origin: string): Prerendered {
       content={content}
       title={title}
       description={description}
-      {...(previewTitle === undefined ? {} : { previewTitle })}
+      previewTitle={previewTitle}
       path={route}
       origin={origin}
     />

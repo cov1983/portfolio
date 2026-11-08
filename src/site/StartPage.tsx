@@ -6,8 +6,8 @@ import './site.css'
 // /start (spec increment-2: /start, US-5; ADR 0018): how to get in touch and how the Discovery Form
 // opens, pre-rendered at build into dist/start/index.html and shipped without script (AC-5.1,
 // 5.2). In AC-5.1's order: the Owner's one sentence (content/site.yaml), the Contact, and the
-// "Start a project" section. The sentence is the Owner's content; the section's copy lives here,
-// drafted by the agent for the Owner's edit on the PR. The Contact is the one e-mail link on the
+// "Start a project" section. The sentence is the Owner's content; the section's copy lives here
+// and is the Owner's text (#102 comment 6721053726). The Contact is the one e-mail link on the
 // page, so the section points to it instead of repeating the address (AC-20.1). Landmarks as the
 // Fallback Page: one h1, an h2 per section, a `nav` back, one `main` (AC-15.2). The nav is the way
 // out until T0b's sticky bar arrives on this page.
