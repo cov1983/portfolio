@@ -18,4 +18,4 @@ Specs: `increment-1.md` (written 2026-10-08 from issue #3; approved 2026-10-08, 
 frozen since; amended by 69bfe15, a8e8c3c (#55) and 8b687be (#63); shipped as increment-1 by T10 (#35),
 measured on production 1bf12bd); `increment-2.md` (written 2026-11-05 from issues #59 and #67;
 approved 2026-11-05, commit ad7db39, and frozen since; amended by T0b, #103: CSS motion, the Owner's
-copy as placeholders, an unreadable Invite leaves the Draft).
+copy as placeholders, an unreadable Invite leaves the Draft, AC-2.1 carried to #124).

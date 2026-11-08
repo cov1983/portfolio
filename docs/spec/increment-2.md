@@ -87,6 +87,10 @@ holding on the re-skinned surface; this spec adds to it and does not restate it.
   - AC-2.1 Given the Title Screen, When it is rendered, Then it is a hero over a static CSS/SVG
     backdrop that quotes the World (navy, blue edge glow, a grid with crosses, the Puck), composed
     to match the World's play view. The backdrop needs no WebGL and no World bundle (D2).
+    Carried to #124 (amended by T0b, #103): every backdrop image on the first viewport measured a
+    slow run mode before the World preload, so T0b ships the hero with the headline reveal and the
+    static blue edge glow as a CSS gradient on the hero, no image, and #124 brings the grid, the
+    crosses and the Puck (Owner, #103 comments 6728114096 and 6728535535).
   - AC-2.2 Given script is disabled, When the root address loads, Then the headline and all of
     increment-1 AC-1.2's content are visible: the headline reveal never hides content that script
     would have to show.
@@ -572,8 +576,8 @@ unreadable, the 80-character name cap). These are pure modules inside the covera
 first test Client (both mails received, headers as specified). The hero crossfade and the T0 look on
 the Vercel preview, including the font choice, exactly two effects (AC-1.2), the favicon and the
 mark from the same drawing (AC-1.3) and the hero's composition against the World's play view
-(AC-2.1). The browser pass (AC-15.3, as increment-1 AC-24.2).
-The frame rate stays increment-1 AC-23.1's.
+(AC-2.1, on #124's preview; amended by T0b, #103). The browser pass (AC-15.3, as increment-1
+AC-24.2). The frame rate stays increment-1 AC-23.1's.
 
 **Coverage rule.** Every acceptance criterion above maps to at least one test in seams 1–3 or the
 Vitest form logic, or is marked Owner-measured. The plan's test strategy lists the mapping.
