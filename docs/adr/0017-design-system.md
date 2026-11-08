@@ -134,8 +134,10 @@ by T0b's first commit; this ADR cites the plan decision, not that amend.
   an `@source` line; a word in a `src/site/` comment can generate a utility.
 - Radix primitives stay out of the root's chunks unless a surface there needs one (T3b brings
   `radix-ui` for the form's controls).
-- The caption's fade-in (`caption-in`) is still on the site; whether it counts against AC-1.2's
-  "exactly two effects" is T0b's to settle.
+- The caption's fade-in (`caption-in`) is still on the site, and so are the copied Button's hover
+  states (the filled variant's `hover:brightness-110` filter, the outline variant's
+  `hover:bg-background`); whether either counts against AC-1.2's "exactly two effects" is T0b's to
+  settle (ai-review round 1 on #121, finding 6).
 - The mark moves into T0b's sticky bar (#103) unchanged: same component, same file.
 - The download until playable, read by `make perf` at each step of T0a: 1,990,241 B with Tailwind
   and the tokens (a96c9ed), 2,002,099 B with the Button, cva, tailwind-merge and two icons
