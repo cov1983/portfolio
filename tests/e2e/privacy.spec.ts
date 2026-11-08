@@ -21,13 +21,14 @@ import {
 
 // US-20 (spec: Fallback Page): the Contact on both pre-rendered documents, the e-mail address
 // obfuscated against scraping, the GitHub profile in a new tab, the Bio on the Fallback Page only.
-const PAGES = ['/', '/exhibits']
+// /start carries the same Contact (spec increment-2 AC-5.1), so AC-20.1 and 20.2 hold there too.
+const PAGES = ['/', '/exhibits', '/start']
 
 function decodeDecimalReferences(text: string): string {
   return text.replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
 }
 
-test('neither document’s source contains a plain mailto: (AC-20.1)', async ({ request }) => {
+test('no document’s source contains a plain mailto: (AC-20.1)', async ({ request }) => {
   for (const path of PAGES) {
     const html = await (await request.get(path)).text()
     expect(html, path).not.toContain('mailto:')
@@ -412,6 +413,26 @@ test.describe('a full visit (US-28)', () => {
       visit.responses.filter((r) => isAudio(r.contentType)).map((r) => r.url),
       'audio responses',
     ).toEqual([])
+  })
+
+  // spec increment-2 AC-5.4 (plan §6 row 5.4): a visit to /start leaves every store empty, read in
+  // the page and from outside it. Its red is the next case: the same inspection, on /start, which
+  // ships no script and none of the root's instruments, sees a value the test writes.
+  test('a visit to /start stores nothing (AC-5.4)', async ({ page, context }) => {
+    await page.goto('/start')
+    expect(stores(await observed(page)), 'the stores on /start').toEqual(EMPTY_STORES)
+    expect(await context.cookies(), 'cookies the browser holds').toEqual([])
+    expect((await context.storageState()).origins, 'origins with storage').toEqual([])
+  })
+
+  test('the inspection sees a value the test writes to localStorage on /start, so the empty report above means something', async ({
+    page,
+  }) => {
+    await page.goto('/start')
+    await page.evaluate(() => {
+      localStorage.setItem('privacy-spec', 'written by the test')
+    })
+    expect(stores(await observed(page)).local).toBe(1)
   })
 
   test('the counter counts: an AudioContext, an OfflineAudioContext and an Audio constructed from the page read as 3', async ({

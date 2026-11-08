@@ -18,7 +18,7 @@ Index
 - [0007 — Renovate merges grouped patch updates that passed every gate](0007-renovate-automerge.md)
 - [0008 — Retro fold 1: where the Phase 0–1 lessons went](0008-retro-fold-1.md)
 - [0009 — The World model owns Rapier and runs outside React; React Three Fiber mirrors it](0009-world-model-owns-rapier.md)
-- [0010 — Pre-rendering: a Vite SSR build of two routes, rendered with react-dom/server](0010-prerender-two-routes.md) — long-task limit superseded by 0013; the `rolldownOptions` key noted 2026-11-05, #97
+- [0010 — Pre-rendering: a Vite SSR build of two routes, rendered with react-dom/server](0010-prerender-two-routes.md) — long-task limit superseded by 0013; the `rolldownOptions` key noted 2026-11-05, #97; the route count is 0018's, noted 2026-11-08, #102
 - [0011 — Content pipeline: Markdown + YAML front matter, zod, a Vite plugin, sharp](0011-content-pipeline.md)
 - [0012 — Response headers: CSP and companions in vercel.json, mirrored into vite preview](0012-response-headers.md) — the platform-provided HSTS noted 2026-10-22, #72; system fonts retired by 0017, #100
 - [0013 — The long-task limit is 150 ms on the CI runner, judged on the median of three runs](0013-long-task-limit-on-the-ci-runner.md) — retry rule superseded by 0014
@@ -26,4 +26,5 @@ Index
 - [0015 — Retro fold 2: where the increment-1 lessons went](0015-retro-fold-2.md) — the `--prove` default and its self-test noted 2026-10-22, #80
 - [0016 — One serverless function at the Discovery Form's boundary, and a first-party Draft](0016-discovery-form-function-and-draft.md)
 - [0017 — Design system: Tailwind v4, copied shadcn/ui, Lucide, one dark token set, one font, CSS motion](0017-design-system.md)
-- [0019 — The Invite token and `make invite`](0019-invite-token-and-make-invite.md) — 0018 is reserved by the increment-2 plan for T1
+- [0018 — Four pre-rendered documents; the Discovery Form is its own client-rendered entry](0018-four-prerendered-documents.md)
+- [0019 — The Invite token and `make invite`](0019-invite-token-and-make-invite.md)

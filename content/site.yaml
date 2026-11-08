@@ -1,6 +1,8 @@
 owner:
   name: Thomas Cova
 oneLine: IT infrastructure by day, embedded roots, and a portfolio built like production.
+start:
+  sentence: Have a project in mind — an internal tool, an embedded device that needs a web face, or infrastructure that should run itself? Tell me about it.
 contact:
   github: https://github.com/cov1983
   email: hello@thomascova.dev

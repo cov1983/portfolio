@@ -433,6 +433,7 @@ export function loadContentWithMedia(
     content: {
       owner: { name: site.owner.name },
       oneLine: site.oneLine,
+      start: { sentence: site.start.sentence },
       contact: { github: site.contact.github, emailHrefEntities: encodeMailto(site.contact.email) },
       captions: { hub: site.captions.hub, zones: site.captions.zones },
       preview,

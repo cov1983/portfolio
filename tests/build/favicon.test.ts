@@ -85,14 +85,16 @@ describe('the built site', () => {
     expect((await pixels(png)).equals(await pixels(expected))).toBe(true)
   })
 
-  it('links the SVG icon from both pre-rendered documents', () => {
+  it('links the SVG icon from every pre-rendered document', () => {
     expect(build.indexHtml).toMatch(ICON_LINK)
     expect(build.exhibitsHtml).toMatch(ICON_LINK)
+    expect(build.startHtml).toMatch(ICON_LINK)
   })
 
-  it('shows the mark as a decorative image of /favicon.svg in both pre-rendered documents', () => {
+  it('shows the mark as a decorative image of /favicon.svg in every pre-rendered document', () => {
     expect(build.indexHtml).toMatch(MARK_IMG)
     expect(build.exhibitsHtml).toMatch(MARK_IMG)
+    expect(build.startHtml).toMatch(MARK_IMG)
   })
 })
 

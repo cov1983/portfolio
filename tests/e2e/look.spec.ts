@@ -22,7 +22,7 @@ import {
 // readable failure T0a re-skins with them): on each, the page's background and the accent of the
 // surface's primary control (a hint: its edge) are the two token values. The expected colours are read from
 // the token layer itself (src/site/tokens.css), never written here, so the Owner's tuning of a
-// value on the preview keeps this test meaningful. /start and the Discovery Form join in T1, T3a.
+// value on the preview keeps this test meaningful. /start joined in T1; the Discovery Form joins in T3a.
 const TOKENS = readFileSync(new URL('../../src/site/tokens.css', import.meta.url), 'utf8')
 
 /** An opaque token of tokens.css (#rrggbb) as a browser reports a computed colour. */
@@ -87,6 +87,19 @@ test.describe('the Fallback Page', () => {
 
   test('draws its first link in the accent', async ({ page }) => {
     await page.goto('/exhibits')
+    const back = page.getByRole('link', { name: 'Back to the Title Screen' })
+    expect(await computed(back, 'color')).toBe(PRIMARY)
+  })
+})
+
+test.describe('/start', () => {
+  test('has the background token behind it', async ({ page }) => {
+    await page.goto('/start')
+    expect(await bodyBackground(page)).toBe(BACKGROUND)
+  })
+
+  test('draws its first link in the accent', async ({ page }) => {
+    await page.goto('/start')
     const back = page.getByRole('link', { name: 'Back to the Title Screen' })
     expect(await computed(back, 'color')).toBe(PRIMARY)
   })

@@ -2,7 +2,8 @@
 
 Status: Accepted (2026-10-10); note 2026-11-05 (#97): Vite 8 names the chunking key
 `build.rolldownOptions`; `build.rollupOptions` (Consequences, chunking) is its deprecated alias, renamed
-in vite.config.ts when typescript-eslint 8.72.1 flagged it (`no-deprecated`); same contents, same output
+in vite.config.ts when typescript-eslint 8.72.1 flagged it (`no-deprecated`); same contents, same output; note 2026-11-08 (#102):
+the route count is ADR 0018's (four pre-rendered documents); the mechanism here is unchanged
 
 ## Context
 

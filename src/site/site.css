@@ -83,13 +83,16 @@
 @layer components {
   .title-screen,
   .fallback-page,
+  .start-page,
   .world-failure {
     max-width: 44rem;
     margin: 0 auto;
     padding: 3rem 1.25rem 4rem;
   }
 
-  .one-line {
+  /* The Title Screen's one line and /start's sentence: one look, two names (GLOSSARY: One line). */
+  .one-line,
+  .start-sentence {
     margin: 0.5rem 0 0;
     font-size: 1.25rem;
     color: var(--color-muted-foreground);
@@ -151,14 +154,16 @@
     color: var(--color-muted-foreground);
   }
 
-  /* The Fallback Page */
-  .fallback-page nav ul {
+  /* The Fallback Page and /start */
+  .fallback-page nav ul,
+  .start-page nav ul {
     margin: 1rem 0 0;
     padding: 0;
     list-style: none;
   }
 
-  .fallback-page nav li {
+  .fallback-page nav li,
+  .start-page nav li {
     display: inline;
     margin-right: 1rem;
   }

@@ -39,6 +39,8 @@ export type Exhibit = {
 export type Content = {
   owner: { name: string }
   oneLine: string
+  /** /start's one sentence, the Owner's (AC-5.1); also /start's description (AC-5.2). */
+  start: { sentence: string }
   /** `emailHrefEntities`: the href already character-reference encoded (AC-20.1). */
   contact: { github: string; emailHrefEntities: string }
   captions: { hub: string; zones: Record<ExhibitId, string> }
