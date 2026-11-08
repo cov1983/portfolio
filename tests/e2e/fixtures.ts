@@ -215,6 +215,25 @@ export function firstExhibit(content: Content): Content['exhibits'][number] {
   return exhibit
 }
 
+/**
+ * `getContext` answers null for the given kinds before any page script runs, as a browser
+ * without those contexts does (plan §6; capability.spec, hero.spec).
+ */
+export async function withoutContexts(page: Page, kinds: readonly string[]): Promise<void> {
+  await page.addInitScript((denied: readonly string[]) => {
+    // Read, not called, from the prototype: the wrapper below applies it to the canvas asked.
+    const original = Reflect.get(HTMLCanvasElement.prototype, 'getContext')
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      id: string,
+      ...rest: unknown[]
+    ) {
+      if (denied.includes(id)) return null
+      return Reflect.apply(original, this, [id, ...rest]) as RenderingContext | null
+    } as typeof original
+  }, kinds)
+}
+
 /** `/` with the Title Screen hydrated (the mark recorded): the handlers exist. */
 export async function hydrated(page: Page): Promise<void> {
   await page.goto('/')

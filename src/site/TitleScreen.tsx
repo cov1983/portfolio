@@ -4,14 +4,15 @@ import type { Capability } from '../app/store.ts'
 import type { Content, ExhibitId } from '../content/types.ts'
 import { Contact } from './Contact'
 import { FallbackLink } from './FallbackLink'
-import { Mark } from './Mark'
+import { Hero } from './Hero'
 import { Button } from './ui/button'
 import { cn } from './ui/cn'
 import './site.css'
 
-// The Title Screen (spec: Title Screen; ADR 0004, ADR 0010): the Owner's name, the one line, the
-// Contact line, the way into the World, the Exhibit list and the Fallback Page link, pre-rendered
-// at build into dist/index.html and usable without script (AC-1.1, 1.2, 2.3), hydrated by
+// The Title Screen (spec: Title Screen; ADR 0004, ADR 0010): the hero (Hero.tsx: the Owner's name
+// and the one line over the static backdrop, increment-2 US-2), the Contact line, the way into the
+// World, the Exhibit list and the Fallback Page link, pre-rendered at build into dist/index.html
+// and usable without script (AC-1.1, 1.2, 2.3), hydrated by
 // src/app/App.tsx with this exact markup (T5a). The way-in control changes only after a Visitor's
 // action: `loading` is the store's `entering` (AC-4.2), never set before hydration, and the control
 // is never disabled (spec: detection and loading never remove the way in). A capability hint
@@ -75,13 +76,7 @@ export function TitleScreen({
             <FallbackLink />
           </>
         )}
-        <header>
-          <div className="flex items-center gap-4">
-            <Mark />
-            <h1>{content.owner.name}</h1>
-          </div>
-          <p className="one-line">{content.oneLine}</p>
-        </header>
+        <Hero content={content} />
         <Contact contact={content.contact} />
         <Button className="way-in mt-8" onClick={onEnter} aria-busy={loading ? true : undefined}>
           {loading ? 'Loading the World…' : 'Enter the World'}

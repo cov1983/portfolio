@@ -53,10 +53,44 @@ test.describe('the caption (AC-18.3)', () => {
     expect(await captionMotion(page)).toEqual({ animation: 'none', transition: '0s' })
   })
 
-  test('fades in without the preference, so the check above can fail', async ({ page }) => {
+  // increment-2 AC-1.2 (Owner, #103 comments 6723218035 and 6723304033): the caption's fade is gone,
+  // so the caption is still without the preference too; AC-18.3 now holds by absence. Red: before
+  // T0b removed it, this read `caption-in`. The reduce rule's own control is the headline reveal
+  // below.
+  test('appears without animation without the preference too (increment-2 AC-1.2)', async ({
+    page,
+  }) => {
     await page.emulateMedia({ reducedMotion: 'no-preference' })
     await entered(page)
-    expect((await captionMotion(page)).animation).toBe('caption-in')
+    expect((await captionMotion(page)).animation).toBe('none')
+  })
+})
+
+// increment-2 AC-2.4 (plan §6 row 2.4): under reduced motion the headline reveal is instant, so
+// nothing animates when the Title Screen appears. Without the preference the reveal is there,
+// which is what makes the first two checks able to fail.
+test.describe('the Title Screen appearing (increment-2 AC-2.4)', () => {
+  const headlineAnimation = (page: Page): Promise<string> =>
+    page.locator('.hero .headline').evaluate((element) => getComputedStyle(element).animationName)
+
+  test('has no running animation at load under reduced motion', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto('/')
+    expect(await runningAnimations(page)).toEqual([])
+  })
+
+  test('shows the headline without its reveal under reduced motion', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto('/')
+    expect(await headlineAnimation(page)).toBe('none')
+  })
+
+  test('reveals the headline without the preference, so the checks above can fail', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await page.goto('/')
+    expect(await headlineAnimation(page)).toBe('headline-reveal')
   })
 })
 
@@ -71,9 +105,9 @@ test('nothing animates after the caption, Reset, the Goal and the Panel under re
   await expect(caption(page)).not.toHaveText('')
   expect(await runningAnimations(page), 'the caption').toEqual([])
 
-  // The Reset, Goal and Panel checkpoints hold by absence today: nothing but the caption's fade
-  // animates or transitions (D8, plan §6 row 25.1), so they would pass without the reduce rule as
-  // well. They guard against a future effect on these events, which must honour the preference;
+  // The Reset, Goal and Panel checkpoints hold by absence today: nothing in the World animates or
+  // transitions on these events (D8, plan §6 row 25.1; the caption's fade went in increment-2
+  // T0b), so they would pass without the reduce rule as well. They guard against a future effect on these events, which must honour the preference;
   // its own no-preference control belongs here once it exists (ai-review on #57).
   await page.getByRole('button', { name: 'Reset' }).click()
   await expect(worldContainer(page)).toBeFocused()

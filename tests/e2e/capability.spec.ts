@@ -10,6 +10,7 @@ import {
   recorded,
   test,
   wayIn,
+  withoutContexts,
   WORLD_CHUNK,
 } from './fixtures'
 
@@ -77,25 +78,6 @@ test.describe('with a coarse pointer (AC-21.1)', () => {
     await expect(wayIn(page)).toBeEnabled()
   })
 })
-
-/**
- * `getContext` answers null for the given kinds before any page script runs, as a browser
- * without those contexts does (plan §6).
- */
-async function withoutContexts(page: Page, kinds: readonly string[]): Promise<void> {
-  await page.addInitScript((denied: readonly string[]) => {
-    // Read, not called, from the prototype: the wrapper below applies it to the canvas asked.
-    const original = Reflect.get(HTMLCanvasElement.prototype, 'getContext')
-    HTMLCanvasElement.prototype.getContext = function (
-      this: HTMLCanvasElement,
-      id: string,
-      ...rest: unknown[]
-    ) {
-      if (denied.includes(id)) return null
-      return Reflect.apply(original, this, [id, ...rest]) as RenderingContext | null
-    } as typeof original
-  }, kinds)
-}
 
 // WebGL unavailable: neither `webgl` nor `webgl2`.
 test.describe('without WebGL (AC-22.1)', () => {

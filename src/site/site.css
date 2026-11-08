@@ -81,6 +81,13 @@
 }
 
 @layer components {
+  /* The Title Screen's layer: the containing block of the hero's backdrop, which stays behind its
+     content (isolation keeps the backdrop's negative z-index inside the layer). */
+  .title-screen-layer {
+    position: relative;
+    isolation: isolate;
+  }
+
   /* The Title Screen's layer while the World or the readable failure is shown (TitleScreen, `away`
      with `inert`): invisible but laid out, as the World container behind it (world.css), so the
      state can transition (plan increment-2 §2). The page under the World does not scroll: the
@@ -112,6 +119,71 @@
 
   .contact {
     margin: 1rem 0 0;
+  }
+
+  /* The hero (src/site/Hero.tsx; spec increment-2 AC-2.1, D2, D6). The backdrop covers the first
+     viewport of the layer, behind the content, and fades into the page's background at its foot. */
+  .hero-backdrop {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: -1;
+    height: 100svh;
+    overflow: hidden;
+    perspective: 107svh;
+    mask-image: linear-gradient(to bottom, var(--color-background) 70%, transparent);
+  }
+
+  /* The grid lies like the ice under the Follow Camera. The camera sits 9 m up and 13 m behind the
+     Puck, looking at the ice under it, with a 50° vertical field of view: copied from RIG in
+     src/world/model/camera.ts, never imported, so no World code reaches `/`'s chunks. Its pitch
+     is atan(9 / 13) = 34.7° below the horizon, so the ice plane turns 90° - 34.7° = 55.3° away from
+     the screen; the perspective above is the camera's distance for that field of view,
+     (viewport height / 2) / tan(25°) = 1.07 viewport heights. The plane is larger than the
+     viewport, so its tilted edge stays out of sight. */
+  .hero-grid {
+    position: absolute;
+    top: -50%;
+    left: -100%;
+    width: 300%;
+    height: 200%;
+    transform: rotateX(55.3deg);
+  }
+
+  .hero-grid .grid-line {
+    fill: none;
+    stroke: var(--color-border);
+    stroke-width: 1;
+  }
+
+  .hero-grid .grid-cross {
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-opacity: 0.6;
+    stroke-width: 1.5;
+  }
+
+  /* The Puck where the camera looks: the centre of the view. The wrapper sizes the Mark's drawing,
+     which keeps its own size classes. */
+  .hero-puck {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(2);
+  }
+
+  /* The static blue edge glow (D6): a gradient, never animated (AC-1.2). */
+  .edge-glow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 55%, var(--color-glow));
+  }
+
+  /* The headline reveal (D6, AC-2.2): the resting state is the visible headline; the keyframe only
+     says where it starts, so without script, and after the animation, it is shown. */
+  .hero .headline {
+    animation: headline-reveal 700ms ease-out;
   }
 
   .exhibits ul {
@@ -343,7 +415,8 @@
   }
 
   /* The Announcer caption (WorldOverlay): one line at the top centre of the World, readable on
-     any frame of the scene behind it; it fades in, except under reduced motion (rule below). */
+     any frame of the scene behind it. It appears without a fade: the site has exactly two effects
+     (spec increment-2 AC-1.2, D6; Owner, #103 comments 6723218035 and 6723304033). */
   .world-overlay .caption {
     position: fixed;
     top: 1.5rem;
@@ -362,19 +435,20 @@
     background: var(--color-overlay);
     border: 1px solid var(--color-border);
     border-radius: 0.5rem;
-    animation: caption-in 200ms ease-out;
   }
 }
 
-@keyframes caption-in {
+@keyframes headline-reveal {
   from {
     opacity: 0;
+    transform: translateY(0.75rem);
   }
 }
 
-/* Reduced motion (spec, US-18 and US-25): no animation and no transition anywhere on the site,
-   the caption, the Panel and the overlay included; the Follow Camera's easing is the scene's
-   (src/world/World.tsx reads the same preference). Unlayered, so no layer can outrank it. */
+/* Reduced motion (spec, US-18 and US-25; increment-2 AC-2.4): no animation and no transition
+   anywhere on the site, the headline reveal, the Panel and the overlay included; the Follow
+   Camera's easing is the scene's (src/world/World.tsx reads the same preference). Unlayered, so
+   no layer can outrank it. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

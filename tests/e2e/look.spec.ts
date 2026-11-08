@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import type { Locator, Page } from '@playwright/test'
 
 import {
+  caption,
   entered,
   exhibitPanel,
   expect,
@@ -196,5 +197,79 @@ test.describe('the readable failure', () => {
     await failed(page, problems, browserName)
     const back = failureScreen(page).getByRole('button', { name: 'Title Screen' })
     expect(await computed(back, 'backgroundColor')).toBe(PRIMARY)
+  })
+})
+
+// AC-1.2 (spec increment-2, D6; plan §6 row 1.2; Owner, #103 comments 6723218035 and 6723304033):
+// exactly two effects, the headline reveal and the static blue edge glow. A finished animation
+// drops out of `document.getAnimations()` (probe of 2026-11-08, all three engines), so a list
+// read after the reveal ended is empty and proves nothing alone: each surface is also swept for
+// every shown element whose computed `animation-name` is not `none`, which does not depend on
+// timing. Shown means `checkVisibility` with the `visibility` property, so the Title Screen's
+// layer, hidden behind the World, is not counted there. Red: before T0b removed it, the World's
+// sweep found the caption's `caption-in`.
+
+/** Every shown element with an animation, as `tag.class: name`. */
+function animatedElements(page: Page): Promise<string[]> {
+  return page.evaluate(() =>
+    [...document.querySelectorAll('*')]
+      .filter((element) => element.checkVisibility({ visibilityProperty: true }))
+      .map((element) => ({ element, name: getComputedStyle(element).animationName }))
+      .filter(({ name }) => name !== 'none')
+      .map(
+        ({ element, name }) =>
+          `${element.tagName.toLowerCase()}.${element.getAttribute('class') ?? ''}: ${name}`,
+      ),
+  )
+}
+
+/** The names of the document's current animations; CSS transitions are the crossfade's, not effects. */
+function currentAnimations(page: Page): Promise<string[]> {
+  return page.evaluate(() =>
+    document
+      .getAnimations()
+      .filter((animation) => animation instanceof CSSAnimation)
+      .map((animation) => animation.animationName),
+  )
+}
+
+test.describe('exactly two effects (AC-1.2)', () => {
+  test('on the Title Screen only the headline animates, its reveal', async ({ page }) => {
+    await hydrated(page)
+    expect(await animatedElements(page)).toEqual(['div.headline: headline-reveal'])
+    for (const name of await currentAnimations(page)) expect(name).toBe('headline-reveal')
+  })
+
+  test('the edge glow is static', async ({ page }) => {
+    await hydrated(page)
+    const glow = page.locator('.edge-glow')
+    expect(await glow.evaluate((element) => getComputedStyle(element).animationName)).toBe('none')
+  })
+
+  test('nothing animates on the Fallback Page', async ({ page }) => {
+    await page.goto('/exhibits')
+    expect(await animatedElements(page)).toEqual([])
+    expect(await currentAnimations(page)).toEqual([])
+  })
+
+  test('nothing animates on /start', async ({ page }) => {
+    await page.goto('/start')
+    expect(await animatedElements(page)).toEqual([])
+    expect(await currentAnimations(page)).toEqual([])
+  })
+
+  // The Panel opens over the Title Screen, whose headline stays in view behind the backdrop: the
+  // Panel adds nothing to that one reveal.
+  test('the Exhibit Panel adds no animation', async ({ page, content }) => {
+    await opened(page, firstExhibit(content).title)
+    expect(await animatedElements(page)).toEqual(['div.headline: headline-reveal'])
+    for (const name of await currentAnimations(page)) expect(name).toBe('headline-reveal')
+  })
+
+  test('nothing animates in the World, the caption shown', async ({ page }) => {
+    await entered(page)
+    await expect(caption(page)).not.toHaveText('')
+    expect(await animatedElements(page)).toEqual([])
+    expect(await currentAnimations(page)).toEqual([])
   })
 })

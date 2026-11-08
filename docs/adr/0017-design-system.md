@@ -116,8 +116,8 @@ link and the mark name one emitted file:
   content images have alternative text, decorative images an empty one" (amended in 09f58b1).
 - **`fetchPriority="low"` exists to keep React 19's server renderer from hoisting an image preload
   (`<link rel="preload" as="image">`) into the pre-rendered root, ahead of the Title Screen's
-  `<main>`**; `index-html.test` pins it (the root opens with `<main class="title-screen">`). The
-  mark still loads eagerly.
+  layer**; `index-html.test` pins it (the root opens with `<div class="title-screen-layer">` since
+  T0b). The mark still loads eagerly.
 
 **Motion in CSS, no Motion dependency** (plan §2 and §11 B2; #59 comment 6662855247, item 2): the
 headline reveal and the Title Screen–World crossfade (T0b) are CSS keyframes and transitions,
@@ -134,10 +134,16 @@ by T0b's first commit; this ADR cites the plan decision, not that amend.
   an `@source` line; a word in a `src/site/` comment can generate a utility.
 - Radix primitives stay out of the root's chunks unless a surface there needs one (T3b brings
   `radix-ui` for the form's controls).
-- The caption's fade-in (`caption-in`) is still on the site, and so are the copied Button's hover
-  states (the filled variant's `hover:brightness-110` filter, the outline variant's
-  `hover:bg-background`); whether either counts against AC-1.2's "exactly two effects" is T0b's to
-  settle (ai-review round 1 on #121, finding 6).
+- AC-1.2's "exactly two effects", settled by T0b (#103; ai-review round 1 on #121, finding 6):
+  the two are the headline reveal and the static blue edge glow, as the spec words them; the
+  Title Screen–World crossfade is a transition, not an effect. The caption's fade-in
+  (`caption-in`) counted and is removed: the caption appears without animation. The copied
+  Button's hover states (the filled variant's `hover:brightness-110` filter, the outline variant's
+  `hover:bg-background`) stay: instant state feedback, not animated, so they do not count. Owner
+  decision [#103 comment 6723218035](https://github.com/cov1983/portfolio/issues/103#issuecomment-6723218035),
+  its effects named by the correction
+  [6723304033](https://github.com/cov1983/portfolio/issues/103#issuecomment-6723304033);
+  `look.spec` sweeps every surface for computed `animation-name`.
 - The mark moves into T0b's sticky bar (#103) unchanged: same component, same file.
 - The download until playable, read by `make perf` at each step of T0a: 1,990,241 B with Tailwind
   and the tokens (a96c9ed), 2,002,099 B with the Button, cva, tailwind-merge and two icons
