@@ -124,16 +124,19 @@ test.describe('for assistive technology', () => {
     ])
   })
 
+  // The page's own nav to every anchor; the sticky bar's nav, "Site", is the second (increment-2
+  // T0b, AC-3.1), so the count names each.
   test('has main and nav landmarks', async ({ page }) => {
     await page.goto('/exhibits')
     await expect(page.getByRole('main')).toHaveCount(1)
-    await expect(page.getByRole('navigation')).toHaveCount(1)
+    await expect(page.getByRole('navigation', { name: 'On this page' })).toHaveCount(1)
+    await expect(page.getByRole('navigation', { name: 'Site' })).toHaveCount(1)
   })
 
   // AC-19.2 as amended (#100 comment 6706618031): every image has an alt attribute; a content
   // image has alternative text; a decorative one an empty one. The one decorative image is the
-  // header mark, named by its fixed src (src/site/Mark.tsx); every other image counts as content,
-  // so a later picture outside the Exhibits (the Bio's, say) with an empty alt fails here.
+  // mark in the sticky bar, named by its fixed src (src/site/Mark.tsx); every other image counts as
+  // content, so a later picture outside the Exhibits (the Bio's, say) with an empty alt fails here.
   const MARK_SRC = '/favicon.svg'
   /** Every image on the page: its src and its alt attribute (null when absent). */
   const imagesOf = (page: Page) =>

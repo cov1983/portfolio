@@ -107,9 +107,9 @@ to the tokens (every stroke and gradient stop is `primary`, the disc's fill `pri
 a tuned token fails the build half until the drawing follows (ai-review round 1 on #121, finding 2).
 The World's canvas background (`src/world/scene/world.css`) reads `var(--color-background)`; the
 Banner's ink (`INK` in `src/world/scene/colours.ts`) is a World scene colour and keeps its own
-`#0b1a2a`. The header mark beside
-the name on the Title Screen and the Fallback Page is `<img src="/favicon.svg" alt="">`, so the icon
-link and the mark name one emitted file:
+`#0b1a2a`. The mark, on the left of
+T0b's sticky bar on the Title Screen, /exhibits and /start and as the Puck of the hero's backdrop,
+is `<img src="/favicon.svg" alt="">`, so the icon link and the mark name one emitted file:
 - **A fixed path, not an asset import**: the hydration proof renders the App without the build's
   hashed asset names, so an imported URL would differ between the two renders.
 - **Decorative, `alt=""`**: increment-1 AC-19.2 now reads "every image has an alt attribute:
@@ -144,7 +144,9 @@ by T0b's first commit; this ADR cites the plan decision, not that amend.
   its effects named by the correction
   [6723304033](https://github.com/cov1983/portfolio/issues/103#issuecomment-6723304033);
   `look.spec` sweeps every surface for computed `animation-name`.
-- The mark moves into T0b's sticky bar (#103) unchanged: same component, same file.
+- The mark moved into T0b's sticky bar (#103) unchanged: same component, same file; on /exhibits
+  and /start an anchor wraps it with hidden text "Title Screen"
+  ([#103 comment 6723215733](https://github.com/cov1983/portfolio/issues/103#issuecomment-6723215733)).
 - The download until playable, read by `make perf` at each step of T0a: 1,990,241 B with Tailwind
   and the tokens (a96c9ed), 2,002,099 B with the Button, cva, tailwind-merge and two icons
   (e0a7813), 2,027,930 B with the Manrope woff2 (15a1d2a), 2,028,586 B with the mark (33825c4),

@@ -1,56 +1,58 @@
 import type { Content } from '../content/types.ts'
 import { Contact } from './Contact'
 import { Exhibit } from './Exhibit'
-import { Mark } from './Mark'
+import { StickyBar } from './StickyBar'
 import './site.css'
 
 // The Fallback Page (spec: Fallback Page; ADR 0004): every Exhibit in full under its own anchor,
 // the Bio and the Contact, with a link back to the Title Screen, pre-rendered at build into
 // dist/exhibits/index.html and shipped without script (AC-19.1, 19.3, 20.3, 26.4). Landmarks and
 // headings for assistive technology (AC-19.2): one h1, an h2 per Exhibit, for the Bio and for the
-// Contact, a `nav` to every anchor, one `main`.
+// Contact, a `nav` to every anchor, one `main`. Above it, the sticky bar (StickyBar.tsx, spec
+// increment-2 AC-3.1), whose mark leads to the Title Screen; the page keeps its own link back
+// (AC-19.1).
 type Props = { content: Content }
 
 export function FallbackPage({ content }: Props) {
   return (
-    <div className="fallback-page">
-      <header>
-        <div className="flex items-center gap-4">
-          <Mark />
+    <>
+      <StickyBar homeLink />
+      <div className="fallback-page">
+        <header>
           <h1>{content.owner.name}</h1>
-        </div>
-        <nav aria-label="On this page">
-          <ul>
-            <li>
-              <a href="/">Back to the Title Screen</a>
-            </li>
-            {content.exhibits.map((exhibit) => (
-              <li key={exhibit.id}>
-                <a href={`#${exhibit.id}`}>{exhibit.title}</a>
+          <nav aria-label="On this page">
+            <ul>
+              <li>
+                <a href="/">Back to the Title Screen</a>
               </li>
-            ))}
-            <li>
-              <a href="#bio">Bio</a>
-            </li>
-            <li>
-              <a href="#contact">Contact</a>
-            </li>
-          </ul>
-        </nav>
-      </header>
-      <main>
-        {content.exhibits.map((exhibit) => (
-          <Exhibit key={exhibit.id} exhibit={exhibit} />
-        ))}
-        <section id="bio">
-          <h2>Bio</h2>
-          <div className="prose" dangerouslySetInnerHTML={{ __html: content.bioHtml }} />
-        </section>
-        <section id="contact">
-          <h2>Contact</h2>
-          <Contact contact={content.contact} />
-        </section>
-      </main>
-    </div>
+              {content.exhibits.map((exhibit) => (
+                <li key={exhibit.id}>
+                  <a href={`#${exhibit.id}`}>{exhibit.title}</a>
+                </li>
+              ))}
+              <li>
+                <a href="#bio">Bio</a>
+              </li>
+              <li>
+                <a href="#contact">Contact</a>
+              </li>
+            </ul>
+          </nav>
+        </header>
+        <main>
+          {content.exhibits.map((exhibit) => (
+            <Exhibit key={exhibit.id} exhibit={exhibit} />
+          ))}
+          <section id="bio">
+            <h2>Bio</h2>
+            <div className="prose" dangerouslySetInnerHTML={{ __html: content.bioHtml }} />
+          </section>
+          <section id="contact">
+            <h2>Contact</h2>
+            <Contact contact={content.contact} />
+          </section>
+        </main>
+      </div>
+    </>
   )
 }

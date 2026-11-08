@@ -62,7 +62,7 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
 - `renovate.json`           Renovate: grouped patch automerge, majors behind the Dependency Dashboard (ADR 0007)
 - `.devcontainer/`          Dockerfile + devcontainer.json: the reference toolchain
 - `src/`                    application code: `main.tsx` (hydrates `/`), `entry-prerender.tsx`
-                            (every document as strings for `build/build.ts`), `site/` (the HTML surfaces: TitleScreen, FallbackPage, StartPage (/start), FallbackLink,
+                            (every document as strings for `build/build.ts`), `site/` (the HTML surfaces: TitleScreen, Hero (backdrop, headline), StickyBar, FallbackPage, StartPage (/start), FallbackLink,
                             Exhibit, ExhibitPanel, Picture, Contact, Meta, WorldOverlay, WorldFailure, Mark (`mark.svg`, the Puck's one drawing), `site.css` the Tailwind v4 entry, `tokens.css` the one token set and every colour literal (ADR 0017), `ui/` the shadcn/ui components copied by hand with `cn`; no three, Rapier or World model), `world/` (`model/`: layout, Rapier
                             model, pure camera; `input/`: keys by physical code; `scene/`: the R3F mirror; `World.tsx`), `perf/` (the marks),
                             `content/` (ADR 0011: schema, types, `loadContent`, variant planner, `mailto.ts`), `app/` (plan §5: store, keys, focus, caption, capability, preload, FailureBoundary; `App.tsx` the hydrated root), `intake/` (ADR 0019: the Invite's shared rules `invite.ts`; `server/` signs, Node only, `tsconfig.server.json`)

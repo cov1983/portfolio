@@ -116,6 +116,55 @@
     overflow: hidden;
   }
 
+  /* The sticky bar (src/site/StickyBar.tsx; spec increment-2 AC-3.1, D7): full width at the top of
+     `/`, /exhibits and /start, staying there while the page scrolls, over the hero's backdrop on
+     `/`, on the overlay token. An anchor the page scrolls to lands below it, not under it. */
+  .sticky-bar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 1.25rem;
+    background: var(--color-overlay);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  html:has(.sticky-bar) {
+    scroll-padding-top: 5rem;
+  }
+
+  .sticky-bar .bar-home {
+    display: inline-flex;
+  }
+
+  .sticky-bar nav ul {
+    display: flex;
+    gap: 1.25rem;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* "Start a project", filled: the copied Button's look on an anchor (ADR 0017: no `asChild`),
+     navy ink on the accent (5.6:1, tokens.css), hover brightened like the Button's, instant. */
+  .sticky-bar .bar-start {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    color: var(--color-primary-foreground);
+    text-decoration: none;
+    background: var(--color-primary);
+    border-radius: 0.5rem;
+  }
+
+  .sticky-bar .bar-start:hover {
+    filter: brightness(1.1);
+  }
+
   .title-screen,
   .fallback-page,
   .start-page,
@@ -264,15 +313,13 @@
   }
 
   /* The Fallback Page and /start */
-  .fallback-page nav ul,
-  .start-page nav ul {
+  .fallback-page nav ul {
     margin: 1rem 0 0;
     padding: 0;
     list-style: none;
   }
 
-  .fallback-page nav li,
-  .start-page nav li {
+  .fallback-page nav li {
     display: inline;
     margin-right: 1rem;
   }

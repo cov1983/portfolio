@@ -5,6 +5,7 @@ import type { Content, ExhibitId } from '../content/types.ts'
 import { Contact } from './Contact'
 import { FallbackLink } from './FallbackLink'
 import { Hero } from './Hero'
+import { StickyBar } from './StickyBar'
 import { Button } from './ui/button'
 import { cn } from './ui/cn'
 import './site.css'
@@ -66,6 +67,7 @@ export function TitleScreen({
   const hints = hintsFor(capability)
   return (
     <div className={cn('title-screen-layer', away && 'away')} inert={away}>
+      <StickyBar homeLink={false} />
       <main className="title-screen">
         {hints.length > 0 && (
           <>

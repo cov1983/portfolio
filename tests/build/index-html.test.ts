@@ -28,9 +28,9 @@ describe('the production build', () => {
 
   it('writes the Title Screen to index.html and the Fallback Page to exhibits/index.html', () => {
     expect(build.indexHtml).toContain(
-      '<div id="root"><div class="title-screen-layer"><main class="title-screen">',
+      '<div id="root"><div class="title-screen-layer"><div class="sticky-bar">',
     )
-    expect(build.exhibitsHtml).toContain('<div id="root"><div class="fallback-page">')
+    expect(build.exhibitsHtml).toContain('<div id="root"><div class="sticky-bar">')
   })
 
   // T5a (ADR 0010): the markup hydrateRoot adopts is renderToString of the tree the client renders,

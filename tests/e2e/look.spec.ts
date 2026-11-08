@@ -103,11 +103,28 @@ test.describe('/start', () => {
     expect(await bodyBackground(page)).toBe(BACKGROUND)
   })
 
+  // Its own nav went to the sticky bar (Owner, #103 comment 6723215733): the bar's first text link.
   test('draws its first link in the accent', async ({ page }) => {
     await page.goto('/start')
-    const back = page.getByRole('link', { name: 'Back to the Title Screen' })
-    expect(await computed(back, 'color')).toBe(PRIMARY)
+    const exhibits = page.getByRole('navigation', { name: 'Site' }).getByRole('link', {
+      name: 'Exhibits',
+    })
+    expect(await computed(exhibits, 'color')).toBe(PRIMARY)
   })
+})
+
+// The sticky bar's primary control (increment-2 AC-3.1, D7): "Start a project" filled with the
+// accent on each page that carries the bar.
+test.describe('the sticky bar', () => {
+  for (const path of ['/', '/exhibits', '/start']) {
+    test(`fills "Start a project" with the accent on ${path}`, async ({ page }) => {
+      await page.goto(path)
+      const start = page.getByRole('navigation', { name: 'Site' }).getByRole('link', {
+        name: 'Start a project',
+      })
+      expect(await computed(start, 'backgroundColor')).toBe(PRIMARY)
+    })
+  }
 })
 
 test.describe('the World overlay', () => {

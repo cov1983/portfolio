@@ -29,9 +29,16 @@ import {
 // (world.spec.ts uses that stub in all three browsers to prove the preload policy, where the
 // detection itself is not the point); it is not needed in any of the three.
 
-/** Whether the first link of the page is the Fallback Page's (AC-21.1, 22.1: placed first). */
+/**
+ * Whether the Title Screen's first link is the Fallback Page's (AC-21.1, 22.1: placed first). The
+ * Title Screen is its `main`: the sticky bar above it (increment-2 T0b) is not part of it, and its
+ * own "Exhibits" link also leads to /exhibits, so a page-wide first link would pass by the bar.
+ */
 async function expectFallbackLinkFirst(page: Page): Promise<void> {
-  await expect(page.getByRole('link').first()).toHaveAttribute('href', '/exhibits')
+  await expect(page.getByRole('main').getByRole('link').first()).toHaveAttribute(
+    'href',
+    '/exhibits',
+  )
 }
 
 test.describe('the Title Screen before hydration', () => {
@@ -45,7 +52,10 @@ test.describe('the Title Screen before hydration', () => {
 
   test('does not place the Fallback Page link first', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByRole('link').first()).not.toHaveAttribute('href', '/exhibits')
+    await expect(page.getByRole('main').getByRole('link').first()).not.toHaveAttribute(
+      'href',
+      '/exhibits',
+    )
   })
 })
 
