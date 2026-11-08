@@ -81,18 +81,14 @@
 }
 
 @layer components {
-  /* The Title Screen's layer: the containing block of the hero's backdrop, which stays behind its
-     content (isolation keeps the backdrop's negative z-index inside the layer). The crossfade into
-     the World (spec increment-2 AC-2.3, plan §2): the layer fades and lifts out while the World
-     fades in (world.css, the same duration). A transition, not an effect (AC-1.2). Each state
-     names the transition that leads into it: shown, `visibility` changes at once, so the layer is
-     focusable in the commit that brings it back (Escape, AC-6.1); away, `visibility` waits out the
-     fade, then takes the layer out of sight and of the accessibility tree. The backdrop is
-     absolute, not fixed: the lift's transform would capture a fixed child. Reduced motion turns
-     all of it off (the rule at the end, AC-2.4): the change is instant. */
+  /* The Title Screen's layer and the crossfade into the World (spec increment-2 AC-2.3, plan §2):
+     the layer fades and lifts out while the World fades in (world.css, the same duration). A
+     transition, not an effect (AC-1.2). Each state names the transition that leads into it: shown,
+     `visibility` changes at once, so the layer is focusable in the commit that brings it back
+     (Escape, AC-6.1); away, `visibility` waits out the fade, then takes the layer out of sight and
+     of the accessibility tree. Reduced motion turns all of it off (the rule at the end, AC-2.4):
+     the change is instant. */
   .title-screen-layer {
-    position: relative;
-    isolation: isolate;
     transition:
       opacity 400ms ease-out,
       transform 400ms ease-out,
@@ -117,8 +113,8 @@
   }
 
   /* The sticky bar (src/site/StickyBar.tsx; spec increment-2 AC-3.1, D7): full width at the top of
-     `/`, /exhibits and /start, staying there while the page scrolls, over the hero's backdrop on
-     `/`, on the overlay token. An anchor the page scrolls to lands below it, not under it. */
+     `/`, /exhibits and /start, staying there while the page scrolls, on the overlay token. An
+     anchor the page scrolls to lands below it, not under it. */
   .sticky-bar {
     position: sticky;
     top: 0;
@@ -186,62 +182,11 @@
     margin: 1rem 0 0;
   }
 
-  /* The hero (src/site/Hero.tsx; spec increment-2 AC-2.1, D2, D6). The backdrop covers the first
-     viewport of the layer, behind the content, and fades into the page's background at its foot. */
-  .hero-backdrop {
-    position: absolute;
-    top: 0;
-    right: 0;
-    left: 0;
-    z-index: -1;
-    height: 100svh;
-    overflow: hidden;
-    perspective: 107svh;
-    mask-image: linear-gradient(to bottom, var(--color-background) 70%, transparent);
-  }
-
-  /* The grid lies like the ice under the Follow Camera. The camera sits 9 m up and 13 m behind the
-     Puck, looking at the ice under it, with a 50° vertical field of view: copied from RIG in
-     src/world/model/camera.ts, never imported, so no World code reaches `/`'s chunks. Its pitch
-     is atan(9 / 13) = 34.7° below the horizon, so the ice plane turns 90° - 34.7° = 55.3° away from
-     the screen; the perspective above is the camera's distance for that field of view,
-     (viewport height / 2) / tan(25°) = 1.07 viewport heights. The plane is larger than the
-     viewport, so its tilted edge stays out of sight. */
-  .hero-grid {
-    position: absolute;
-    top: -50%;
-    left: -100%;
-    width: 300%;
-    height: 200%;
-    transform: rotateX(55.3deg);
-  }
-
-  .hero-grid .grid-line {
-    fill: none;
-    stroke: var(--color-border);
-    stroke-width: 1;
-  }
-
-  .hero-grid .grid-cross {
-    fill: none;
-    stroke: var(--color-primary);
-    stroke-opacity: 0.6;
-    stroke-width: 1.5;
-  }
-
-  /* The Puck where the camera looks: the centre of the view. The wrapper sizes the Mark's drawing,
-     which keeps its own size classes. */
-  .hero-puck {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(2);
-  }
-
-  /* The static blue edge glow (D6): a gradient, never animated (AC-1.2). */
-  .edge-glow {
-    position: absolute;
-    inset: 0;
+  /* The static blue edge glow (spec increment-2 D6, AC-1.2), the second of the site's two effects:
+     a gradient on the hero itself, clear in the middle and the glow token at its edges, never
+     animated. No image and no mask: an image on the first viewport cost slow runs before the World
+     preload (Owner, #103 comment 6728114096). */
+  .hero {
     background: radial-gradient(ellipse at center, transparent 55%, var(--color-glow));
   }
 

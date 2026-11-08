@@ -108,7 +108,7 @@ a tuned token fails the build half until the drawing follows (ai-review round 1 
 The World's canvas background (`src/world/scene/world.css`) reads `var(--color-background)`; the
 Banner's ink (`INK` in `src/world/scene/colours.ts`) is a World scene colour and keeps its own
 `#0b1a2a`. The mark, on the left of
-T0b's sticky bar on the Title Screen, /exhibits and /start and as the Puck of the hero's backdrop,
+T0b's sticky bar on the Title Screen, /exhibits and /start,
 is `<img src="/favicon.svg" alt="">`, so the icon link and the mark name one emitted file:
 - **A fixed path, not an asset import**: the hydration proof renders the App without the build's
   hashed asset names, so an imported URL would differ between the two renders.
@@ -144,6 +144,16 @@ by T0b's first commit; this ADR cites the plan decision, not that amend.
   its effects named by the correction
   [6723304033](https://github.com/cov1983/portfolio/issues/103#issuecomment-6723304033);
   `look.spec` sweeps every surface for computed `animation-name`.
+- The hero's grid backdrop (AC-2.1) is handed off: every backdrop image on the first viewport
+  (an inline pattern under a CSS 3D transform, one built SVG hashed or at the root, with or
+  without a mask, any number of crosses) added a slow run mode to `make perf` (World playable
+  2427–2639 ms, TBT 268–520 ms, three or four runs in nine) that `main` never showed in 18 runs;
+  the cost is the image on the critical path before the World preload, not its drawing. T0b ships
+  the headline reveal and the static edge glow as a CSS radial gradient on the hero element, no
+  image and no mask; the grid, its measurements and the protocol (`main` three times in the same
+  session, judged by run groups) are the follow-up's. Owner decision
+  [#103 comment 6728114096](https://github.com/cov1983/portfolio/issues/103#issuecomment-6728114096),
+  closing the loop of [6724744135](https://github.com/cov1983/portfolio/issues/103#issuecomment-6724744135).
 - The mark moved into T0b's sticky bar (#103) unchanged: same component, same file; on /exhibits
   and /start an anchor wraps it with hidden text "Title Screen"
   ([#103 comment 6723215733](https://github.com/cov1983/portfolio/issues/103#issuecomment-6723215733)).
