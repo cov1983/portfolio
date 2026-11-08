@@ -16,27 +16,36 @@ import { StartPage } from './site/StartPage'
 export type Prerendered = { head: string; body: string }
 
 export function prerender(route: string, origin: string): Prerendered {
-  const meta = (title: string, description = content.oneLine) => (
-    <Meta content={content} title={title} description={description} path={route} origin={origin} />
+  // Each document names its title and description where it is rendered; previewTitle only where a
+  // document's link previews show its own title rather than the Owner's name (/start).
+  const meta = (title: string, description: string, previewTitle?: string) => (
+    <Meta
+      content={content}
+      title={title}
+      description={description}
+      {...(previewTitle === undefined ? {} : { previewTitle })}
+      path={route}
+      origin={origin}
+    />
   )
   switch (route) {
     case '/':
       return {
-        head: renderToStaticMarkup(meta(`${content.owner.name} — portfolio`)),
+        head: renderToStaticMarkup(meta(`${content.owner.name} — portfolio`, content.oneLine)),
         body: renderToString(<App content={content} store={createStore()} />),
       }
     case '/exhibits':
       return {
-        head: renderToStaticMarkup(meta(`Exhibits — ${content.owner.name}`)),
+        head: renderToStaticMarkup(meta(`Exhibits — ${content.owner.name}`, content.oneLine)),
         body: renderToStaticMarkup(<FallbackPage content={content} />),
       }
-    case '/start':
+    case '/start': {
+      const title = `Start a project — ${content.owner.name}`
       return {
-        head: renderToStaticMarkup(
-          meta(`Start a project — ${content.owner.name}`, content.start.sentence),
-        ),
+        head: renderToStaticMarkup(meta(title, content.start.sentence, title)),
         body: renderToStaticMarkup(<StartPage content={content} />),
       }
+    }
     default:
       throw new Error(`no pre-rendered route ${route}`)
   }

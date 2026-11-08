@@ -28,6 +28,15 @@ function description(html: string): string | undefined {
   return /<meta name="description" content="([^"]*)"/.exec(html)?.[1]
 }
 
+/** The content of a link-preview meta tag: `og:*` is a `property`, `twitter:*` a `name`. */
+function previewMeta(
+  html: string,
+  attribute: 'property' | 'name',
+  key: string,
+): string | undefined {
+  return new RegExp(`<meta ${attribute}="${key}" content="([^"]*)"`).exec(html)?.[1]
+}
+
 describe('/start as built (AC-5.2)', () => {
   let build: BuildResult
   let content: Content
@@ -63,6 +72,17 @@ describe('/start as built (AC-5.2)', () => {
   it('has its own description: the /start sentence', () => {
     expect(description(build.startHtml)).toBe(escaped(content.start.sentence))
     expect(description(build.startHtml)).not.toBe(description(build.indexHtml))
+  })
+
+  // Link previews read og:title and twitter:title before <title> (spec Users › "Link previews and
+  // crawlers": /start carries its own title; ai-review round 1 on #123, finding 1).
+  it.each([
+    ['og:title', 'property'],
+    ['twitter:title', 'name'],
+  ] as const)('gives link previews its own title in %s', (key, attribute) => {
+    const own = previewMeta(build.startHtml, attribute, key)
+    expect(own).toBe(escaped(`Start a project — ${content.owner.name}`))
+    expect(own).not.toBe(previewMeta(build.indexHtml, attribute, key))
   })
 
   it('ships no script', () => {

@@ -40,16 +40,20 @@ export function StartPage({ content }: Props) {
         </section>
         <section id="start-a-project">
           <h2>Start a project</h2>
-          <p>
-            A small question or a first idea needs nothing more than an e-mail: use the link above
-            and tell me what you have in mind.
-          </p>
-          <p>
-            A larger project starts with the Discovery Form: seven short sections, from why the
-            project matters and who it is for to what makes it achievable, about 15 to 20 minutes to
-            fill in. The form opens only with an Invite, a personal link I send you after we have
-            talked. If you would like one, write to me and I will send it.
-          </p>
+          {/* Tailwind's preflight zeroes paragraph margins; the space between the two paragraphs is
+              the spacing token (--spacing), as the header's gap. */}
+          <div className="space-y-4">
+            <p>
+              A small question or a first idea needs nothing more than an e-mail: use the link above
+              and tell me what you have in mind.
+            </p>
+            <p>
+              A larger project starts with the Discovery Form: seven short sections, from why the
+              project matters and who it is for to what makes it achievable, about 15 to 20 minutes
+              to fill in. The form opens only with an Invite, a personal link I send you after we
+              have talked. If you would like one, write to me and I will send it.
+            </p>
+          </div>
         </section>
       </main>
     </div>

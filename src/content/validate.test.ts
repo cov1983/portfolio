@@ -337,7 +337,7 @@ describe('check 1: site.yaml', () => {
     expectFailure(tree, `${SITE_FILE}: oneLine: required`)
   })
 
-  it('reports a missing /start sentence as required (AC-5.1)', () => {
+  it('reports a missing start block as required (AC-5.1)', () => {
     const tree = {
       ...VALID,
       [SITE_FILE]: SITE.replace(
@@ -346,6 +346,17 @@ describe('check 1: site.yaml', () => {
       ),
     }
     expectFailure(tree, `${SITE_FILE}: start: required`)
+  })
+
+  it('reports a start block without its sentence as start.sentence required (AC-5.1)', () => {
+    const tree = {
+      ...VALID,
+      [SITE_FILE]: SITE.replace(
+        'start:\n  sentence: Have a project in mind? Tell me about it.\n',
+        'start: {}\n',
+      ),
+    }
+    expectFailure(tree, `${SITE_FILE}: start.sentence: required`)
   })
 })
 

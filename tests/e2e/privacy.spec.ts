@@ -416,12 +416,23 @@ test.describe('a full visit (US-28)', () => {
   })
 
   // spec increment-2 AC-5.4 (plan §6 row 5.4): a visit to /start leaves every store empty, read in
-  // the page and from outside it. Its red is the case after the next: the inspection sees a value.
+  // the page and from outside it. Its red is the next case: the same inspection, on /start, which
+  // ships no script and none of the root's instruments, sees a value the test writes.
   test('a visit to /start stores nothing (AC-5.4)', async ({ page, context }) => {
     await page.goto('/start')
     expect(stores(await observed(page)), 'the stores on /start').toEqual(EMPTY_STORES)
     expect(await context.cookies(), 'cookies the browser holds').toEqual([])
     expect((await context.storageState()).origins, 'origins with storage').toEqual([])
+  })
+
+  test('the inspection sees a value the test writes to localStorage on /start, so the empty report above means something', async ({
+    page,
+  }) => {
+    await page.goto('/start')
+    await page.evaluate(() => {
+      localStorage.setItem('privacy-spec', 'written by the test')
+    })
+    expect(stores(await observed(page)).local).toBe(1)
   })
 
   test('the counter counts: an AudioContext, an OfflineAudioContext and an Audio constructed from the page read as 3', async ({

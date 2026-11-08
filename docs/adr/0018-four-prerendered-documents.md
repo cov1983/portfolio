@@ -36,6 +36,8 @@ AC-16.2 keeps the form's code out of every chunk the root address loads.
 
 - ADR 0010's route count ("two routes", "A third route is a third entry") is this ADR's; its
   mechanism (Vite SSR build, `react-dom/server`, the shell fill) is unchanged.
+- T3a confirms or amends the `/start/discovery` bullet of the Decision when it builds that route
+  (ai-review round 1 on #123, finding 7).
 - No hydration mismatch is possible on /start/discovery: nothing there is hydrated.
 - The build half (`tests/build`) checks each document it ships: /start pre-rendered with its own
   title and description and no script (T1); the discovery document and the chunk graph, with no
