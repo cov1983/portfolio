@@ -37,6 +37,7 @@ export const exhibitFrontMatterSchema = z.strictObject({
 export const siteFileSchema = z.strictObject({
   owner: z.strictObject({ name: z.string().min(1) }),
   oneLine: z.string().min(1), // the Title Screen's one line, written by the Owner
+  start: z.strictObject({ sentence: z.string().min(1) }), // /start's one sentence (AC-5.1), the Owner's
   contact: z.strictObject({ github: z.url(), email: z.email() }),
   captions: z.strictObject({
     hub: z.string().min(1),

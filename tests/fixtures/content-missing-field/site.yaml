@@ -1,6 +1,8 @@
 owner:
   name: Sample Owner
 oneLine: One line for the fixture.
+start:
+  sentence: A sentence for the fixture.
 contact:
   github: https://github.com/example
   email: sample@example.com

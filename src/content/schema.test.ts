@@ -21,6 +21,7 @@ const FRONT_MATTER = {
 const SITE = {
   owner: { name: 'Thomas' },
   oneLine: 'One line.',
+  start: { sentence: 'Have a project in mind? Tell me about it.' },
   contact: { github: 'https://github.com/cov1983', email: 'hello@example.com' },
   captions: { hub: 'Welcome.', zones: { portfolio: 'Found it.' } },
 }
@@ -121,6 +122,11 @@ describe('siteFileSchema', () => {
   it('rejects a GitHub value that is not a URL', () => {
     const result = siteFileSchema.safeParse({ ...SITE, contact: { ...SITE.contact, github: 'x' } })
     expect(issuePaths(result)).toEqual(['contact.github'])
+  })
+
+  it('rejects an empty /start sentence (AC-5.1)', () => {
+    const result = siteFileSchema.safeParse({ ...SITE, start: { sentence: '' } })
+    expect(issuePaths(result)).toEqual(['start.sentence'])
   })
 
   it('keys captions.zones by Exhibit id', () => {

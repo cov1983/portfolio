@@ -40,6 +40,8 @@ function memoryFs(tree: Tree): ContentFs {
 const SITE = `owner:
   name: Thomas
 oneLine: One line.
+start:
+  sentence: Have a project in mind? Tell me about it.
 contact:
   github: https://github.com/cov1983
   email: hello@example.com
@@ -122,6 +124,10 @@ describe('loadContent on a valid tree', () => {
     expect(content.captions).toEqual({ hub: 'Welcome!', zones: { portfolio: 'Found it.' } })
     expect(content.owner).toEqual({ name: 'Thomas' })
     expect(content.oneLine).toBe('One line.')
+  })
+
+  it('carries the /start sentence (AC-5.1)', () => {
+    expect(content.start).toEqual({ sentence: 'Have a project in mind? Tell me about it.' })
   })
 
   it('carries the plain fields of AC-26.1 and the year as written', () => {
@@ -329,6 +335,17 @@ describe('check 1: site.yaml', () => {
   it('reports a missing site.yaml field as required', () => {
     const tree = { ...VALID, [SITE_FILE]: SITE.replace('oneLine: One line.\n', '') }
     expectFailure(tree, `${SITE_FILE}: oneLine: required`)
+  })
+
+  it('reports a missing /start sentence as required (AC-5.1)', () => {
+    const tree = {
+      ...VALID,
+      [SITE_FILE]: SITE.replace(
+        'start:\n  sentence: Have a project in mind? Tell me about it.\n',
+        '',
+      ),
+    }
+    expectFailure(tree, `${SITE_FILE}: start: required`)
   })
 })
 
