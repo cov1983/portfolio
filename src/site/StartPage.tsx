@@ -33,7 +33,7 @@ export function StartPage({ content }: Props) {
         </nav>
       </header>
       <main>
-        <p className="one-line">{content.start.sentence}</p>
+        <p className="start-sentence">{content.start.sentence}</p>
         <section id="contact">
           <h2>Contact</h2>
           <Contact contact={content.contact} />

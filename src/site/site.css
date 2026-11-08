@@ -90,7 +90,9 @@
     padding: 3rem 1.25rem 4rem;
   }
 
-  .one-line {
+  /* The Title Screen's one line and /start's sentence: one look, two names (GLOSSARY: One line). */
+  .one-line,
+  .start-sentence {
     margin: 0.5rem 0 0;
     font-size: 1.25rem;
     color: var(--color-muted-foreground);
