@@ -128,6 +128,17 @@ describe('src/site/', () => {
     expect(new Set(accents)).toEqual(new Set([await tokenValue('primary')]))
   })
 
+  // Any colour form in the drawing (a style attribute, color=, flood-color=, a <style> block, a
+  // colour function), not only the three attributes the role cases read (ai-review round 2 on
+  // #121, finding 1): a stray colour would reach the favicon untied.
+  it('uses no colour in the mark but the primary and primary-foreground tokens', async () => {
+    const svg = await readFile(join(SITE_DIR, 'mark.svg'), 'utf8')
+    const tokens = new Set([await tokenValue('primary'), await tokenValue('primary-foreground')])
+    const literals = hexAndFunctionLiterals(svg).map((literal) => literal.toLowerCase())
+    expect(literals.length).toBeGreaterThan(0)
+    expect(literals.filter((literal) => !tokens.has(literal))).toEqual([])
+  })
+
   it("fills the mark's disc with the primary-foreground token", async () => {
     const svg = await readFile(join(SITE_DIR, 'mark.svg'), 'utf8')
     expect(hexAttributes(svg, 'fill')).toEqual([await tokenValue('primary-foreground')])
