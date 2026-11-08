@@ -95,6 +95,23 @@ test.describe('the world chunk aborted', () => {
     await failureReported(problems, browserName, aborted)
   })
 
+  // T0b (#103): the Title Screen's layer stays laid out while hidden, so the message must not sit
+  // below it: it covers the viewport and the page stays at its top. Red on the in-flow message:
+  // focus scrolled the page to 163 px in Chromium and WebKit (Firefox stayed at 0; 2026-11-08).
+  test('the message covers the viewport and leaves the page at its top', async ({
+    page,
+    problems,
+    browserName,
+  }) => {
+    const aborted = await abortRequests(page, WORLD_CHUNK)
+    await enteredIntoFailure(page)
+    await expect(failureScreen(page).getByRole('heading', { level: 1 })).toBeInViewport({
+      ratio: 1,
+    })
+    expect(await page.evaluate(() => window.scrollY)).toBe(0)
+    await failureReported(problems, browserName, aborted)
+  })
+
   test('the message takes focus, so it is read and its link is in reach', async ({
     page,
     problems,

@@ -159,6 +159,38 @@ export const worldContainer = (page: Page): Locator => page.locator('section[ari
 
 export const titleScreen = (page: Page): Locator => page.locator('main.title-screen')
 
+/** The layer around the Title Screen: `away` and `inert` while the World or the failure is shown (T0b). */
+export const titleScreenLayer = (page: Page): Locator => page.locator('div.title-screen-layer')
+
+/**
+ * Waits for `property`'s transition on `locator`'s element to end (T0b, #103: `transitionend`
+ * awaited, never a wait). Call it before the action that starts the transition and await the
+ * returned function after it: the listener is installed when the call resolves, so a transition
+ * that ends before the await is still caught. A listener on the element itself, through a handle,
+ * so no window global. Under reduced motion no transition runs and none ends: never call it there.
+ */
+export async function transitionEnded(
+  locator: Locator,
+  property: string,
+): Promise<() => Promise<void>> {
+  const ended = await locator.evaluateHandle(
+    (element, name) => ({
+      done: new Promise<void>((resolve) => {
+        element.addEventListener('transitionend', (event) => {
+          if (
+            event.target === element &&
+            event instanceof TransitionEvent &&
+            event.propertyName === name
+          )
+            resolve()
+        })
+      }),
+    }),
+    property,
+  )
+  return () => ended.evaluate((handle) => handle.done)
+}
+
 /** The readable failure that replaces the World (AC-22.2): a main, absent from the page otherwise. */
 export const failureScreen = (page: Page): Locator => page.locator('main.world-failure')
 

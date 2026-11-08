@@ -13,6 +13,7 @@ import {
   recorded,
   test,
   titleScreen,
+  titleScreenLayer,
   wayIn,
   WORLD_CHUNK,
   worldContainer,
@@ -92,6 +93,17 @@ test('after entry the World container is visible and focused, the Title Screen h
   await entered(page)
   await expect(worldContainer(page)).toBeFocused()
   await expect(titleScreen(page)).toBeHidden()
+})
+
+// Risk 1 of plan increment-2 §9 (T0b, #103): the Title Screen leaves by a state class, `inert` and
+// `visibility`, not by the `hidden` attribute, so it can transition. Red on the `hidden` code: the
+// layer does not exist and no `inert` is set.
+test('after entry the Title Screen’s layer is inert and hidden (AC-2.3 wiring)', async ({
+  page,
+}) => {
+  await entered(page)
+  await expect(titleScreenLayer(page)).toHaveAttribute('inert')
+  await expect(titleScreenLayer(page)).toBeHidden()
 })
 
 test('after entry the Hub’s caption, the welcome, is shown as text (AC-5.1)', async ({

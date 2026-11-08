@@ -81,6 +81,18 @@
 }
 
 @layer components {
+  /* The Title Screen's layer while the World or the readable failure is shown (TitleScreen, `away`
+     with `inert`): invisible but laid out, as the World container behind it (world.css), so the
+     state can transition (plan increment-2 §2). The page under the World does not scroll: the
+     hidden layer still takes up its length. */
+  .title-screen-layer.away {
+    visibility: hidden;
+  }
+
+  html:has(.title-screen-layer.away) {
+    overflow: hidden;
+  }
+
   .title-screen,
   .fallback-page,
   .start-page,
@@ -140,6 +152,15 @@
      is not a control. */
   .world-failure:focus {
     outline: none;
+  }
+
+  /* It replaces the World over the viewport, as the World container does (world.css), and scrolls
+     inside itself: the Title Screen's layer, invisible behind it, still takes up the page's length,
+     and in flow the message would sit below it and focus would scroll the page there. */
+  .world-failure {
+    position: fixed;
+    inset: 0;
+    overflow-y: auto;
   }
 
   .world-failure .reason {

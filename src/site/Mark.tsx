@@ -6,9 +6,9 @@
 // emitted file; a fixed path, not an asset import, because the hydration proof
 // (tests/build/index-html.test.ts) renders without the build's hashed asset names.
 // fetchPriority="low" exists to keep React 19's server renderer from hoisting an image preload
-// (<link rel="preload" as="image">) into the pre-rendered root, ahead of the Title Screen's <main>;
-// tests/build/index-html.test.ts pins it (the root opens with <main class="title-screen">). The
-// mark still loads eagerly; a 48 px decorative image needs no preload.
+// (<link rel="preload" as="image">) into the pre-rendered root, ahead of the Title Screen's layer;
+// tests/build/index-html.test.ts pins it (the root opens with <div class="title-screen-layer">).
+// The mark still loads eagerly; a 48 px decorative image needs no preload.
 export function Mark() {
   return (
     <img

@@ -27,7 +27,9 @@ describe('the production build', () => {
   })
 
   it('writes the Title Screen to index.html and the Fallback Page to exhibits/index.html', () => {
-    expect(build.indexHtml).toContain('<div id="root"><main class="title-screen">')
+    expect(build.indexHtml).toContain(
+      '<div id="root"><div class="title-screen-layer"><main class="title-screen">',
+    )
     expect(build.exhibitsHtml).toContain('<div id="root"><div class="fallback-page">')
   })
 

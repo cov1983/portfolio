@@ -6,6 +6,7 @@ import { Contact } from './Contact'
 import { FallbackLink } from './FallbackLink'
 import { Mark } from './Mark'
 import { Button } from './ui/button'
+import { cn } from './ui/cn'
 import './site.css'
 
 // The Title Screen (spec: Title Screen; ADR 0004, ADR 0010): the Owner's name, the one line, the
@@ -20,9 +21,12 @@ import './site.css'
 // a hint, never a removed way in). Each list entry links to the Exhibit's anchor on the Fallback Page; after hydration
 // `onPickExhibit` gets its activation and the app opens the Exhibit Panel instead for a plain one
 // (T6), so the href stays and the markup does not change. `entriesRef` is the list, where the app
-// finds the entry to return focus to when the Panel closes (AC-2.2). `hidden` while the World is shown
-// (T5b): the `hidden` attribute, so the Title Screen leaves the tab order and the accessibility
-// tree; Escape brings it back over the paused World (AC-6.1).
+// finds the entry to return focus to when the Panel closes (AC-2.2). `away` while the World or the
+// readable failure is shown (T0b, plan increment-2 §2, risk 1): the layer around the Title Screen
+// takes the state class `away` and `inert`, and site.css makes it `visibility: hidden`, so it leaves
+// the tab order and the accessibility tree like the World container does (world.css); unlike the
+// `hidden` attribute it replaces, the state can transition. Escape brings it back over the paused
+// World (AC-6.1).
 /** A capability hint: what it is about, and the sentence the Visitor reads. */
 type Hint = { kind: 'webgl' | 'keyboard'; text: string }
 
@@ -42,7 +46,7 @@ type Props = {
   /** What was detected after hydration; null before, and in the pre-rendered markup. */
   capability: Capability | null
   loading: boolean
-  hidden?: boolean
+  away?: boolean
   onEnter: () => void
   onPickExhibit: (id: ExhibitId, event: MouseEvent<HTMLAnchorElement>) => void
   entriesRef: RefObject<HTMLElement | null>
@@ -52,54 +56,56 @@ export function TitleScreen({
   content,
   capability,
   loading,
-  hidden = false,
+  away = false,
   onEnter,
   onPickExhibit,
   entriesRef,
 }: Props) {
   const hints = hintsFor(capability)
   return (
-    <main className="title-screen" hidden={hidden}>
-      {hints.length > 0 && (
-        <>
-          {hints.map((hint) => (
-            <p key={hint.kind} className="hint" data-hint={hint.kind}>
-              {hint.text}
-            </p>
-          ))}
-          <FallbackLink />
-        </>
-      )}
-      <header>
-        <div className="flex items-center gap-4">
-          <Mark />
-          <h1>{content.owner.name}</h1>
-        </div>
-        <p className="one-line">{content.oneLine}</p>
-      </header>
-      <Contact contact={content.contact} />
-      <Button className="way-in mt-8" onClick={onEnter} aria-busy={loading ? true : undefined}>
-        {loading ? 'Loading the World…' : 'Enter the World'}
-      </Button>
-      <nav className="exhibits" aria-label="Exhibits" ref={entriesRef}>
-        <h2>Exhibits</h2>
-        <ul>
-          {content.exhibits.map((exhibit) => (
-            <li key={exhibit.id}>
-              <a
-                href={`/exhibits#${exhibit.id}`}
-                onClick={(event) => {
-                  onPickExhibit(exhibit.id, event)
-                }}
-              >
-                {exhibit.title}
-              </a>
-              <span className="hook">{exhibit.hook}</span>
-            </li>
-          ))}
-        </ul>
-      </nav>
-      {hints.length === 0 && <FallbackLink />}
-    </main>
+    <div className={cn('title-screen-layer', away && 'away')} inert={away}>
+      <main className="title-screen">
+        {hints.length > 0 && (
+          <>
+            {hints.map((hint) => (
+              <p key={hint.kind} className="hint" data-hint={hint.kind}>
+                {hint.text}
+              </p>
+            ))}
+            <FallbackLink />
+          </>
+        )}
+        <header>
+          <div className="flex items-center gap-4">
+            <Mark />
+            <h1>{content.owner.name}</h1>
+          </div>
+          <p className="one-line">{content.oneLine}</p>
+        </header>
+        <Contact contact={content.contact} />
+        <Button className="way-in mt-8" onClick={onEnter} aria-busy={loading ? true : undefined}>
+          {loading ? 'Loading the World…' : 'Enter the World'}
+        </Button>
+        <nav className="exhibits" aria-label="Exhibits" ref={entriesRef}>
+          <h2>Exhibits</h2>
+          <ul>
+            {content.exhibits.map((exhibit) => (
+              <li key={exhibit.id}>
+                <a
+                  href={`/exhibits#${exhibit.id}`}
+                  onClick={(event) => {
+                    onPickExhibit(exhibit.id, event)
+                  }}
+                >
+                  {exhibit.title}
+                </a>
+                <span className="hook">{exhibit.hook}</span>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        {hints.length === 0 && <FallbackLink />}
+      </main>
+    </div>
   )
 }
