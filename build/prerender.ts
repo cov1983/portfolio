@@ -1,4 +1,4 @@
-// The pure half of pre-rendering (ADR 0010): the route table and the document assembly that
+// The pure half of pre-rendering (ADR 0010; the route count is ADR 0018's): the route table and the document assembly that
 // build/build.ts (I/O) applies to the client build's index.html or to the script-free shell.
 // Text operations, no DOM. A third route is a third entry in ROUTES here and a third case in
 // src/entry-prerender.tsx, which decides what that route renders.
@@ -10,6 +10,9 @@ export const ROUTES: readonly Route[] = [
   { path: '/', file: 'index.html', script: true },
   // The Fallback Page carries no script at all (plan §2).
   { path: '/exhibits', file: 'exhibits/index.html', script: false },
+  // /start is plain HTML in the Fallback shell (ADR 0018). /start/discovery is reserved there and
+  // joins in T3a with a shell of its own that links the discovery entry.
+  { path: '/start', file: 'start/index.html', script: false },
 ]
 
 /** The placeholders of index.html, Vite's SSR convention. */
@@ -33,7 +36,7 @@ const CHARSET = '<meta charset="UTF-8" />'
 const VIEWPORT = '<meta name="viewport" content="width=device-width, initial-scale=1.0" />'
 
 /**
- * The shell of a document that ships no script (the Fallback Page, plan §2): a complete minimal
+ * The shell of a document that ships no script (the Fallback Page, plan §2; /start, ADR 0018): a complete minimal
  * document with the client build's stylesheets and the two placeholders, written from nothing
  * rather than filtered out of index.html, so no script is ever in it to remove.
  */

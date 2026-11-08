@@ -1,8 +1,8 @@
 // `node build/build.ts`: the single build command of `make build` and vercel.json (ADR 0010).
 // Vite's client build into the output directory, then an SSR build of src/entry-prerender.tsx,
-// then both documents of build/prerender.ts written under the output directory: the Title Screen
-// into the client build's index.html, the Fallback Page into a script-free shell that links the
-// same stylesheets; and the favicon pair derived from the mark (build/favicon.ts, AC-1.3). I/O glue, outside the coverage ratchet (plan §6); the pure
+// then every document of build/prerender.ts written under the output directory (ADR 0010, 0018):
+// the Title Screen into the client build's index.html, the Fallback Page and /start into a
+// script-free shell that links the same stylesheets; and the favicon pair derived from the mark (build/favicon.ts, AC-1.3). I/O glue, outside the coverage ratchet (plan §6); the pure
 // parts live in build/prerender.ts. Runs under plain Node 24 (type stripping), so relative imports
 // carry the .ts extension. Flags mirror `vite build`: --outDir <dir> and --emptyOutDir.
 //

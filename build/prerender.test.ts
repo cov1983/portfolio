@@ -8,10 +8,11 @@ const SHELL =
   '<script type="module" crossorigin src="/assets/index-abc.js"></script></body></html>'
 
 describe('ROUTES', () => {
-  it('pre-renders the root with its script and the Fallback Page without', () => {
+  it('pre-renders the root with its script, the Fallback Page and /start without (ADR 0018)', () => {
     expect(ROUTES).toEqual([
       { path: '/', file: 'index.html', script: true },
       { path: '/exhibits', file: 'exhibits/index.html', script: false },
+      { path: '/start', file: 'start/index.html', script: false },
     ])
   })
 })

@@ -10,7 +10,7 @@ import { removeBuild, runProductionBuild, type BuildResult } from './production-
 
 // Seam 1's build half (plan §6). T0's check on index.html, extended by T4 to both pre-rendered
 // documents (ADR 0010): nothing the CSP of ADR 0012 would block, none of the dev-only nonce of
-// vite.config.ts, and the Fallback Page carries no script at all (plan §2).
+// vite.config.ts, and the Fallback Page carries no script at all (plan §2). T1 adds /start (ADR 0018).
 describe('the production build', () => {
   let build: BuildResult
 
@@ -40,14 +40,16 @@ describe('the production build', () => {
     expect(rootMarkup(build.indexHtml)).toBe(expected)
   })
 
-  it('reports both documents', () => {
+  it('reports every document', () => {
     expect(build.stdout).toContain('prerendered / → index.html')
     expect(build.stdout).toContain('prerendered /exhibits → exhibits/index.html')
+    expect(build.stdout).toContain('prerendered /start → start/index.html')
   })
 
   describe.each([
     ['index.html', (b: BuildResult) => b.indexHtml],
     ['exhibits/index.html', (b: BuildResult) => b.exhibitsHtml],
+    ['start/index.html', (b: BuildResult) => b.startHtml],
   ])('%s', (_file, html) => {
     it('has no inline script', () => {
       expect(inlineScripts(html(build))).toEqual([])
@@ -67,12 +69,13 @@ describe('the production build', () => {
     expect(build.exhibitsHtml).not.toMatch(/modulepreload/i)
   })
 
-  it('references the stylesheets of the Title Screen on the Fallback Page', () => {
+  it('references the stylesheets of the Title Screen on the Fallback Page and /start', () => {
     const stylesheets = (html: string): string[] =>
       [...html.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*\bhref="([^"]+)"/g)].map(
         (m) => m[1] ?? '',
       )
     expect(stylesheets(build.indexHtml)).not.toEqual([])
     expect(stylesheets(build.exhibitsHtml)).toEqual(stylesheets(build.indexHtml))
+    expect(stylesheets(build.startHtml)).toEqual(stylesheets(build.indexHtml))
   })
 })

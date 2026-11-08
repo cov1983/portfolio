@@ -19,6 +19,8 @@ export type BuildResult = {
   indexHtml: string
   /** dist/exhibits/index.html, the pre-rendered Fallback Page; '' when the build failed. */
   exhibitsHtml: string
+  /** dist/start/index.html, the pre-rendered /start page (ADR 0018); '' when the build failed. */
+  startHtml: string
 }
 
 /** Extra environment for the spawned build, e.g. CONTENT_DIR for a content fixture (plan §6). */
@@ -52,11 +54,12 @@ export async function runProductionBuild(options: BuildOptions = {}): Promise<Bu
   }
   const read = (file: string): Promise<string> =>
     code === 0 ? readFile(join(outDir, file), 'utf8') : Promise.resolve('')
-  const [indexHtml, exhibitsHtml] = await Promise.all([
+  const [indexHtml, exhibitsHtml, startHtml] = await Promise.all([
     read('index.html'),
     read('exhibits/index.html'),
+    read('start/index.html'),
   ])
-  return { outDir, code, stdout, stderr, indexHtml, exhibitsHtml }
+  return { outDir, code, stdout, stderr, indexHtml, exhibitsHtml, startHtml }
 }
 
 export async function removeBuild(build: BuildResult): Promise<void> {
