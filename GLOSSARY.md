@@ -105,7 +105,7 @@ _Avoid_: submission, lead, spec, request
 
 **Draft**:
 A Client's unsent answers, kept in their own browser until they submit or clear them, or their
-Invite is no longer valid.
+Invite has expired.
 _Avoid_: autosave, session, cache
 
 ## Content
