@@ -7,10 +7,8 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
 
-import { BACKDROP_FILE, TOKENS_SOURCE, backdropFiles } from './build/backdrop.ts'
 import { contentPlugin } from './build/content-plugin.ts'
 import { MARK_SOURCE, faviconFiles, renderPng } from './build/favicon.ts'
-import type { EmittedFile } from './build/images.ts'
 import { cleanUrl } from './build/prerender.ts'
 import { vercelHeaders } from './vercel-headers.ts'
 
@@ -61,53 +59,31 @@ function cleanUrlsPlugin(): Plugin {
   }
 }
 
-// The files derived from the sources, at the root: the favicon pair from the mark (build/favicon.ts,
-// AC-1.3) and the hero's backdrop from the token layer (build/backdrop.ts, AC-2.1). The dev server
-// derives each per request, so the icon link, the header mark and the backdrop show under
-// `make dev`; in the build, this plugin emits the backdrop into the client bundle and
-// build/build.ts writes the favicon pair. `vite preview` serves dist/.
-type Derived = { type: string; files: (root: string) => Promise<EmittedFile[]> }
-
-const favicons = (root: string) =>
-  readFile(resolve(root, MARK_SOURCE)).then((mark) => faviconFiles(mark, renderPng))
-const backdrop = (root: string) =>
-  readFile(resolve(root, TOKENS_SOURCE), 'utf8').then((tokens) => backdropFiles(tokens))
-
-const DERIVED: Record<string, Derived> = {
-  '/favicon.svg': { type: 'image/svg+xml', files: favicons },
-  '/favicon.ico': { type: 'image/x-icon', files: favicons },
-  [`/${BACKDROP_FILE}`]: { type: 'image/svg+xml', files: backdrop },
+// Dev only: the favicon pair the build derives from the mark (build/favicon.ts, AC-1.3) served at
+// the root, so the icon link and the header mark show under `make dev` too. Derived per request
+// from the current drawing; `vite preview` serves dist/, where build/build.ts wrote both.
+const FAVICON_TYPES: Record<string, string> = {
+  '/favicon.svg': 'image/svg+xml',
+  '/favicon.ico': 'image/x-icon',
 }
 
-function derivedFilesPlugin(): Plugin {
-  let root = process.cwd()
+function faviconPlugin(): Plugin {
   return {
-    name: 'portfolio:derived-files',
-    configResolved(config) {
-      root = config.root
-    },
-    // The build emits the backdrop into the client bundle at its fixed name, from the same source
-    // as dev; the SSR build of the documents needs no copy.
-    async generateBundle() {
-      if (this.environment.config.consumer !== 'client') return
-      for (const file of await backdrop(root)) {
-        this.emitFile({ type: 'asset', fileName: file.fileName, source: file.source })
-      }
-    },
+    name: 'portfolio:favicon',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const path = req.url === undefined ? '' : new URL(req.url, 'http://localhost').pathname
-        const derived = DERIVED[path]
-        if (derived === undefined) {
+        const type = FAVICON_TYPES[path]
+        if (type === undefined) {
           next()
           return
         }
-        derived
-          .files(server.config.root)
+        readFile(resolve(server.config.root, MARK_SOURCE))
+          .then((mark) => faviconFiles(mark, renderPng))
           .then((files) => {
             const file = files.find((candidate) => `/${candidate.fileName}` === path)
             if (file === undefined) throw new Error(`no derived file for ${path}`)
-            res.setHeader('Content-Type', derived.type)
+            res.setHeader('Content-Type', type)
             res.end(file.source)
           })
           .catch(next)
@@ -124,7 +100,7 @@ export default defineConfig(({ command, isPreview }) => {
   return {
     // ADR 0011: the content is validated, typed as virtual:content and its media emitted by the plugin.
     // ADR 0017: Tailwind v4 compiles src/site/site.css (its entry) against the token layer.
-    plugins: [react(), tailwindcss(), contentPlugin(), cleanUrlsPlugin(), derivedFilesPlugin()],
+    plugins: [react(), tailwindcss(), contentPlugin(), cleanUrlsPlugin(), faviconPlugin()],
     html: isDev ? { cspNonce: DEV_NONCE } : {},
     server: { headers: isDev ? withDevNonce(headers) : headers },
     preview: { headers },
@@ -132,10 +108,6 @@ export default defineConfig(({ command, isPreview }) => {
       // No source maps in the delivered site (constitution 10: nothing beyond the site's own code).
       sourcemap: false,
       rolldownOptions: {
-        // The backdrop is an asset this config's plugin emits at its fixed name in generateBundle
-        // (above), after site.css's `url(/hero-backdrop.svg)` is resolved: declared external, the
-        // URL stays as written without Vite's "didn't resolve at build time" warning.
-        external: [`/${BACKDROP_FILE}`],
         output: {
           // ADR 0010: one `world` chunk holds three, React Three Fiber and Rapier; React stays in
           // the entry chunk (no recursive dependencies). The World's own model and scene travel in

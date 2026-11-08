@@ -261,14 +261,10 @@ test.describe('exactly two effects (AC-1.2)', () => {
     for (const name of await currentAnimations(page)) expect(name).toBe('headline-reveal')
   })
 
-  // The glow is drawn into the backdrop's image (build/backdrop.ts, which writes no animation into
-  // it: build/backdrop.test.ts), shown as the backdrop element's background.
   test('the edge glow is static', async ({ page }) => {
     await hydrated(page)
-    const backdrop = page.locator('.hero-backdrop')
-    expect(await backdrop.evaluate((element) => getComputedStyle(element).animationName)).toBe(
-      'none',
-    )
+    const glow = page.locator('.edge-glow')
+    expect(await glow.evaluate((element) => getComputedStyle(element).animationName)).toBe('none')
   })
 
   test('nothing animates on the Fallback Page', async ({ page }) => {

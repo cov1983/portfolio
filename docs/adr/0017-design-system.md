@@ -119,24 +119,6 @@ is `<img src="/favicon.svg" alt="">`, so the icon link and the mark name one emi
   layer**; `index-html.test` pins it (the root opens with `<div class="title-screen-layer">` since
   T0b). The mark still loads eagerly.
 
-**The hero's backdrop, derived** (D2, AC-2.1; T0b, #103): one standalone SVG, not live
-layers. `build/backdrop.ts` projects the ice grid through the Follow Camera (`RIG` of
-`src/world/model/camera.ts`, imported by the build, never by `src/site/`) into a 1600 × 900 view,
-with crosses at one cell centre in four, the static edge glow and the foot fade drawn in, every
-colour read from `tokens.css`; the derived-files plugin of `vite.config.ts` emits it into the
-client bundle as `dist/hero-backdrop.svg` (a fixed name, `generateBundle`) and serves it in dev from
-the same source, and the backdrop shows it as its one background image under the unchanged Mark. `tokens.test` ties the emitted file's colours to the tokens by role, so the file
-is no second exception to the token rule. The first rendering (an inline `<pattern>` tilted by a
-CSS 3D transform under a `mask-image`, with a gradient layer) cost World playable and TBT in
-`make perf`; probes of other renderings, the Owner's noise baseline of `main` and the choice are
-[#103 comment 6726409397](https://github.com/cov1983/portfolio/issues/103#issuecomment-6726409397),
-which supersedes the bar of
-[6724744135](https://github.com/cov1983/portfolio/issues/103#issuecomment-6724744135), with its
-correction [6726813014](https://github.com/cov1983/portfolio/issues/103#issuecomment-6726813014)
-(World playable 40 ms above `main`'s span, accepted as noise-level). Like `/favicon.svg` it is a
-fixed, unhashed path; the CSS `url(/hero-backdrop.svg)` is declared external in the build's
-`rolldownOptions`, since the file is emitted after the stylesheet is resolved.
-
 **Motion in CSS, no Motion dependency** (plan §2 and §11 B2; #59 comment 6662855247, item 2): the
 headline reveal and the Title Screen–World crossfade (T0b) are CSS keyframes and transitions,
 switched off by the existing `prefers-reduced-motion` rule. The spec's Motion sentences are amended
@@ -165,9 +147,6 @@ by T0b's first commit; this ADR cites the plan decision, not that amend.
 - The mark moved into T0b's sticky bar (#103) unchanged: same component, same file; on /exhibits
   and /start an anchor wraps it with hidden text "Title Screen"
   ([#103 comment 6723215733](https://github.com/cov1983/portfolio/issues/103#issuecomment-6723215733)).
-- The hero's grid quotes the camera through the build: a change of `RIG` changes the backdrop in
-  the next build, not by a copied angle in `site.css`. Its composition is the Owner's check on the
-  preview (AC-2.1).
 - The download until playable, read by `make perf` at each step of T0a: 1,990,241 B with Tailwind
   and the tokens (a96c9ed), 2,002,099 B with the Button, cva, tailwind-merge and two icons
   (e0a7813), 2,027,930 B with the Manrope woff2 (15a1d2a), 2,028,586 B with the mark (33825c4),

@@ -68,7 +68,7 @@ The stack is ADR 0003 (TypeScript, React Three Fiber, Rapier); ADR 0009: the mod
                             `content/` (ADR 0011: schema, types, `loadContent`, variant planner, `mailto.ts`), `app/` (plan §5: store, keys, focus, caption, capability, preload, FailureBoundary; `App.tsx` the hydrated root), `intake/` (ADR 0019: the Invite's shared rules `invite.ts`; `server/` signs, Node only, `tsconfig.server.json`)
 - `build/`                  the build's I/O (plan §2, ADR 0010, 0018): `build.ts` (`make build`: client build, SSR build, every document),
                             `prerender.ts` (pure: routes, shell fill, preview `cleanUrl`, `siteOrigin`), `content-plugin.ts` (validates
-                            `content/`, serves `virtual:content`, emits `dist/media/`, dev media; `CONTENT_DIR`), `images.ts` (sharp), `favicon.ts` (favicon.svg and .ico derived from `src/site/mark.svg`; no `public/`), `backdrop.ts` (the hero's `hero-backdrop.svg` from `tokens.css` and the camera `RIG`)
+                            `content/`, serves `virtual:content`, emits `dist/media/`, dev media; `CONTENT_DIR`), `images.ts` (sharp), `favicon.ts` (favicon.svg and .ico derived from `src/site/mark.svg`; no `public/`)
 - `content/`                the Owner's content (CODEOWNERS): `site.yaml`, `bio.md`, `exhibits/<id>/index.md` + media at original size;
                             the directory name is the Exhibit id; the build is the validator (plan §4), publishing is a commit
 - `tests/`                  `e2e/` (Playwright, spec seam 1; `fixtures.ts` fails a test on pageerror, console.error, CSP violation),
