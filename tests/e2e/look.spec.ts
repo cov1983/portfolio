@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 
 import type { Locator, Page } from '@playwright/test'
 
+import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks'
 import {
   caption,
   entered,
@@ -12,7 +13,10 @@ import {
   firstExhibit,
   hydrated,
   opened,
+  recorded,
   test,
+  titleScreenLayer,
+  transitionEnded,
   wayIn,
   WORLD_CHUNK,
   worldContainer,
@@ -266,8 +270,15 @@ test.describe('exactly two effects (AC-1.2)', () => {
     for (const name of await currentAnimations(page)) expect(name).toBe('headline-reveal')
   })
 
+  // Read once the crossfade has ended (T0b): while the Title Screen fades out it is still shown,
+  // headline included, and the sweep would count it.
   test('nothing animates in the World, the caption shown', async ({ page }) => {
-    await entered(page)
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await hydrated(page)
+    await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
+    const faded = await transitionEnded(titleScreenLayer(page), 'visibility')
+    await page.keyboard.press('Enter')
+    await faded()
     await expect(caption(page)).not.toHaveText('')
     expect(await animatedElements(page)).toEqual([])
     expect(await currentAnimations(page)).toEqual([])

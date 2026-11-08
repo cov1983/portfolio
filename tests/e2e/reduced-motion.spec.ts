@@ -4,6 +4,9 @@ import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks'
 import { GOAL_BUDGET_S } from '../journey'
 import {
   caption,
+  hydrated,
+  titleScreenLayer,
+  transitionEnded,
   entered,
   exhibitPanel,
   expect,
@@ -131,4 +134,65 @@ test('nothing animates after the caption, Reset, the Goal and the Panel under re
   await expect(worldContainer(page)).toBeVisible()
   await expect(titleScreen(page)).toBeHidden()
   expect(await runningAnimations(page), 'the Panel closing').toEqual([])
+})
+
+// increment-2 AC-2.4 (plan §6 row 2.4): under reduced motion the crossfade is instant. A read of
+// the running transitions after Enter races a 400 ms transition (Chromium read it ended in two of
+// three runs), so a late read could pass without the reduce rule: the checks read the layer's
+// computed transition durations in its away state, which do not depend on timing, then that
+// nothing runs and the layer is out of sight. Without the preference the same durations are
+// 400 ms and the fade's own `transitionend` arrives, which is what makes the checks able to fail.
+// The World is ready before the press in each, so the change starts with it.
+test.describe('entering the World (increment-2 AC-2.4)', () => {
+  async function ready(page: Page, reducedMotion: 'reduce' | 'no-preference'): Promise<void> {
+    await page.emulateMedia({ reducedMotion })
+    await hydrated(page)
+    await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
+  }
+
+  async function entered(page: Page): Promise<void> {
+    await page.keyboard.press('Enter')
+    await expect(worldContainer(page)).toBeFocused()
+  }
+
+  /** The layer's computed transition durations, one per transitioned property. */
+  function layerDurations(page: Page): Promise<string[]> {
+    return titleScreenLayer(page).evaluate((element) =>
+      getComputedStyle(element).transitionDuration.split(', '),
+    )
+  }
+
+  test('gives the Title Screen no transition time under reduced motion', async ({ page }) => {
+    await ready(page, 'reduce')
+    await entered(page)
+    for (const duration of await layerDurations(page)) expect(duration).toBe('0s')
+  })
+
+  test('runs no animation or transition right after Enter under reduced motion', async ({
+    page,
+  }) => {
+    await ready(page, 'reduce')
+    await entered(page)
+    expect(await runningAnimations(page)).toEqual([])
+  })
+
+  test('hides the Title Screen at once under reduced motion', async ({ page }) => {
+    await ready(page, 'reduce')
+    await entered(page)
+    expect(await titleScreenLayer(page).isHidden()).toBe(true)
+  })
+
+  test('gives the Title Screen its fade time without the preference', async ({ page }) => {
+    await ready(page, 'no-preference')
+    await entered(page)
+    expect(await layerDurations(page)).toContain('0.4s')
+  })
+
+  test('fades the Title Screen out without the preference', async ({ page }) => {
+    await ready(page, 'no-preference')
+    const faded = await transitionEnded(titleScreenLayer(page), 'opacity')
+    await entered(page)
+    await faded()
+    expect(await titleScreenLayer(page).isHidden()).toBe(true)
+  })
 })

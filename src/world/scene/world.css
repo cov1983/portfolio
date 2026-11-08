@@ -1,10 +1,17 @@
 /* The World's container fills the viewport (src/world/World.tsx); the canvas fills the container.
+   It fades in while the Title Screen fades and lifts out (spec increment-2 AC-2.3; site.css,
+   `.title-screen-layer`, the same duration and the same rule: `visibility` at once when shown,
+   after the fade when hidden). The site's reduced-motion rule (site.css) reaches it too, as the
+   World runs in the same document: instant there (AC-2.4).
    Classes only, never a style attribute (ADR 0012). Behind the canvas, the site's background token
    (src/site/tokens.css, ADR 0017: the site agrees with the World, D5); Tailwind's `@theme static`
    declares it on :root, and the World runs in the same document. */
 .world-container {
   position: fixed;
   inset: 0;
+  transition:
+    opacity 400ms ease-out,
+    visibility 0s linear 0s;
 }
 
 .world {
@@ -14,9 +21,14 @@
 }
 
 /* Hidden behind the Title Screen: invisible but laid out, so the canvas keeps its size and the
-   paused demand frame renders; `inert` already removes it from focus and assistive technology. */
+   paused demand frame renders; `inert` already removes it from focus and assistive technology.
+   Mounted hidden, it starts here without a transition. */
 .world-container[inert] {
   visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 400ms ease-out,
+    visibility 0s linear 400ms;
 }
 
 /* The container takes focus on entry (plan §5) so the keys have a home; it is not a control. */

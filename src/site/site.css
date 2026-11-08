@@ -82,18 +82,34 @@
 
 @layer components {
   /* The Title Screen's layer: the containing block of the hero's backdrop, which stays behind its
-     content (isolation keeps the backdrop's negative z-index inside the layer). */
+     content (isolation keeps the backdrop's negative z-index inside the layer). The crossfade into
+     the World (spec increment-2 AC-2.3, plan §2): the layer fades and lifts out while the World
+     fades in (world.css, the same duration). A transition, not an effect (AC-1.2). Each state
+     names the transition that leads into it: shown, `visibility` changes at once, so the layer is
+     focusable in the commit that brings it back (Escape, AC-6.1); away, `visibility` waits out the
+     fade, then takes the layer out of sight and of the accessibility tree. The backdrop is
+     absolute, not fixed: the lift's transform would capture a fixed child. Reduced motion turns
+     all of it off (the rule at the end, AC-2.4): the change is instant. */
   .title-screen-layer {
     position: relative;
     isolation: isolate;
+    transition:
+      opacity 400ms ease-out,
+      transform 400ms ease-out,
+      visibility 0s linear 0s;
   }
 
   /* The Title Screen's layer while the World or the readable failure is shown (TitleScreen, `away`
-     with `inert`): invisible but laid out, as the World container behind it (world.css), so the
-     state can transition (plan increment-2 §2). The page under the World does not scroll: the
-     hidden layer still takes up its length. */
+     with `inert`): invisible but laid out, as the World container behind it (world.css). The page
+     under the World does not scroll: the hidden layer still takes up its length. */
   .title-screen-layer.away {
     visibility: hidden;
+    opacity: 0;
+    transform: translateY(-1.5rem);
+    transition:
+      opacity 400ms ease-out,
+      transform 400ms ease-out,
+      visibility 0s linear 400ms;
   }
 
   html:has(.title-screen-layer.away) {

@@ -26,8 +26,9 @@ import './site.css'
 // readable failure is shown (T0b, plan increment-2 §2, risk 1): the layer around the Title Screen
 // takes the state class `away` and `inert`, and site.css makes it `visibility: hidden`, so it leaves
 // the tab order and the accessibility tree like the World container does (world.css); unlike the
-// `hidden` attribute it replaces, the state can transition. Escape brings it back over the paused
-// World (AC-6.1).
+// `hidden` attribute it replaces, the state transitions: the layer fades and lifts out while the
+// World fades in (site.css, increment-2 AC-2.3), instantly under reduced motion (AC-2.4). Escape
+// brings it back over the paused World (AC-6.1).
 /** A capability hint: what it is about, and the sentence the Visitor reads. */
 type Hint = { kind: 'webgl' | 'keyboard'; text: string }
 
