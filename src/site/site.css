@@ -34,7 +34,9 @@
   }
 
   /* The scrollbar's room is kept whether the page scrolls or not, so locking it behind an open
-     Exhibit Panel does not shift the Title Screen sideways (Owner, #30 Q3). */
+     Exhibit Panel does not shift the Title Screen sideways (Owner, #30 Q3), nor does the
+     `overflow: hidden` of the World's entry below during the crossfade (ai-review round 1 on #125,
+     m3): `stable` keeps the gutter under `hidden` too. */
   html {
     scrollbar-gutter: stable;
   }
@@ -146,9 +148,13 @@
   }
 
   /* "Start a project", filled: the copied Button's look on an anchor (ADR 0017: no `asChild`),
-     navy ink on the accent (5.6:1, tokens.css), hover brightened like the Button's, instant. */
+     navy ink on the accent (5.6:1, tokens.css), hover brightened like the Button's, instant. On one
+     line, so the bar keeps one height within the scroll padding above, down to 320 px (ai-review
+     round 1 on #125, m4: wrapped, the bar measured 85.7 px there). The current-page underline is
+     a token utility on the element (StickyBar.tsx). */
   .sticky-bar .bar-start {
     display: inline-block;
+    white-space: nowrap;
     padding: 0.5rem 1rem;
     font-weight: 600;
     color: var(--color-primary-foreground);

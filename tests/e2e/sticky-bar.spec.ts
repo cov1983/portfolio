@@ -1,16 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 
-import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks'
-import {
-  expect,
-  hydrated,
-  recorded,
-  test,
-  titleScreenLayer,
-  transitionEnded,
-  worldContainer,
-} from './fixtures'
+import { enterWorld, expect, firstExhibit, leaveWorld, test, worldPlayable } from './fixtures'
 
 // Seam 1, the sticky bar (spec increment-2 US-3, AC-3.1–3.4, AC-4.3; plan §6 rows 3.1–3.4, T0b's
 // pages; /start/discovery joins in T3a). A 320 × 480 viewport, so every page scrolls (each test
@@ -61,6 +52,33 @@ for (const path of PAGES) {
   })
 }
 
+// AC-3.2 for the eye (ai-review round 1 on #125, m1): on /start the current page is marked by a
+// underline from the token utilities, not by `aria-current` alone (the control is undecorated on
+// the other pages). Red: StickyBar.tsx without the `aria-[current=page]:underline` utility.
+test('shows "Start a project" as the current page to the eye on /start (AC-3.2)', async ({
+  page,
+}) => {
+  await page.goto('/start')
+  const line = await barLink(page, 'Start a project').evaluate(
+    (element) => getComputedStyle(element).textDecorationLine,
+  )
+  expect(line).toBe('underline')
+})
+
+// An anchor on the Fallback Page lands below the bar at the narrowest width, where "Start a
+// project" would wrap and make the bar taller than the scroll padding (ai-review round 1 on #125,
+// m4). The anchor's target is the Exhibit's article: its h2 sits below the article's own top, so a
+// check on the h2 passes a bar that already covers the article's top. Red: `.bar-start` without
+// `white-space: nowrap` (site.css): the bar measured 85.7 px, the article landed at 79.7 px.
+test('an Exhibit anchor lands below the bar at 320 px', async ({ page, content }) => {
+  await page.goto(`/exhibits#${firstExhibit(content).id}`)
+  const barBottom = await bar(page).evaluate((element) => element.getBoundingClientRect().bottom)
+  const targetTop = await page
+    .locator(`article#${firstExhibit(content).id}`)
+    .evaluate((element) => element.getBoundingClientRect().top)
+  expect(targetTop).toBeGreaterThanOrEqual(barBottom)
+})
+
 // The mark leads to the Title Screen on /exhibits and /start, and is plain on `/` (Owner, #103
 // comment 6723215733).
 test.describe('the mark', () => {
@@ -84,13 +102,8 @@ test.describe('the mark', () => {
 // crossfade's own `transitionend` (no wait), the World ready before the press.
 test.describe('in the World (AC-3.3)', () => {
   async function inTheWorld(page: Page): Promise<void> {
-    await page.emulateMedia({ reducedMotion: 'no-preference' })
-    await hydrated(page)
-    await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
-    const faded = await transitionEnded(titleScreenLayer(page), 'visibility')
-    await page.keyboard.press('Enter')
-    await faded()
-    await expect(worldContainer(page)).toBeFocused()
+    await worldPlayable(page)
+    await enterWorld(page)
   }
 
   test('is not visible', async ({ page }) => {
@@ -127,15 +140,9 @@ test.describe('in the World (AC-3.3)', () => {
 test('the Title Screen with its bar has no WCAG 2.2 AA violations after Escape (AC-4.3)', async ({
   page,
 }) => {
-  await page.emulateMedia({ reducedMotion: 'no-preference' })
-  await hydrated(page)
-  await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
-  const faded = await transitionEnded(titleScreenLayer(page), 'visibility')
-  await page.keyboard.press('Enter')
-  await faded()
-  const back = await transitionEnded(titleScreenLayer(page), 'opacity')
-  await page.keyboard.press('Escape')
-  await back()
+  await worldPlayable(page)
+  await enterWorld(page)
+  await leaveWorld(page)
   await expect(bar(page)).toBeVisible()
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])

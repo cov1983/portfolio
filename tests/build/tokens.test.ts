@@ -10,6 +10,7 @@ import {
   tokenDeclarations,
   withoutComments,
 } from './css-checks'
+import { contrast, over, parseHex } from './contrast'
 import { removeBuild, runProductionBuild, type BuildResult } from './production-build'
 
 // Seam 1's build half for AC-1.1 (plan §6 row 1.1, ADR 0017): every colour of the HTML surfaces
@@ -142,6 +143,20 @@ describe('src/site/', () => {
   it("fills the mark's disc with the primary-foreground token", async () => {
     const svg = await readFile(join(SITE_DIR, 'mark.svg'), 'utf8')
     expect(hexAttributes(svg, 'fill')).toEqual([await tokenValue('primary-foreground')])
+  })
+
+  // The hero's text over the static edge glow (ai-review round 1 on #125, m2; Owner, #103 comment
+  // 6950982340): axe reports text over a gradient as incomplete, so contrast is computed here. The
+  // glow is darkest where the gradient reaches the token at full strength; the h1 (foreground) and
+  // the one line (muted-foreground, 20 px regular, not large text) must keep AA 4.5:1 there. A
+  // tuned glow token fails this case; a moved gradient stop cannot make the worst case worse.
+  // Red: the glow at 50 % (#168bff80) leaves muted-foreground at 3.44:1.
+  it('keeps the hero text at AA over the full glow token', async () => {
+    const glowed = over(await tokenValue('glow'), await tokenValue('background'))
+    for (const ink of ['foreground', 'muted-foreground']) {
+      const ratio = contrast(parseHex(await tokenValue(ink)).rgb, glowed)
+      expect(ratio, `${ink} over background+glow`).toBeGreaterThanOrEqual(4.5)
+    }
   })
 
   it('has no prefers-color-scheme query in any source', async () => {

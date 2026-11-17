@@ -5,10 +5,12 @@ import { WORLD_PLAYABLE_MARK } from '../../src/perf/marks'
 import {
   caption,
   entered,
+  enterWorld,
   exhibitPanel,
   expect,
   firstExhibit,
   hydrated,
+  leaveWorld,
   listEntry,
   recorded,
   test,
@@ -18,6 +20,7 @@ import {
   wayIn,
   WORLD_CHUNK,
   worldContainer,
+  worldPlayable,
 } from './fixtures'
 
 // Seam 1, the way in and out (spec: Entering the World; plan §2, Entry and preload policy): the
@@ -109,13 +112,12 @@ test('after entry the Title Screen’s layer is inert and hidden (AC-2.3 wiring)
 
 // increment-2 AC-2.3 and AC-2.5 (plan §6 rows 2.3, 2.5): the crossfade. Without reduced motion,
 // the World ready before the press (so the transition starts with it), each change is read after
-// the layer's own `transitionend`, never after a wait; `transitionEnded` listens before the key.
-// Under reduced motion no transition runs: reduced-motion.spec reads that case.
+// the layer's own `transitionend`, never after a wait (`enterWorld`, `leaveWorld` in fixtures.ts).
+// Under reduced motion no transition runs: reduced-motion.spec reads that case. One concept per
+// case (ai-review round 1 on #125, m5); each names the mutation that turns it red.
 test.describe('the crossfade (increment-2 AC-2.3, AC-2.5)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: 'no-preference' })
-    await hydrated(page)
-    await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
+    await worldPlayable(page)
   })
 
   test('the Title Screen transitions its opacity and its lift', async ({ page }) => {
@@ -126,16 +128,31 @@ test.describe('the crossfade (increment-2 AC-2.3, AC-2.5)', () => {
     expect(property).toContain('transform')
   })
 
-  test('one Enter: after the fade the Title Screen is inert and hidden, the World shown and focused', async ({
-    page,
-  }) => {
-    const faded = await transitionEnded(titleScreenLayer(page), 'visibility')
-    await page.keyboard.press('Enter')
-    await faded()
-    expect(await titleScreenLayer(page).getAttribute('inert')).toBe('')
-    expect(await titleScreenLayer(page).isHidden()).toBe(true)
-    expect(await worldContainer(page).isVisible()).toBe(true)
-    await expect(worldContainer(page)).toBeFocused()
+  test.describe('one Enter, after the fade', () => {
+    test.beforeEach(async ({ page }) => {
+      await enterWorld(page)
+    })
+
+    // Red: the layer without `inert` while away (TitleScreen.tsx).
+    test('the Title Screen is inert', async ({ page }) => {
+      expect(await titleScreenLayer(page).getAttribute('inert')).toBe('')
+    })
+
+    // Red: `.title-screen-layer.away` without `visibility: hidden` (site.css): no `visibility`
+    // transition runs, and `enterWorld` times out waiting for its end.
+    test('the Title Screen is out of sight', async ({ page }) => {
+      expect(await titleScreenLayer(page).isHidden()).toBe(true)
+    })
+
+    // Red: `.world-container` hidden in every state (world.css).
+    test('the World is shown', async ({ page }) => {
+      expect(await worldContainer(page).isVisible()).toBe(true)
+    })
+
+    // Red: App.tsx without the World container's focus on entry.
+    test('the World is focused', async ({ page }) => {
+      await expect(worldContainer(page)).toBeFocused()
+    })
   })
 
   test('the World fades in with the same press', async ({ page }) => {
@@ -147,33 +164,36 @@ test.describe('the crossfade (increment-2 AC-2.3, AC-2.5)', () => {
     ).toBe('1')
   })
 
-  test('Escape after the fade brings the Title Screen back over the paused World (AC-6.1)', async ({
-    page,
-  }) => {
-    const faded = await transitionEnded(titleScreenLayer(page), 'visibility')
-    await page.keyboard.press('Enter')
-    await faded()
-    const back = await transitionEnded(titleScreenLayer(page), 'opacity')
-    await page.keyboard.press('Escape')
-    await back()
-    expect(await titleScreenLayer(page).isVisible()).toBe(true)
-    expect(await worldContainer(page).isHidden()).toBe(true)
-    await expect(page.locator('canvas')).toHaveCount(1)
+  test.describe('Escape after the fade (AC-6.1)', () => {
+    test.beforeEach(async ({ page }) => {
+      await enterWorld(page)
+      await leaveWorld(page)
+    })
+
+    // Red: the shown layer's `visibility` delayed past the fade (site.css, `visibility 0s linear
+    // 1s` on `.title-screen-layer`).
+    test('brings the Title Screen back into sight', async ({ page }) => {
+      expect(await titleScreenLayer(page).isVisible()).toBe(true)
+    })
+
+    // Red: `.world-container[inert]` without `visibility: hidden` (world.css).
+    test('takes the World out of sight', async ({ page }) => {
+      expect(await worldContainer(page).isHidden()).toBe(true)
+    })
+
+    // Red: World.tsx dropping its canvas once hidden after a first entry.
+    test('keeps the paused World mounted', async ({ page }) => {
+      await expect(page.locator('canvas')).toHaveCount(1)
+    })
   })
 
   test('Enter after Escape crossfades into the resumed World without loading (AC-6.2)', async ({
     page,
   }) => {
-    const faded = await transitionEnded(titleScreenLayer(page), 'visibility')
-    await page.keyboard.press('Enter')
-    await faded()
-    const back = await transitionEnded(titleScreenLayer(page), 'opacity')
-    await page.keyboard.press('Escape')
-    await back()
+    await enterWorld(page)
+    await leaveWorld(page)
     await expect(wayIn(page)).toHaveText('Enter the World')
-    const fadedAgain = await transitionEnded(titleScreenLayer(page), 'visibility')
-    await page.keyboard.press('Enter')
-    await fadedAgain()
+    await enterWorld(page)
     expect(await worldContainer(page).isVisible()).toBe(true)
     await expect(worldContainer(page)).toBeFocused()
   })

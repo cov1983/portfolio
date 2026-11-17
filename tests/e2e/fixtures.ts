@@ -2,7 +2,7 @@ import { expect, test as base, type Locator, type Page } from '@playwright/test'
 
 import { loadContentFromDisk } from '../../build/content-plugin.ts'
 import type { Content } from '../../src/content/types.ts'
-import { TITLE_SCREEN_INTERACTIVE_MARK } from '../../src/perf/marks.ts'
+import { TITLE_SCREEN_INTERACTIVE_MARK, WORLD_PLAYABLE_MARK } from '../../src/perf/marks.ts'
 import { FIXED_DT } from '../../src/world/model/world.ts'
 import { MAX_STEPS_PER_FRAME } from '../../src/world/scene/stepFrame.ts'
 import { vercelHeaders } from '../../vercel-headers.ts'
@@ -245,6 +245,36 @@ export async function entered(page: Page): Promise<void> {
   await hydrated(page)
   await page.keyboard.press('Enter')
   await expect(worldContainer(page)).toBeVisible()
+}
+
+/**
+ * `/` hydrated, motion allowed and the World playable (its mark recorded): ready for a crossfade
+ * that starts with the key press (T0b). Reduced motion runs no transition, so `enterWorld` and
+ * `leaveWorld` would wait for a `transitionend` that never comes: they follow this, never a page
+ * under `reducedMotion: 'reduce'`.
+ */
+export async function worldPlayable(page: Page): Promise<void> {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await hydrated(page)
+  await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
+}
+
+/**
+ * From the Title Screen over a playable World: Enter, resolved once the crossfade has taken the
+ * Title Screen's layer out of sight (its `visibility` transition ended; ai-review round 1 on #125,
+ * m6: one sequence instead of copies that could await a different property).
+ */
+export async function enterWorld(page: Page): Promise<void> {
+  const faded = await transitionEnded(titleScreenLayer(page), 'visibility')
+  await page.keyboard.press('Enter')
+  await faded()
+}
+
+/** From the World after `enterWorld`: Escape, resolved once the Title Screen has faded back in. */
+export async function leaveWorld(page: Page): Promise<void> {
+  const back = await transitionEnded(titleScreenLayer(page), 'opacity')
+  await page.keyboard.press('Escape')
+  await back()
 }
 
 /** Any loading element: a World run that shows one is not "without any loading" (AC-10.1). */

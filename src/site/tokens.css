@@ -10,7 +10,10 @@
      backdrop: the background at 80 %, behind an open Exhibit Panel
    - primary: the mark's rim, the accent; primary-foreground: the mark's disc, the ink on a filled
      control (white on the accent is 3.4:1, below WCAG AA; navy is 5.6:1)
-   - glow: the accent at 35 %, the hero's static edge glow (spec increment-2 D6, AC-1.2)
+   - glow: the accent at 35 %, the hero's static edge glow (spec increment-2 D6, AC-1.2); over the
+     background at full strength, muted-foreground is 4.53:1 on it (the one line, AA 4.5:1) and
+     foreground 8.8:1 (the h1), proven by tests/build/tokens.test.ts (Owner, #103 comments
+     6950982340 and 6952252187)
    The one font family is a token too (--font-sans, D4): its @font-face is in site.css. */
 @theme static {
   --color-*: initial;

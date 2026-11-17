@@ -21,15 +21,23 @@ test.describe('without WebGL and without the World bundle', () => {
     expect(image).toMatch(/^radial-gradient\(/)
   })
 
-  // Red: an image layer on the hero (a url() in its background, or a mask).
-  test('the glow uses no image and no mask', async ({ page }) => {
+  // Red: a url() layer added to the hero's background (ai-review round 1 on #125, m5: split from
+  // the mask case).
+  test('the glow uses no image', async ({ page }) => {
     await hydrated(page)
-    const style = await page.locator('header.hero').evaluate((element) => {
-      const computed = getComputedStyle(element)
-      return { image: computed.backgroundImage, mask: computed.maskImage }
-    })
-    expect(style.image).not.toContain('url(')
-    expect(style.mask).toBe('none')
+    const image = await page
+      .locator('header.hero')
+      .evaluate((element) => getComputedStyle(element).backgroundImage)
+    expect(image).not.toContain('url(')
+  })
+
+  // Red: a mask-image added to the hero.
+  test('the glow uses no mask', async ({ page }) => {
+    await hydrated(page)
+    const mask = await page
+      .locator('header.hero')
+      .evaluate((element) => getComputedStyle(element).maskImage)
+    expect(mask).toBe('none')
   })
 
   test('nothing of the World is requested for the hero', async ({ page }) => {
