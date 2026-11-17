@@ -30,9 +30,10 @@ import {
 // detection itself is not the point); it is not needed in any of the three.
 
 /**
- * Whether the Title Screen's first link is the Fallback Page's (AC-21.1, 22.1: placed first). The
- * Title Screen is its `main`: the sticky bar above it (increment-2 T0b) is not part of it, and its
- * own "Exhibits" link also leads to /exhibits, so a page-wide first link would pass by the bar.
+ * Whether the Title Screen's first link is the Fallback Page's (AC-21.1, 22.1: the first link
+ * within the Title Screen's `main`, as amended by T0b, #103, Owner decision #103 comment
+ * 6950493432). The sticky bar above it (increment-2 T0b) sits outside that `main`, and its own
+ * "Exhibits" link also leads to /exhibits, so a page-wide first link would pass by the bar.
  */
 async function expectFallbackLinkFirst(page: Page): Promise<void> {
   await expect(page.getByRole('main').getByRole('link').first()).toHaveAttribute(
