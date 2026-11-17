@@ -626,9 +626,9 @@ cases use a context with `javaScriptEnabled: false`; reduced motion uses
 | 20.1 | unit + e2e | `encodeMailto` output has no `mailto:` substring · e2e: `/` and `/exhibits` HTML source has no `mailto:` text; the anchor's `href` property starts with `mailto:` and holds the address | T4 |
 | 20.2 | e2e | GitHub link `href` is the profile URL, `target="_blank"`, `rel` contains `noopener` | T4 |
 | 20.3 | e2e | Contact present on both pages, one line on the Title Screen; Bio only on `/exhibits` | T4 |
-| 21.1 | e2e | `capability.spec`: Chromium/WebKit `isMobile`+`hasTouch` context, Firefox init-script stub of `matchMedia('(pointer: coarse)')` (§12 Q5): hint text present, Fallback link is the first link, way-in present and enabled | T8b |
+| 21.1 | e2e | `capability.spec`: Chromium/WebKit `isMobile`+`hasTouch` context, Firefox init-script stub of `matchMedia('(pointer: coarse)')` (§12 Q5): hint text present, Fallback link is the first link within the Title Screen's `main` (amended by T0b, #103), way-in present and enabled | T8b |
 | 21.2 | e2e | no-script context: no hint element; way-in present | T4 |
-| 22.1 | e2e | `getContext` stub → WebGL hint, Fallback link first | T8b |
+| 22.1 | e2e | `getContext` stub → WebGL hint, Fallback link first within the Title Screen's `main` (amended by T0b, #103) | T8b |
 | 22.2 | e2e | world chunk aborted → after Enter a readable message with the Fallback link; Escape shows the Title Screen | T8b |
 | 23.1 | Owner | EliteBook 840 G10, Edge, one minute across the World, Edge DevTools performance panel (frame rate chart); value in the PR body, every ticket that touches the World | T1, T2, T5b, T7, T8a, T10 |
 | 24.1 | e2e | the three Playwright projects run every spec (CI `e2e`) | all |
