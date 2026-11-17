@@ -88,10 +88,11 @@ test.describe('for assistive technology and the keyboard', () => {
     await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Contact', 'Start a project'])
   })
 
+  // The one nav is the sticky bar's, which replaced the page's own (Owner, #103 comment 6723215733).
   test('has main and nav landmarks', async ({ page }) => {
     await page.goto('/start')
     await expect(page.getByRole('main')).toHaveCount(1)
-    await expect(page.getByRole('navigation')).toHaveCount(1)
+    await expect(page.getByRole('navigation', { name: 'Site' })).toHaveCount(1)
   })
 
   test('Tab reaches every link in reading order, each visibly focused (AC-15.2)', async ({
@@ -99,7 +100,7 @@ test.describe('for assistive technology and the keyboard', () => {
   }) => {
     await page.goto('/start')
     const reached: { name: string; focusVisible: boolean }[] = []
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       await page.keyboard.press('Tab')
       reached.push(
         await page.evaluate(() => {
@@ -112,7 +113,7 @@ test.describe('for assistive technology and the keyboard', () => {
       )
     }
     expect(reached).toEqual(
-      ['Back to the Title Screen', 'Exhibits', 'GitHub', 'E-mail'].map((name) => ({
+      ['Title Screen', 'Exhibits', 'Start a project', 'GitHub', 'E-mail'].map((name) => ({
         name,
         focusVisible: true,
       })),

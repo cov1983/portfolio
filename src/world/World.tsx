@@ -3,7 +3,8 @@
 // shown on entry. The container is the Visitor's keyboard home in the World: focusable, inert and
 // invisible while the Title Screen is shown (`inert` hides it from assistive technology and the
 // tab order; world.css makes it `visibility: hidden`, never `display: none`, so the canvas keeps
-// its size and the paused demand frame that records world-playable still renders).
+// its size and the paused demand frame that records world-playable still renders). world.css also
+// fades it in and out with the Title Screen's crossfade (spec increment-2 AC-2.3).
 import {
   useCallback,
   useLayoutEffect,

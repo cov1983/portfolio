@@ -270,13 +270,15 @@ tolerances for tests, not as requirements in themselves: the feel in words is th
   not fight a keyboard-only World on a touch screen.
   - AC-21.1 Given a coarse pointer or no keyboard is detected after hydration, When the Title Screen
     is shown, Then a hint says the World needs a keyboard for now and the Fallback Page link is
-    placed first; the way into the World stays visible and functional.
+    the first link within the Title Screen's `main`; the way into the World stays visible and
+    functional.
   - AC-21.2 Given the Title Screen before hydration, When it is inspected, Then no hint is present
     and the way into the World is present; detection only ever adds.
 - **US-22** As a Visitor whose browser cannot render the World, I want a readable explanation and a
   way on, so that I never see a blank page.
   - AC-22.1 Given WebGL is unavailable, When the Title Screen is shown after hydration, Then a hint
-    says the World cannot run here and the Fallback Page link is placed first.
+    says the World cannot run here and the Fallback Page link is the first link within the Title
+    Screen's `main`.
   - AC-22.2 Given the World fails to start after the Visitor entered it (WebGL lost, bundle failed,
     physics failed to initialise), When the failure is detected, Then a readable message with the
     Fallback Page link replaces the World and the Title Screen remains reachable.

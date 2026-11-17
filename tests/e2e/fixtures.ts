@@ -2,7 +2,7 @@ import { expect, test as base, type Locator, type Page } from '@playwright/test'
 
 import { loadContentFromDisk } from '../../build/content-plugin.ts'
 import type { Content } from '../../src/content/types.ts'
-import { TITLE_SCREEN_INTERACTIVE_MARK } from '../../src/perf/marks.ts'
+import { TITLE_SCREEN_INTERACTIVE_MARK, WORLD_PLAYABLE_MARK } from '../../src/perf/marks.ts'
 import { FIXED_DT } from '../../src/world/model/world.ts'
 import { MAX_STEPS_PER_FRAME } from '../../src/world/scene/stepFrame.ts'
 import { vercelHeaders } from '../../vercel-headers.ts'
@@ -159,6 +159,38 @@ export const worldContainer = (page: Page): Locator => page.locator('section[ari
 
 export const titleScreen = (page: Page): Locator => page.locator('main.title-screen')
 
+/** The layer around the Title Screen: `away` and `inert` while the World or the failure is shown (T0b). */
+export const titleScreenLayer = (page: Page): Locator => page.locator('div.title-screen-layer')
+
+/**
+ * Waits for `property`'s transition on `locator`'s element to end (T0b, #103: `transitionend`
+ * awaited, never a wait). Call it before the action that starts the transition and await the
+ * returned function after it: the listener is installed when the call resolves, so a transition
+ * that ends before the await is still caught. A listener on the element itself, through a handle,
+ * so no window global. Under reduced motion no transition runs and none ends: never call it there.
+ */
+export async function transitionEnded(
+  locator: Locator,
+  property: string,
+): Promise<() => Promise<void>> {
+  const ended = await locator.evaluateHandle(
+    (element, name) => ({
+      done: new Promise<void>((resolve) => {
+        element.addEventListener('transitionend', (event) => {
+          if (
+            event.target === element &&
+            event instanceof TransitionEvent &&
+            event.propertyName === name
+          )
+            resolve()
+        })
+      }),
+    }),
+    property,
+  )
+  return () => ended.evaluate((handle) => handle.done)
+}
+
 /** The readable failure that replaces the World (AC-22.2): a main, absent from the page otherwise. */
 export const failureScreen = (page: Page): Locator => page.locator('main.world-failure')
 
@@ -183,6 +215,25 @@ export function firstExhibit(content: Content): Content['exhibits'][number] {
   return exhibit
 }
 
+/**
+ * `getContext` answers null for the given kinds before any page script runs, as a browser
+ * without those contexts does (plan §6; capability.spec, hero.spec).
+ */
+export async function withoutContexts(page: Page, kinds: readonly string[]): Promise<void> {
+  await page.addInitScript((denied: readonly string[]) => {
+    // Read, not called, from the prototype: the wrapper below applies it to the canvas asked.
+    const original = Reflect.get(HTMLCanvasElement.prototype, 'getContext')
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      id: string,
+      ...rest: unknown[]
+    ) {
+      if (denied.includes(id)) return null
+      return Reflect.apply(original, this, [id, ...rest]) as RenderingContext | null
+    } as typeof original
+  }, kinds)
+}
+
 /** `/` with the Title Screen hydrated (the mark recorded): the handlers exist. */
 export async function hydrated(page: Page): Promise<void> {
   await page.goto('/')
@@ -194,6 +245,36 @@ export async function entered(page: Page): Promise<void> {
   await hydrated(page)
   await page.keyboard.press('Enter')
   await expect(worldContainer(page)).toBeVisible()
+}
+
+/**
+ * `/` hydrated, motion allowed and the World playable (its mark recorded): ready for a crossfade
+ * that starts with the key press (T0b). Reduced motion runs no transition, so `enterWorld` and
+ * `leaveWorld` would wait for a `transitionend` that never comes: they follow this, never a page
+ * under `reducedMotion: 'reduce'`.
+ */
+export async function worldPlayable(page: Page): Promise<void> {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await hydrated(page)
+  await expect.poll(() => recorded(page, WORLD_PLAYABLE_MARK)).toBe(1)
+}
+
+/**
+ * From the Title Screen over a playable World: Enter, resolved once the crossfade has taken the
+ * Title Screen's layer out of sight (its `visibility` transition ended; ai-review round 1 on #125,
+ * m6: one sequence instead of copies that could await a different property).
+ */
+export async function enterWorld(page: Page): Promise<void> {
+  const faded = await transitionEnded(titleScreenLayer(page), 'visibility')
+  await page.keyboard.press('Enter')
+  await faded()
+}
+
+/** From the World after `enterWorld`: Escape, resolved once the Title Screen has faded back in. */
+export async function leaveWorld(page: Page): Promise<void> {
+  const back = await transitionEnded(titleScreenLayer(page), 'opacity')
+  await page.keyboard.press('Escape')
+  await back()
 }
 
 /** Any loading element: a World run that shows one is not "without any loading" (AC-10.1). */

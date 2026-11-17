@@ -6,8 +6,9 @@ import { Button } from './ui/button'
 // The World's HTML overlay (spec, Implementation decisions: exactly the current caption, the Reset
 // control and a one-line key legend; plan §2, module site: no three, Rapier or World model).
 // The caption is the Announcer's (T8a): one `role="status"` element, always in the overlay
-// (AC-18.2), that holds text only while a caption is shown, keyed by place so the fade-in starts
-// again for a new place (none under reduced motion, AC-18.3). While the World is inert the element
+// (AC-18.2), that holds text only while a caption is shown, keyed by place so each place's text is
+// a fresh insertion. It appears without animation (AC-18.3; increment-2 AC-1.2: T0b removed its
+// fade, Owner on #103, comments 6723218035 and 6723304033). While the World is inert the element
 // is out of the accessibility tree; src/world/World.tsx hands it the text a frame after the World
 // leaves inert, so the insertion lands in a region a screen reader already knows and is announced.
 // Activating the Reset control with a pointer hands focus back to the World container so the keys
