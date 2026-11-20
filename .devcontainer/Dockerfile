@@ -2,7 +2,7 @@
 # Node 24 LTS + pnpm (corepack), make, jq, shellcheck, xauth (xvfb-run needs it; xvfb itself comes with the Playwright
 # OS deps), gitleaks. Playwright browsers are not baked in: `make setup` installs them (postCreateCommand),
 # so the browser build always matches @playwright/test.
-FROM mcr.microsoft.com/devcontainers/typescript-node:5-24-bookworm@sha256:c7b32144736008591ad71723f23629750db3abc6415410da0de90a351d868ad4
+FROM mcr.microsoft.com/devcontainers/typescript-node:5-24-bookworm@sha256:b067c4021d2760daeb24de2580973033064b74c26037b6acd9b2a3268c2d3259
 
 ARG GITLEAKS_VERSION=8.30.1
 ARG GITLEAKS_SHA256_X64=551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
